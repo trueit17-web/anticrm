@@ -42,11 +42,31 @@ $COMPOSE run --rm --entrypoint sh certbot -c "
   rm -rf /etc/letsencrypt/live/$DOMAIN /etc/letsencrypt/archive/$DOMAIN /etc/letsencrypt/renewal/$DOMAIN.conf
 "
 
+restore_dummy_cert() {
+  echo "### Restoring dummy certificate so nginx stays up ..." >&2
+  $COMPOSE run --rm --entrypoint sh certbot -c "
+    mkdir -p /etc/letsencrypt/live/$DOMAIN && \
+    openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
+      -keyout /etc/letsencrypt/live/$DOMAIN/privkey.pem \
+      -out /etc/letsencrypt/live/$DOMAIN/fullchain.pem \
+      -subj '/CN=localhost'
+  "
+  $COMPOSE up -d frontend
+}
+
 echo "### Requesting real certificate from Let's Encrypt ..."
-$COMPOSE run --rm --entrypoint certbot certbot certonly --webroot -w /var/www/certbot \
+if ! $COMPOSE run --rm --entrypoint certbot certbot certonly --webroot -w /var/www/certbot \
   -d "$DOMAIN" \
   --email "${LETSENCRYPT_EMAIL:-admin@$DOMAIN}" \
-  --agree-tos --no-eff-email
+  --agree-tos --no-eff-email; then
+  restore_dummy_cert
+  echo "" >&2
+  echo "Certificate request failed (see error above — usually port 80 isn't reachable" >&2
+  echo "from the internet yet: check your hosting provider's firewall/security group," >&2
+  echo "not just ufw). nginx is back up with a temporary self-signed certificate." >&2
+  echo "Fix the underlying issue, then re-run this script." >&2
+  exit 1
+fi
 
 echo "### Reloading nginx with the real certificate ..."
 $COMPOSE exec frontend nginx -s reload
