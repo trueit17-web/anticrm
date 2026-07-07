@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.env
+*.log
+
+# Claude Code local tooling (machine-specific paths, not part of the app)
+.claude/
+
+# DB dumps produced by scripts/backup-db.sh
+backups/

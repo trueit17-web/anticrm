@@ -1,0 +1,79 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  MANAGER
+  ADMIN
+}
+
+enum AppealStatus {
+  NEW
+  IN_PROGRESS
+  ADVICE_GIVEN
+  CLOSED
+}
+
+enum IntakeChannel {
+  PHONE
+  EMAIL
+  MESSENGER
+  IN_PERSON
+  WEBSITE
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  username     String   @unique
+  fullName     String
+  passwordHash String
+  role         Role     @default(USER)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  appealsAsOperator     Appeal[] @relation("OperatorAppeals")
+  appealsAsGovAssignee  Appeal[] @relation("GovAssignee")
+  appealsAsCbAssignee   Appeal[] @relation("CbAssignee")
+  appealsAsFsbAssignee  Appeal[] @relation("FsbAssignee")
+  appealsAsCloser       Appeal[] @relation("CloserAssignee")
+}
+
+model Appeal {
+  id     Int      @id @default(autoincrement())
+  date   DateTime @default(now())
+
+  operatorId Int
+  operator   User @relation("OperatorAppeals", fields: [operatorId], references: [id])
+
+  phone      String
+  intake     IntakeChannel @default(PHONE)
+  clientData String?
+
+  govAssigneeId Int?
+  govAssignee   User? @relation("GovAssignee", fields: [govAssigneeId], references: [id])
+
+  cbAssigneeId Int?
+  cbAssignee   User? @relation("CbAssignee", fields: [cbAssigneeId], references: [id])
+
+  fsbAssigneeId Int?
+  fsbAssignee   User? @relation("FsbAssignee", fields: [fsbAssigneeId], references: [id])
+
+  closerAssigneeId Int?
+  closerAssignee   User? @relation("CloserAssignee", fields: [closerAssigneeId], references: [id])
+
+  status      AppealStatus @default(NEW)
+  description String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([operatorId])
+  @@index([status])
+}
