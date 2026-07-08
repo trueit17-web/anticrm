@@ -412,12 +412,27 @@ a {
   gap: 10px;
 }
 
-.admin-option-actions input[type="color"] {
-  width: 28px;
-  height: 24px;
+.color-palette {
+  display: flex;
+  gap: 5px;
+}
+
+.color-swatch {
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
   padding: 0;
-  border: 1px solid var(--border);
   cursor: pointer;
+}
+
+.color-swatch:hover {
+  transform: scale(1.15);
+}
+
+.color-swatch-active {
+  border: 2px solid var(--text);
+  box-shadow: 0 0 0 2px var(--card);
 }
 
 .page-loading {

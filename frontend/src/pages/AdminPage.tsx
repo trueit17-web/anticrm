@@ -5,6 +5,21 @@ import { OPTION_FIELD_LABELS, OptionField, SelectOption } from "../types";
 
 const FIELDS: OptionField[] = ["GOV", "CB", "FSB", "CLOSER", "STATUS"];
 
+// Preset row-highlight colors — soft enough to keep black text readable.
+const COLOR_PALETTE = [
+  "#ffffff",
+  "#fee2e2",
+  "#ffedd5",
+  "#fef9c3",
+  "#dcfce7",
+  "#ccfbf1",
+  "#dbeafe",
+  "#e0e7ff",
+  "#ede9fe",
+  "#fce7f3",
+  "#e5e7eb",
+];
+
 function OptionFieldEditor({
   field,
   options,
@@ -58,12 +73,18 @@ function OptionFieldEditor({
               <span>{o.value}</span>
               <span className="admin-option-actions">
                 {showColor && (
-                  <input
-                    type="color"
-                    title="Цвет строки для этого статуса"
-                    value={o.color ?? "#ffffff"}
-                    onChange={(e) => handleColorChange(o.id, e.target.value)}
-                  />
+                  <span className="color-palette">
+                    {COLOR_PALETTE.map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        className={`color-swatch${(o.color ?? "#ffffff") === c ? " color-swatch-active" : ""}`}
+                        style={{ backgroundColor: c }}
+                        title={c}
+                        onClick={() => handleColorChange(o.id, c)}
+                      />
+                    ))}
+                  </span>
                 )}
                 <button className="link-button" onClick={() => handleDelete(o.id)}>
                   Удалить
