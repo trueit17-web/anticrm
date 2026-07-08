@@ -6,10 +6,8 @@ const prisma = new PrismaClient();
 
 const STATUS_DEFAULTS = ["Новое", "В работе", "Консультация дана", "Закрыто"];
 
-// Госы/ЦБ/ФСБ/Закрыв all start out populated with the current staff list
-// (mirroring how "Закрыв" used to work as an employee assignment) — admins
-// can freely rename/add/remove entries afterwards on the /admin page.
-const STAFF_BACKED_FIELDS = [OptionField.GOV, OptionField.CB, OptionField.FSB, OptionField.CLOSER];
+// Госы/ЦБ/ФСБ/Закрыв start out empty on purpose — admins fill them in with
+// real values on the /admin page instead of getting placeholder data.
 
 async function seedAdmin() {
   const username = process.env.SEED_ADMIN_USERNAME ?? "admin";
@@ -42,14 +40,7 @@ async function upsertOptions(field: OptionField, values: string[]) {
 
 async function seedOptions() {
   await upsertOptions(OptionField.STATUS, STATUS_DEFAULTS);
-
-  const staff = await prisma.user.findMany({ select: { fullName: true }, orderBy: { fullName: "asc" } });
-  const staffNames = staff.map((s) => s.fullName);
-  for (const field of STAFF_BACKED_FIELDS) {
-    await upsertOptions(field, staffNames);
-  }
-
-  console.log("Default option lists ensured (Госы/ЦБ/ФСБ/Закрыв/Статус).");
+  console.log("Default status list ensured. Госы/ЦБ/ФСБ/Закрыв left empty for admins to fill in.");
 }
 
 async function main() {
