@@ -60,6 +60,19 @@ export interface Appeal {
   closerAssignee: AssigneeRef | null;
   status: AppealStatus;
   description: string | null;
+  smsSentBy: { id: number; fullName: string } | null;
+  smsSentAt: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface OperatorStat {
+  operatorId: number;
+  fullName: string;
+  count: number;
+}
+
+export interface DailyStat {
+  day: string;
+  count: number;
 }

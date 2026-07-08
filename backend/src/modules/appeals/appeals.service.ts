@@ -11,6 +11,7 @@ export const appealInclude = {
   cbAssignee: assigneeSelect,
   fsbAssignee: assigneeSelect,
   closerAssignee: assigneeSelect,
+  smsSentBy: { select: { id: true, fullName: true } },
 } satisfies Prisma.AppealInclude;
 
 export function listAppeals() {
@@ -64,4 +65,58 @@ export function updateAppeal(id: number, input: UpdateAppealInput) {
 
 export function deleteAppeal(id: number) {
   return prisma.appeal.delete({ where: { id } });
+}
+
+export function setSmsSent(id: number, sent: boolean, userId: number) {
+  return prisma.appeal.update({
+    where: { id },
+    data: sent
+      ? { smsSentById: userId, smsSentAt: new Date() }
+      : { smsSentById: null, smsSentAt: null },
+    include: appealInclude,
+  });
+}
+
+export interface OperatorStat {
+  operatorId: number;
+  fullName: string;
+  count: number;
+}
+
+export interface DailyStat {
+  day: string;
+  count: number;
+}
+
+export async function getOperatorStats(): Promise<OperatorStat[]> {
+  const grouped = await prisma.appeal.groupBy({
+    by: ["operatorId"],
+    _count: { _all: true },
+  });
+
+  const operatorIds = grouped.map((g) => g.operatorId);
+  const users = await prisma.user.findMany({
+    where: { id: { in: operatorIds } },
+    select: { id: true, fullName: true },
+  });
+  const nameById = new Map(users.map((u) => [u.id, u.fullName]));
+
+  return grouped
+    .map((g) => ({
+      operatorId: g.operatorId,
+      fullName: nameById.get(g.operatorId) ?? "—",
+      count: g._count._all,
+    }))
+    .sort((a, b) => b.count - a.count);
+}
+
+export async function getDailyStats(days: number): Promise<DailyStat[]> {
+  const rows = await prisma.$queryRaw<{ day: string; count: bigint }[]>`
+    SELECT to_char(date_trunc('day', "date"), 'YYYY-MM-DD') AS day, count(*)::bigint AS count
+    FROM "Appeal"
+    WHERE "date" >= NOW() - (${days}::text || ' days')::interval
+    GROUP BY day
+    ORDER BY day
+  `;
+  return rows.map((r) => ({ day: r.day, count: Number(r.count) }));
 }

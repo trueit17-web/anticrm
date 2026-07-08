@@ -33,7 +33,9 @@ export function AppealsPage() {
     if (user && isManagerOrAdmin(user)) {
       api
         .get<{ users: UserSummary[] }>("/users")
-        .then((res) => setStaff(res.users))
+        // Admins aren't valid Госы/ЦБ/ФСБ/Закрыв assignees — only staff who
+        // actually work appeals should show up in that dropdown.
+        .then((res) => setStaff(res.users.filter((u) => u.role !== "ADMIN")))
         .catch(() => {});
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -51,6 +53,22 @@ export function AppealsPage() {
     await loadAppeals();
   }
 
+  async function handleToggleSms(appeal: Appeal, sms: boolean) {
+    // Optimistic update so the checkbox doesn't feel laggy; reconciled on reload.
+    setAppeals((prev) =>
+      prev.map((a) =>
+        a.id === appeal.id
+          ? { ...a, smsSentBy: sms ? { id: user!.id, fullName: user!.fullName } : null, smsSentAt: sms ? new Date().toISOString() : null }
+          : a
+      )
+    );
+    try {
+      await api.patch(`/appeals/${appeal.id}/sms`, { sms });
+    } finally {
+      await loadAppeals();
+    }
+  }
+
   return (
     <div className="page">
       <header className="page-header">
@@ -61,6 +79,7 @@ export function AppealsPage() {
           </p>
         </div>
         <div className="header-actions">
+          <Link to="/stats">Статистика</Link>
           {user.role === "ADMIN" && <Link to="/users">Пользователи</Link>}
           <button onClick={() => setEditing("new")}>+ Новое обращение</button>
           <button className="secondary" onClick={logout}>
@@ -73,7 +92,12 @@ export function AppealsPage() {
       {error && <p className="error-text">{error}</p>}
 
       {!loading && !error && (
-        <AppealsTable appeals={appeals} currentUser={user} onEdit={setEditing} />
+        <AppealsTable
+          appeals={appeals}
+          currentUser={user}
+          onEdit={setEditing}
+          onToggleSms={handleToggleSms}
+        />
       )}
 
       {editing && (

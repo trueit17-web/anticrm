@@ -43,6 +43,7 @@ model User {
   appealsAsCbAssignee   Appeal[] @relation("CbAssignee")
   appealsAsFsbAssignee  Appeal[] @relation("FsbAssignee")
   appealsAsCloser       Appeal[] @relation("CloserAssignee")
+  appealsAsSmsSender    Appeal[] @relation("SmsSender")
 }
 
 model Appeal {
@@ -70,6 +71,10 @@ model Appeal {
 
   status      AppealStatus @default(NEW)
   description String?
+
+  smsSentById Int?
+  smsSentBy   User?     @relation("SmsSender", fields: [smsSentById], references: [id])
+  smsSentAt   DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

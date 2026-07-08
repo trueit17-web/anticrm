@@ -5,7 +5,10 @@ import {
   createAppeal,
   deleteAppeal,
   getAppeal,
+  getDailyStats,
+  getOperatorStats,
   listAppeals,
+  setSmsSent,
   updateAppeal,
 } from "./appeals.service";
 
@@ -95,4 +98,28 @@ export async function deleteAppealHandler(req: Request, res: Response) {
   const id = Number(req.params.id);
   await deleteAppeal(id);
   res.status(204).send();
+}
+
+const smsSchema = z.object({ sms: z.boolean() });
+
+export async function setSmsHandler(req: Request, res: Response) {
+  const id = Number(req.params.id);
+  const existing = await getAppeal(id);
+  if (!existing) {
+    return res.status(404).json({ error: "Обращение не найдено" });
+  }
+
+  const parsed = smsSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: "Проверьте поля формы", details: parsed.error.flatten() });
+  }
+
+  // Any authenticated employee may mark SMS sent/unsent on any appeal.
+  const appeal = await setSmsSent(id, parsed.data.sms, req.user!.id);
+  res.json({ appeal });
+}
+
+export async function getStatsHandler(_req: Request, res: Response) {
+  const [byOperator, byDate] = await Promise.all([getOperatorStats(), getDailyStats(30)]);
+  res.json({ byOperator, byDate });
 }

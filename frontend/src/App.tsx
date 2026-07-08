@@ -4,6 +4,7 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import { LoginPage } from "./pages/LoginPage";
 import { AppealsPage } from "./pages/AppealsPage";
 import { UsersPage } from "./pages/UsersPage";
+import { StatsPage } from "./pages/StatsPage";
 
 export function App() {
   return (
@@ -23,6 +24,14 @@ export function App() {
           element={
             <ProtectedRoute roles={["ADMIN"]}>
               <UsersPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/stats"
+          element={
+            <ProtectedRoute>
+              <StatsPage />
             </ProtectedRoute>
           }
         />
