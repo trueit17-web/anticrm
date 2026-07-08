@@ -174,7 +174,7 @@ export function AppealsTable({
     }
     return (
       <select value={value} onChange={(e) => onInlineTagChange(appeal, field, e.target.value || null)}>
-        <option value="">— не выбрано —</option>
+        <option value=""></option>
         {options.map((opt) => (
           <option key={opt} value={opt}>
             {opt}
