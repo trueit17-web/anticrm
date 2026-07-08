@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { KeyboardEvent, useState } from "react";
 import { Appeal } from "../types";
 import { AuthUser } from "../types";
 import { canEditAppeal, canEditAssignments } from "../lib/permissions";
@@ -47,6 +47,7 @@ function NewAppealRow({
   const [submitting, setSubmitting] = useState(false);
 
   async function handleSubmit() {
+    if (!values.phone.trim() || submitting) return;
     setError(null);
     setSubmitting(true);
     try {
@@ -58,6 +59,13 @@ function NewAppealRow({
     }
   }
 
+  function handleKeyDown(e: KeyboardEvent) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleSubmit();
+    }
+  }
+
   return (
     <>
       <tr className="new-appeal-row">
@@ -66,6 +74,7 @@ function NewAppealRow({
             type="date"
             value={values.date}
             onChange={(e) => setValues((v) => ({ ...v, date: e.target.value }))}
+            onKeyDown={handleKeyDown}
           />
         </td>
         <td>
@@ -73,6 +82,7 @@ function NewAppealRow({
             placeholder="Телефон"
             value={values.phone}
             onChange={(e) => setValues((v) => ({ ...v, phone: e.target.value }))}
+            onKeyDown={handleKeyDown}
             autoFocus
           />
         </td>
@@ -81,6 +91,7 @@ function NewAppealRow({
             placeholder="Данные клиента"
             value={values.clientData}
             onChange={(e) => setValues((v) => ({ ...v, clientData: e.target.value }))}
+            onKeyDown={handleKeyDown}
           />
         </td>
         <td colSpan={2} className="muted">
@@ -95,6 +106,7 @@ function NewAppealRow({
             placeholder="Описание"
             value={values.description}
             onChange={(e) => setValues((v) => ({ ...v, description: e.target.value }))}
+            onKeyDown={handleKeyDown}
           />
         </td>
         <td>
@@ -191,7 +203,6 @@ export function AppealsTable({
           </tr>
         </thead>
         <tbody>
-          {creating && <NewAppealRow onCancel={onCancelCreate} onSubmit={onSubmitCreate} />}
           {appeals.length === 0 && !creating && (
             <tr>
               <td colSpan={12} className="empty-state">
@@ -267,6 +278,7 @@ export function AppealsTable({
               </tr>
             );
           })}
+          {creating && <NewAppealRow onCancel={onCancelCreate} onSubmit={onSubmitCreate} />}
         </tbody>
       </table>
     </div>

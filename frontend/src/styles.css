@@ -91,7 +91,7 @@ a {
 
 .page {
   padding: 24px 32px;
-  max-width: 1400px;
+  max-width: 1900px;
   margin: 0 auto;
 }
 
@@ -187,7 +187,24 @@ a {
   max-width: 220px;
 }
 
+.appeals-table th:last-child,
+.appeals-table td:last-child {
+  position: sticky;
+  right: 0;
+  background: var(--card);
+  white-space: nowrap;
+  box-shadow: -4px 0 6px -4px rgba(0, 0, 0, 0.15);
+}
+
+.appeals-table th:last-child {
+  background: #f8fafc;
+}
+
 .new-appeal-row td {
+  background: #f8fafc;
+}
+
+.new-appeal-row td:last-child {
   background: #f8fafc;
 }
 
