@@ -5,6 +5,7 @@ import { LoginPage } from "./pages/LoginPage";
 import { AppealsPage } from "./pages/AppealsPage";
 import { UsersPage } from "./pages/UsersPage";
 import { StatsPage } from "./pages/StatsPage";
+import { AdminPage } from "./pages/AdminPage";
 
 export function App() {
   return (
@@ -32,6 +33,14 @@ export function App() {
           element={
             <ProtectedRoute>
               <StatsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute roles={["ADMIN"]}>
+              <AdminPage />
             </ProtectedRoute>
           }
         />

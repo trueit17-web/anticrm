@@ -1,16 +1,21 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../auth/AuthContext";
 import { api, ApiError } from "../api/client";
-import { Appeal, ROLE_LABELS, UserSummary } from "../types";
+import { Appeal, ROLE_LABELS, SelectOption, UserSummary } from "../types";
 import { AppealsTable } from "../components/AppealsTable";
 import { AppealFormModal, AppealFormValues } from "../components/AppealFormModal";
 import { isManagerOrAdmin } from "../lib/permissions";
 import { Link } from "react-router-dom";
 
+function optionValues(options: SelectOption[], field: SelectOption["field"]): string[] {
+  return options.filter((o) => o.field === field).map((o) => o.value);
+}
+
 export function AppealsPage() {
   const { user, logout } = useAuth();
   const [appeals, setAppeals] = useState<Appeal[]>([]);
   const [staff, setStaff] = useState<UserSummary[]>([]);
+  const [options, setOptions] = useState<SelectOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<Appeal | null | "new">(null);
@@ -30,6 +35,10 @@ export function AppealsPage() {
 
   useEffect(() => {
     loadAppeals();
+    api
+      .get<{ options: SelectOption[] }>("/select-options")
+      .then((res) => setOptions(res.options))
+      .catch(() => {});
     if (user && isManagerOrAdmin(user)) {
       api
         .get<{ users: UserSummary[] }>("/users")
@@ -58,12 +67,33 @@ export function AppealsPage() {
     setAppeals((prev) =>
       prev.map((a) =>
         a.id === appeal.id
-          ? { ...a, smsSentBy: sms ? { id: user!.id, fullName: user!.fullName } : null, smsSentAt: sms ? new Date().toISOString() : null }
+          ? {
+              ...a,
+              smsSentBy: sms ? { id: user!.id, fullName: user!.fullName } : null,
+              smsSentAt: sms ? new Date().toISOString() : null,
+            }
           : a
       )
     );
     try {
       await api.patch(`/appeals/${appeal.id}/sms`, { sms });
+    } finally {
+      await loadAppeals();
+    }
+  }
+
+  async function handleInlineTagChange(appeal: Appeal, field: "gov" | "cb" | "fsb", value: string | null) {
+    setAppeals((prev) => prev.map((a) => (a.id === appeal.id ? { ...a, [field]: value } : a)));
+    try {
+      await api.patch(`/appeals/${appeal.id}`, { [field]: value });
+    } finally {
+      await loadAppeals();
+    }
+  }
+
+  async function handleInlineCloserChange(appeal: Appeal, closerAssigneeId: number | null) {
+    try {
+      await api.patch(`/appeals/${appeal.id}`, { closerAssigneeId });
     } finally {
       await loadAppeals();
     }
@@ -75,11 +105,12 @@ export function AppealsPage() {
         <div>
           <h1>Обращения</h1>
           <p className="muted">
-            {user.fullName} · {ROLE_LABELS[user.role]}
+            {user.fullName} · {ROLE_LABELS[user.role]} · за сегодня
           </p>
         </div>
         <div className="header-actions">
           <Link to="/stats">Статистика</Link>
+          {user.role === "ADMIN" && <Link to="/admin">Админка</Link>}
           {user.role === "ADMIN" && <Link to="/users">Пользователи</Link>}
           <button onClick={() => setEditing("new")}>+ Новое обращение</button>
           <button className="secondary" onClick={logout}>
@@ -97,13 +128,20 @@ export function AppealsPage() {
           currentUser={user}
           onEdit={setEditing}
           onToggleSms={handleToggleSms}
+          onInlineTagChange={handleInlineTagChange}
+          onInlineCloserChange={handleInlineCloserChange}
+          govOptions={optionValues(options, "GOV")}
+          cbOptions={optionValues(options, "CB")}
+          fsbOptions={optionValues(options, "FSB")}
+          staff={staff}
         />
       )}
 
       {editing && (
         <AppealFormModal
           appeal={editing === "new" ? null : editing}
-          staff={staff}
+          statusOptions={optionValues(options, "STATUS")}
+          intakeOptions={optionValues(options, "INTAKE")}
           onClose={() => setEditing(null)}
           onSubmit={(values) =>
             editing === "new" ? handleCreate(values) : handleUpdate(editing.id, values)

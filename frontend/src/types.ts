@@ -1,28 +1,19 @@
 export type Role = "USER" | "MANAGER" | "ADMIN";
 
-export type AppealStatus = "NEW" | "IN_PROGRESS" | "ADVICE_GIVEN" | "CLOSED";
-
-export type IntakeChannel = "PHONE" | "EMAIL" | "MESSENGER" | "IN_PERSON" | "WEBSITE";
-
-export const STATUS_LABELS: Record<AppealStatus, string> = {
-  NEW: "Новое",
-  IN_PROGRESS: "В работе",
-  ADVICE_GIVEN: "Консультация дана",
-  CLOSED: "Закрыто",
-};
-
-export const INTAKE_LABELS: Record<IntakeChannel, string> = {
-  PHONE: "Телефон",
-  EMAIL: "Email",
-  MESSENGER: "Мессенджер",
-  IN_PERSON: "Личный визит",
-  WEBSITE: "Сайт",
-};
+export type OptionField = "GOV" | "CB" | "FSB" | "STATUS" | "INTAKE";
 
 export const ROLE_LABELS: Record<Role, string> = {
   USER: "Пользователь",
   MANAGER: "Менеджер",
   ADMIN: "Администратор",
+};
+
+export const OPTION_FIELD_LABELS: Record<OptionField, string> = {
+  GOV: "Госы",
+  CB: "ЦБ",
+  FSB: "ФСБ",
+  STATUS: "Статус",
+  INTAKE: "Прием",
 };
 
 export interface AuthUser {
@@ -52,13 +43,13 @@ export interface Appeal {
   date: string;
   operator: { id: number; fullName: string };
   phone: string;
-  intake: IntakeChannel;
+  intake: string;
   clientData: string | null;
-  govAssignee: AssigneeRef | null;
-  cbAssignee: AssigneeRef | null;
-  fsbAssignee: AssigneeRef | null;
+  gov: string | null;
+  cb: string | null;
+  fsb: string | null;
   closerAssignee: AssigneeRef | null;
-  status: AppealStatus;
+  status: string;
   description: string | null;
   smsSentBy: { id: number; fullName: string } | null;
   smsSentAt: string | null;
@@ -75,4 +66,22 @@ export interface OperatorStat {
 export interface DailyStat {
   day: string;
   count: number;
+}
+
+export interface SelectOption {
+  id: number;
+  field: OptionField;
+  value: string;
+  order: number;
+  createdAt: string;
+}
+
+export interface HistoryEntry {
+  id: number;
+  field: string;
+  fieldLabel: string;
+  oldValue: string | null;
+  newValue: string | null;
+  changedAt: string;
+  changedBy: { id: number; fullName: string };
 }

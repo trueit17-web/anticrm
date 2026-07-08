@@ -13,19 +13,24 @@ enum Role {
   ADMIN
 }
 
-enum AppealStatus {
-  NEW
-  IN_PROGRESS
-  ADVICE_GIVEN
-  CLOSED
+// Admin-configurable dropdown lists (managed on the /admin page).
+enum OptionField {
+  GOV
+  CB
+  FSB
+  STATUS
+  INTAKE
 }
 
-enum IntakeChannel {
-  PHONE
-  EMAIL
-  MESSENGER
-  IN_PERSON
-  WEBSITE
+model SelectOption {
+  id        Int         @id @default(autoincrement())
+  field     OptionField
+  value     String
+  order     Int         @default(0)
+  createdAt DateTime    @default(now())
+
+  @@unique([field, value])
+  @@index([field])
 }
 
 model User {
@@ -38,12 +43,10 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  appealsAsOperator     Appeal[] @relation("OperatorAppeals")
-  appealsAsGovAssignee  Appeal[] @relation("GovAssignee")
-  appealsAsCbAssignee   Appeal[] @relation("CbAssignee")
-  appealsAsFsbAssignee  Appeal[] @relation("FsbAssignee")
-  appealsAsCloser       Appeal[] @relation("CloserAssignee")
-  appealsAsSmsSender    Appeal[] @relation("SmsSender")
+  appealsAsOperator  Appeal[]        @relation("OperatorAppeals")
+  appealsAsCloser    Appeal[]        @relation("CloserAssignee")
+  appealsAsSmsSender Appeal[]        @relation("SmsSender")
+  historyEntries     AppealHistory[] @relation("HistoryChangedBy")
 }
 
 model Appeal {
@@ -54,31 +57,49 @@ model Appeal {
   operator   User @relation("OperatorAppeals", fields: [operatorId], references: [id])
 
   phone      String
-  intake     IntakeChannel @default(PHONE)
+  intake     String  @default("Телефон")
   clientData String?
 
-  govAssigneeId Int?
-  govAssignee   User? @relation("GovAssignee", fields: [govAssigneeId], references: [id])
-
-  cbAssigneeId Int?
-  cbAssignee   User? @relation("CbAssignee", fields: [cbAssigneeId], references: [id])
-
-  fsbAssigneeId Int?
-  fsbAssignee   User? @relation("FsbAssignee", fields: [fsbAssigneeId], references: [id])
+  // Free-form tags curated by admins on the /admin page — no longer tied to
+  // a specific employee.
+  gov String?
+  cb  String?
+  fsb String?
 
   closerAssigneeId Int?
   closerAssignee   User? @relation("CloserAssignee", fields: [closerAssigneeId], references: [id])
 
-  status      AppealStatus @default(NEW)
+  status      String  @default("Новое")
   description String?
 
   smsSentById Int?
   smsSentBy   User?     @relation("SmsSender", fields: [smsSentById], references: [id])
   smsSentAt   DateTime?
 
+  history AppealHistory[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([operatorId])
   @@index([status])
+  @@index([date])
+}
+
+model AppealHistory {
+  id     Int    @id @default(autoincrement())
+  appeal Appeal @relation(fields: [appealId], references: [id], onDelete: Cascade)
+  appealId Int
+
+  changedBy   User @relation("HistoryChangedBy", fields: [changedById], references: [id])
+  changedById Int
+
+  field      String
+  fieldLabel String
+  oldValue   String?
+  newValue   String?
+
+  changedAt DateTime @default(now())
+
+  @@index([appealId])
 }

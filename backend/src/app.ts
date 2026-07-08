@@ -4,6 +4,7 @@ import { env } from "./config/env";
 import { authRouter } from "./modules/auth/auth.routes";
 import { usersRouter } from "./modules/users/users.routes";
 import { appealsRouter } from "./modules/appeals/appeals.routes";
+import { selectOptionsRouter } from "./modules/select-options/select-options.routes";
 
 export const app = express();
 
@@ -20,6 +21,7 @@ app.get("/api/health", (_req, res) => res.json({ ok: true }));
 app.use("/api/auth", authRouter);
 app.use("/api/users", usersRouter);
 app.use("/api/appeals", appealsRouter);
+app.use("/api/select-options", selectOptionsRouter);
 
 app.use((req: Request, res: Response) => {
   res.status(404).json({ error: "Не найдено" });

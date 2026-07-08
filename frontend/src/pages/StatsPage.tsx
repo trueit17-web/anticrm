@@ -1,14 +1,24 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, ApiError } from "../api/client";
-import { DailyStat, OperatorStat } from "../types";
+import { Appeal, DailyStat, OperatorStat } from "../types";
+import { detectMobileOperator } from "../lib/mobileOperator";
 
 function formatDay(day: string): string {
   const d = new Date(day + "T00:00:00");
   return d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" });
 }
 
-function DailyChart({ data }: { data: DailyStat[] }) {
+function formatDateTime(dateIso: string, timeSourceIso: string): string {
+  const datePart = new Date(dateIso).toLocaleDateString("ru-RU");
+  const timePart = new Date(timeSourceIso).toLocaleTimeString("ru-RU", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  return `${datePart}, ${timePart}`;
+}
+
+function DailyChart({ data, onPick }: { data: DailyStat[]; onPick: (day: string) => void }) {
   if (data.length === 0) {
     return <p className="empty-state">Нет данных за последние 30 дней.</p>;
   }
@@ -32,7 +42,7 @@ function DailyChart({ data }: { data: DailyStat[] }) {
         const x = padding + i * (barWidth + barGap);
         const y = height - padding - barHeight;
         return (
-          <g key={d.day}>
+          <g key={d.day} onClick={() => onPick(d.day)} style={{ cursor: "pointer" }}>
             <rect
               x={x}
               y={y}
@@ -42,7 +52,7 @@ function DailyChart({ data }: { data: DailyStat[] }) {
               rx={2}
             >
               <title>
-                {formatDay(d.day)}: {d.count}
+                {formatDay(d.day)}: {d.count} (нажмите, чтобы посмотреть список)
               </title>
             </rect>
             {(i % Math.ceil(data.length / 10 || 1) === 0 || i === data.length - 1) && (
@@ -70,11 +80,63 @@ function DailyChart({ data }: { data: DailyStat[] }) {
   );
 }
 
+function DayAppealsTable({ appeals }: { appeals: Appeal[] }) {
+  if (appeals.length === 0) {
+    return <p className="empty-state">За этот день обращений нет.</p>;
+  }
+  return (
+    <div className="table-scroll">
+      <table className="appeals-table">
+        <thead>
+          <tr>
+            <th>Дата</th>
+            <th>Телефон</th>
+            <th>Опер. (моб.)</th>
+            <th>СМС</th>
+            <th>Прием</th>
+            <th>Данные клиента</th>
+            <th>Госы</th>
+            <th>ЦБ</th>
+            <th>ФСБ</th>
+            <th>Закрыв</th>
+            <th>Статус</th>
+            <th>Описание</th>
+          </tr>
+        </thead>
+        <tbody>
+          {appeals.map((a) => (
+            <tr key={a.id}>
+              <td>{formatDateTime(a.date, a.createdAt)}</td>
+              <td>{a.phone}</td>
+              <td>{detectMobileOperator(a.phone)}</td>
+              <td>{a.smsSentBy ? `${a.smsSentBy.fullName}` : "—"}</td>
+              <td>{a.intake}</td>
+              <td className="wrap-cell">{a.clientData || "—"}</td>
+              <td>{a.gov || "—"}</td>
+              <td>{a.cb || "—"}</td>
+              <td>{a.fsb || "—"}</td>
+              <td>{a.closerAssignee?.fullName ?? "—"}</td>
+              <td>
+                <span className="status-pill">{a.status}</span>
+              </td>
+              <td className="wrap-cell">{a.description || "—"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export function StatsPage() {
   const [byOperator, setByOperator] = useState<OperatorStat[]>([]);
   const [byDate, setByDate] = useState<DailyStat[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const [selectedDay, setSelectedDay] = useState<string>("");
+  const [dayAppeals, setDayAppeals] = useState<Appeal[]>([]);
+  const [dayLoading, setDayLoading] = useState(false);
 
   useEffect(() => {
     api
@@ -86,6 +148,15 @@ export function StatsPage() {
       .catch((err) => setError(err instanceof ApiError ? err.message : "Не удалось загрузить статистику"))
       .finally(() => setLoading(false));
   }, []);
+
+  function loadDay(day: string) {
+    setSelectedDay(day);
+    setDayLoading(true);
+    api
+      .get<{ appeals: Appeal[] }>(`/appeals?date=${day}`)
+      .then((res) => setDayAppeals(res.appeals))
+      .finally(() => setDayLoading(false));
+  }
 
   const total = byOperator.reduce((sum, o) => sum + o.count, 0);
 
@@ -108,15 +179,26 @@ export function StatsPage() {
           <div className="stats-summary">
             <div className="stats-card">
               <span className="stats-card-value">{total}</span>
-              <span className="muted">Всего обращений</span>
+              <span className="muted">Всего обращений (30 дней)</span>
             </div>
           </div>
 
           <section className="stats-section">
-            <h2>Обращения по дням (последние 30 дней)</h2>
+            <h2>Обращения по дням (последние 30 дней) — нажмите на столбец, чтобы посмотреть список</h2>
             <div className="table-scroll stats-chart-wrap">
-              <DailyChart data={byDate} />
+              <DailyChart data={byDate} onPick={loadDay} />
             </div>
+          </section>
+
+          <section className="stats-section">
+            <h2>Обращения за выбранный день</h2>
+            <div className="inline-form">
+              <label>
+                Дата
+                <input type="date" value={selectedDay} onChange={(e) => loadDay(e.target.value)} />
+              </label>
+            </div>
+            {selectedDay && (dayLoading ? <p>Загрузка...</p> : <DayAppealsTable appeals={dayAppeals} />)}
           </section>
 
           <section className="stats-section">

@@ -182,24 +182,8 @@ a {
   background: #e2e8f0;
 }
 
-.status-new {
-  background: #dbeafe;
-  color: #1e40af;
-}
-
-.status-in_progress {
-  background: #fef3c7;
-  color: #92400e;
-}
-
-.status-advice_given {
+.cell-sms-sent {
   background: #dcfce7;
-  color: #166534;
-}
-
-.status-closed {
-  background: #e5e7eb;
-  color: #374151;
 }
 
 .modal-overlay {
@@ -243,6 +227,38 @@ a {
   to {
     opacity: 1;
   }
+}
+
+.modal-card > form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.history-section {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.history-section h3 {
+  font-size: 14px;
+  margin-bottom: 10px;
+}
+
+.history-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.history-list li {
+  padding-bottom: 8px;
+  border-bottom: 1px dashed var(--border);
 }
 
 .form-grid {
@@ -332,6 +348,25 @@ a {
   width: 100%;
   height: 220px;
   display: block;
+}
+
+.admin-option-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.admin-option-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 12px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
 }
 
 .page-loading {
