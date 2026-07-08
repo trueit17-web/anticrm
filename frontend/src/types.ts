@@ -67,6 +67,7 @@ export interface SelectOption {
   field: OptionField;
   value: string;
   order: number;
+  color: string | null;
   createdAt: string;
 }
 

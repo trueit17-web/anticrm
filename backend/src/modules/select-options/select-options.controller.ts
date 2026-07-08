@@ -30,7 +30,14 @@ export async function createOptionHandler(req: Request, res: Response) {
   }
 }
 
-const updateSchema = z.object({ value: z.string().min(1) });
+const updateSchema = z.object({
+  value: z.string().min(1).optional(),
+  color: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/, "Цвет должен быть в формате #rrggbb")
+    .nullable()
+    .optional(),
+});
 
 export async function updateOptionHandler(req: Request, res: Response) {
   const id = Number(req.params.id);
@@ -38,7 +45,7 @@ export async function updateOptionHandler(req: Request, res: Response) {
   if (!parsed.success) {
     return res.status(400).json({ error: "Проверьте поля формы", details: parsed.error.flatten() });
   }
-  const option = await updateOption(id, parsed.data.value);
+  const option = await updateOption(id, parsed.data);
   res.json({ option });
 }
 

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "../auth/AuthContext";
 import { api, ApiError } from "../api/client";
 import { Appeal, ROLE_LABELS, SelectOption } from "../types";
-import { AppealsTable } from "../components/AppealsTable";
+import { AppealsTable, NewAppealValues } from "../components/AppealsTable";
 import { AppealFormModal, AppealFormValues } from "../components/AppealFormModal";
 import { Link } from "react-router-dom";
 
@@ -12,13 +12,22 @@ function optionValues(options: SelectOption[], field: SelectOption["field"]): st
   return options.filter((o) => o.field === field).map((o) => o.value);
 }
 
+function statusColorMap(options: SelectOption[]): Record<string, string> {
+  const map: Record<string, string> = {};
+  for (const o of options) {
+    if (o.field === "STATUS" && o.color) map[o.value] = o.color;
+  }
+  return map;
+}
+
 export function AppealsPage() {
   const { user, logout } = useAuth();
   const [appeals, setAppeals] = useState<Appeal[]>([]);
   const [options, setOptions] = useState<SelectOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [editing, setEditing] = useState<Appeal | null | "new">(null);
+  const [editing, setEditing] = useState<Appeal | null>(null);
+  const [creating, setCreating] = useState(false);
 
   async function loadAppeals() {
     setLoading(true);
@@ -44,8 +53,9 @@ export function AppealsPage() {
 
   if (!user) return null;
 
-  async function handleCreate(values: AppealFormValues) {
+  async function handleSubmitCreate(values: NewAppealValues) {
     await api.post("/appeals", values);
+    setCreating(false);
     await loadAppeals();
   }
 
@@ -114,7 +124,6 @@ export function AppealsPage() {
           <Link to="/stats">Статистика</Link>
           {user.role === "ADMIN" && <Link to="/admin">Админка</Link>}
           {user.role === "ADMIN" && <Link to="/users">Пользователи</Link>}
-          <button onClick={() => setEditing("new")}>+ Новое обращение</button>
           <button className="secondary" onClick={logout}>
             Выйти
           </button>
@@ -125,29 +134,36 @@ export function AppealsPage() {
       {error && <p className="error-text">{error}</p>}
 
       {!loading && !error && (
-        <AppealsTable
-          appeals={appeals}
-          currentUser={user}
-          onEdit={setEditing}
-          onToggleSms={handleToggleSms}
-          onToggleIntake={handleToggleIntake}
-          onInlineTagChange={handleInlineTagChange}
-          onInlineStatusChange={handleInlineStatusChange}
-          govOptions={optionValues(options, "GOV")}
-          cbOptions={optionValues(options, "CB")}
-          fsbOptions={optionValues(options, "FSB")}
-          closerOptions={optionValues(options, "CLOSER")}
-          statusOptions={optionValues(options, "STATUS")}
-        />
+        <div className="table-with-fab">
+          <button className="fab" title="Новое обращение" onClick={() => setCreating(true)}>
+            +
+          </button>
+          <AppealsTable
+            appeals={appeals}
+            currentUser={user}
+            onEdit={setEditing}
+            onToggleSms={handleToggleSms}
+            onToggleIntake={handleToggleIntake}
+            onInlineTagChange={handleInlineTagChange}
+            onInlineStatusChange={handleInlineStatusChange}
+            govOptions={optionValues(options, "GOV")}
+            cbOptions={optionValues(options, "CB")}
+            fsbOptions={optionValues(options, "FSB")}
+            closerOptions={optionValues(options, "CLOSER")}
+            statusOptions={optionValues(options, "STATUS")}
+            statusColors={statusColorMap(options)}
+            creating={creating}
+            onCancelCreate={() => setCreating(false)}
+            onSubmitCreate={handleSubmitCreate}
+          />
+        </div>
       )}
 
       {editing && (
         <AppealFormModal
-          appeal={editing === "new" ? null : editing}
+          appeal={editing}
           onClose={() => setEditing(null)}
-          onSubmit={(values) =>
-            editing === "new" ? handleCreate(values) : handleUpdate(editing.id, values)
-          }
+          onSubmit={(values) => handleUpdate(editing.id, values)}
         />
       )}
     </div>

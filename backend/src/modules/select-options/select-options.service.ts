@@ -15,8 +15,8 @@ export async function createOption(field: OptionField, value: string) {
   });
 }
 
-export function updateOption(id: number, value: string) {
-  return prisma.selectOption.update({ where: { id }, data: { value } });
+export function updateOption(id: number, data: { value?: string; color?: string | null }) {
+  return prisma.selectOption.update({ where: { id }, data });
 }
 
 export function deleteOption(id: number) {

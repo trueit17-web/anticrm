@@ -92,33 +92,37 @@ function DayAppealsTable({ appeals }: { appeals: Appeal[] }) {
             <th>Дата</th>
             <th>Телефон</th>
             <th>Опер. (моб.)</th>
+            <th>Данные клиента</th>
             <th>СМС</th>
             <th>Прием</th>
-            <th>Данные клиента</th>
+            <th>Статус</th>
             <th>Госы</th>
             <th>ЦБ</th>
             <th>ФСБ</th>
             <th>Закрыв</th>
-            <th>Статус</th>
             <th>Описание</th>
           </tr>
         </thead>
         <tbody>
           {appeals.map((a) => (
             <tr key={a.id}>
-              <td>{formatDateTime(a.date, a.createdAt)}</td>
+              <td>
+                {a.operator.fullName}
+                <br />
+                {formatDateTime(a.date, a.createdAt)}
+              </td>
               <td>{a.phone}</td>
               <td>{detectMobileOperator(a.phone)}</td>
+              <td className="wrap-cell">{a.clientData || "—"}</td>
               <td>{a.smsSentBy ? `${a.smsSentBy.fullName}` : "—"}</td>
               <td>{a.intake ? "Да" : "—"}</td>
-              <td className="wrap-cell">{a.clientData || "—"}</td>
+              <td>
+                <span className="status-pill">{a.status}</span>
+              </td>
               <td>{a.gov || "—"}</td>
               <td>{a.cb || "—"}</td>
               <td>{a.fsb || "—"}</td>
               <td>{a.closer || "—"}</td>
-              <td>
-                <span className="status-pill">{a.status}</span>
-              </td>
               <td className="wrap-cell">{a.description || "—"}</td>
             </tr>
           ))}

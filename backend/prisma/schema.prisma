@@ -27,6 +27,9 @@ model SelectOption {
   field     OptionField
   value     String
   order     Int         @default(0)
+  // Only meaningful for field=STATUS: the row-highlight color for appeals
+  // with this status. Hex string, e.g. "#dcfce7".
+  color     String?
   createdAt DateTime    @default(now())
 
   @@unique([field, value])

@@ -39,6 +39,13 @@ function OptionFieldEditor({
     onChange();
   }
 
+  async function handleColorChange(id: number, color: string) {
+    await api.patch(`/select-options/${id}`, { color });
+    onChange();
+  }
+
+  const showColor = field === "STATUS";
+
   return (
     <section className="stats-section">
       <h2>{OPTION_FIELD_LABELS[field]}</h2>
@@ -49,9 +56,19 @@ function OptionFieldEditor({
           {options.map((o) => (
             <li key={o.id}>
               <span>{o.value}</span>
-              <button className="link-button" onClick={() => handleDelete(o.id)}>
-                Удалить
-              </button>
+              <span className="admin-option-actions">
+                {showColor && (
+                  <input
+                    type="color"
+                    title="Цвет строки для этого статуса"
+                    value={o.color ?? "#ffffff"}
+                    onChange={(e) => handleColorChange(o.id, e.target.value)}
+                  />
+                )}
+                <button className="link-button" onClick={() => handleDelete(o.id)}>
+                  Удалить
+                </button>
+              </span>
             </li>
           ))}
         </ul>
