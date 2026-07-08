@@ -10,7 +10,7 @@ function formatDay(day: string): string {
 }
 
 function formatDateTime(dateIso: string, timeSourceIso: string): string {
-  const datePart = new Date(dateIso).toLocaleDateString("ru-RU");
+  const datePart = new Date(dateIso).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" });
   const timePart = new Date(timeSourceIso).toLocaleTimeString("ru-RU", {
     hour: "2-digit",
     minute: "2-digit",
@@ -87,6 +87,20 @@ function DayAppealsTable({ appeals }: { appeals: Appeal[] }) {
   return (
     <div className="table-scroll">
       <table className="appeals-table">
+        <colgroup>
+          <col style={{ width: 110 }} />
+          <col style={{ width: 130 }} />
+          <col style={{ width: 90 }} />
+          <col style={{ width: 160 }} />
+          <col style={{ width: 90 }} />
+          <col style={{ width: 60 }} />
+          <col style={{ width: 110 }} />
+          <col style={{ width: 130 }} />
+          <col style={{ width: 180 }} />
+          <col style={{ width: 110 }} />
+          <col style={{ width: 110 }} />
+          <col style={{ width: 110 }} />
+        </colgroup>
         <thead>
           <tr>
             <th>Дата</th>
@@ -95,12 +109,12 @@ function DayAppealsTable({ appeals }: { appeals: Appeal[] }) {
             <th>Данные клиента</th>
             <th>СМС</th>
             <th>Прием</th>
-            <th>Статус</th>
             <th>Госы</th>
+            <th>Статус</th>
+            <th>Описание</th>
             <th>ЦБ</th>
             <th>ФСБ</th>
             <th>Закрыв</th>
-            <th>Описание</th>
           </tr>
         </thead>
         <tbody>
@@ -116,14 +130,14 @@ function DayAppealsTable({ appeals }: { appeals: Appeal[] }) {
               <td className="wrap-cell">{a.clientData || "—"}</td>
               <td>{a.smsSentBy ? `${a.smsSentBy.fullName}` : "—"}</td>
               <td>{a.intake ? "Да" : "—"}</td>
+              <td>{a.gov || "—"}</td>
               <td>
                 <span className="status-pill">{a.status}</span>
               </td>
-              <td>{a.gov || "—"}</td>
+              <td className="wrap-cell">{a.description || "—"}</td>
               <td>{a.cb || "—"}</td>
               <td>{a.fsb || "—"}</td>
               <td>{a.closer || "—"}</td>
-              <td className="wrap-cell">{a.description || "—"}</td>
             </tr>
           ))}
         </tbody>

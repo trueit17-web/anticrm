@@ -5,7 +5,7 @@ import { canEditAppeal, canEditAssignments } from "../lib/permissions";
 import { detectMobileOperator } from "../lib/mobileOperator";
 
 function formatDateTime(dateIso: string, timeSourceIso: string): string {
-  const datePart = new Date(dateIso).toLocaleDateString("ru-RU");
+  const datePart = new Date(dateIso).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" });
   const timePart = new Date(timeSourceIso).toLocaleTimeString("ru-RU", {
     hour: "2-digit",
     minute: "2-digit",
@@ -97,10 +97,8 @@ function NewAppealRow({
         <td colSpan={2} className="muted">
           зададутся после создания
         </td>
+        <td className="muted">—</td>
         <td className="muted">Новое</td>
-        <td colSpan={4} className="muted">
-          —
-        </td>
         <td>
           <input
             placeholder="Описание"
@@ -108,6 +106,9 @@ function NewAppealRow({
             onChange={(e) => setValues((v) => ({ ...v, description: e.target.value }))}
             onKeyDown={handleKeyDown}
           />
+        </td>
+        <td colSpan={3} className="muted">
+          —
         </td>
         <td>
           <button onClick={handleSubmit} disabled={submitting || !values.phone.trim()}>
@@ -187,17 +188,17 @@ export function AppealsTable({
     <div className="table-scroll">
       <table className="appeals-table">
         <colgroup>
-          <col style={{ width: 130 }} />
+          <col style={{ width: 110 }} />
           <col style={{ width: 130 }} />
           <col style={{ width: 160 }} />
           <col style={{ width: 90 }} />
           <col style={{ width: 60 }} />
+          <col style={{ width: 110 }} />
           <col style={{ width: 130 }} />
-          <col style={{ width: 110 }} />
-          <col style={{ width: 110 }} />
-          <col style={{ width: 110 }} />
-          <col style={{ width: 110 }} />
           <col style={{ width: 180 }} />
+          <col style={{ width: 110 }} />
+          <col style={{ width: 110 }} />
+          <col style={{ width: 110 }} />
           <col style={{ width: 150 }} />
         </colgroup>
         <thead>
@@ -207,12 +208,12 @@ export function AppealsTable({
             <th>Данные клиента</th>
             <th>СМС</th>
             <th>Прием</th>
-            <th>Статус</th>
             <th>Госы</th>
+            <th>Статус</th>
+            <th>Описание</th>
             <th>ЦБ</th>
             <th>ФСБ</th>
             <th>Закрыв</th>
-            <th>Описание</th>
             <th></th>
           </tr>
         </thead>
@@ -260,6 +261,7 @@ export function AppealsTable({
                     onChange={(e) => onToggleIntake(appeal, e.target.checked)}
                   />
                 </td>
+                <td>{renderTagSelect(appeal, "gov", govOptions)}</td>
                 <td>
                   {canAssign ? (
                     <select value={appeal.status} onChange={(e) => onInlineStatusChange(appeal, e.target.value)}>
@@ -273,11 +275,10 @@ export function AppealsTable({
                     <span className="status-pill">{appeal.status}</span>
                   )}
                 </td>
-                <td>{renderTagSelect(appeal, "gov", govOptions)}</td>
+                <td className="wrap-cell">{appeal.description || "—"}</td>
                 <td>{renderTagSelect(appeal, "cb", cbOptions)}</td>
                 <td>{renderTagSelect(appeal, "fsb", fsbOptions)}</td>
                 <td>{renderTagSelect(appeal, "closer", closerOptions)}</td>
-                <td className="wrap-cell">{appeal.description || "—"}</td>
                 <td>
                   {editable && (
                     <button className="link-button" onClick={() => onEdit(appeal)}>

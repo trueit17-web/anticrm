@@ -169,7 +169,7 @@ a {
 
 .appeals-table th,
 .appeals-table td {
-  padding: 6px 8px;
+  padding: 5px 4px;
   border-bottom: 1px solid var(--border);
   text-align: left;
   vertical-align: middle;
