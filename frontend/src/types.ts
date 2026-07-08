@@ -1,6 +1,6 @@
 export type Role = "USER" | "MANAGER" | "ADMIN";
 
-export type OptionField = "GOV" | "CB" | "FSB" | "STATUS" | "INTAKE";
+export type OptionField = "GOV" | "CB" | "FSB" | "CLOSER" | "STATUS";
 
 export const ROLE_LABELS: Record<Role, string> = {
   USER: "Пользователь",
@@ -12,8 +12,8 @@ export const OPTION_FIELD_LABELS: Record<OptionField, string> = {
   GOV: "Госы",
   CB: "ЦБ",
   FSB: "ФСБ",
+  CLOSER: "Закрыв",
   STATUS: "Статус",
-  INTAKE: "Прием",
 };
 
 export interface AuthUser {
@@ -32,23 +32,17 @@ export interface UserSummary {
   createdAt: string;
 }
 
-export interface AssigneeRef {
-  id: number;
-  fullName: string;
-  role: Role;
-}
-
 export interface Appeal {
   id: number;
   date: string;
   operator: { id: number; fullName: string };
   phone: string;
-  intake: string;
+  intake: boolean;
   clientData: string | null;
   gov: string | null;
   cb: string | null;
   fsb: string | null;
-  closerAssignee: AssigneeRef | null;
+  closer: string | null;
   status: string;
   description: string | null;
   smsSentBy: { id: number; fullName: string } | null;

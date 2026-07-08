@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../auth/AuthContext";
 import { api, ApiError } from "../api/client";
-import { Appeal, ROLE_LABELS, SelectOption, UserSummary } from "../types";
+import { Appeal, ROLE_LABELS, SelectOption } from "../types";
 import { AppealsTable } from "../components/AppealsTable";
 import { AppealFormModal, AppealFormValues } from "../components/AppealFormModal";
-import { isManagerOrAdmin } from "../lib/permissions";
 import { Link } from "react-router-dom";
+
+type TagField = "gov" | "cb" | "fsb" | "closer";
 
 function optionValues(options: SelectOption[], field: SelectOption["field"]): string[] {
   return options.filter((o) => o.field === field).map((o) => o.value);
@@ -14,7 +15,6 @@ function optionValues(options: SelectOption[], field: SelectOption["field"]): st
 export function AppealsPage() {
   const { user, logout } = useAuth();
   const [appeals, setAppeals] = useState<Appeal[]>([]);
-  const [staff, setStaff] = useState<UserSummary[]>([]);
   const [options, setOptions] = useState<SelectOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -39,14 +39,6 @@ export function AppealsPage() {
       .get<{ options: SelectOption[] }>("/select-options")
       .then((res) => setOptions(res.options))
       .catch(() => {});
-    if (user && isManagerOrAdmin(user)) {
-      api
-        .get<{ users: UserSummary[] }>("/users")
-        // Admins aren't valid Госы/ЦБ/ФСБ/Закрыв assignees — only staff who
-        // actually work appeals should show up in that dropdown.
-        .then((res) => setStaff(res.users.filter((u) => u.role !== "ADMIN")))
-        .catch(() => {});
-    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -82,7 +74,16 @@ export function AppealsPage() {
     }
   }
 
-  async function handleInlineTagChange(appeal: Appeal, field: "gov" | "cb" | "fsb", value: string | null) {
+  async function handleToggleIntake(appeal: Appeal, intake: boolean) {
+    setAppeals((prev) => prev.map((a) => (a.id === appeal.id ? { ...a, intake } : a)));
+    try {
+      await api.patch(`/appeals/${appeal.id}`, { intake });
+    } finally {
+      await loadAppeals();
+    }
+  }
+
+  async function handleInlineTagChange(appeal: Appeal, field: TagField, value: string | null) {
     setAppeals((prev) => prev.map((a) => (a.id === appeal.id ? { ...a, [field]: value } : a)));
     try {
       await api.patch(`/appeals/${appeal.id}`, { [field]: value });
@@ -91,9 +92,10 @@ export function AppealsPage() {
     }
   }
 
-  async function handleInlineCloserChange(appeal: Appeal, closerAssigneeId: number | null) {
+  async function handleInlineStatusChange(appeal: Appeal, status: string) {
+    setAppeals((prev) => prev.map((a) => (a.id === appeal.id ? { ...a, status } : a)));
     try {
-      await api.patch(`/appeals/${appeal.id}`, { closerAssigneeId });
+      await api.patch(`/appeals/${appeal.id}`, { status });
     } finally {
       await loadAppeals();
     }
@@ -128,20 +130,20 @@ export function AppealsPage() {
           currentUser={user}
           onEdit={setEditing}
           onToggleSms={handleToggleSms}
+          onToggleIntake={handleToggleIntake}
           onInlineTagChange={handleInlineTagChange}
-          onInlineCloserChange={handleInlineCloserChange}
+          onInlineStatusChange={handleInlineStatusChange}
           govOptions={optionValues(options, "GOV")}
           cbOptions={optionValues(options, "CB")}
           fsbOptions={optionValues(options, "FSB")}
-          staff={staff}
+          closerOptions={optionValues(options, "CLOSER")}
+          statusOptions={optionValues(options, "STATUS")}
         />
       )}
 
       {editing && (
         <AppealFormModal
           appeal={editing === "new" ? null : editing}
-          statusOptions={optionValues(options, "STATUS")}
-          intakeOptions={optionValues(options, "INTAKE")}
           onClose={() => setEditing(null)}
           onSubmit={(values) =>
             editing === "new" ? handleCreate(values) : handleUpdate(editing.id, values)

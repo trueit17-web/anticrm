@@ -4,13 +4,12 @@ import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
-const DEFAULT_OPTIONS: Record<OptionField, string[]> = {
-  [OptionField.STATUS]: ["Новое", "В работе", "Консультация дана", "Закрыто"],
-  [OptionField.INTAKE]: ["Телефон", "Email", "Мессенджер", "Личный визит", "Сайт"],
-  [OptionField.GOV]: ["Не обращался", "Обратился", "Получен ответ"],
-  [OptionField.CB]: ["Не обращался", "Обратился", "Получен ответ"],
-  [OptionField.FSB]: ["Не обращался", "Обратился", "Получен ответ"],
-};
+const STATUS_DEFAULTS = ["Новое", "В работе", "Консультация дана", "Закрыто"];
+
+// Госы/ЦБ/ФСБ/Закрыв all start out populated with the current staff list
+// (mirroring how "Закрыв" used to work as an employee assignment) — admins
+// can freely rename/add/remove entries afterwards on the /admin page.
+const STAFF_BACKED_FIELDS = [OptionField.GOV, OptionField.CB, OptionField.FSB, OptionField.CLOSER];
 
 async function seedAdmin() {
   const username = process.env.SEED_ADMIN_USERNAME ?? "admin";
@@ -31,18 +30,26 @@ async function seedAdmin() {
   console.log(`Created admin user "${username}". Change the password after first login.`);
 }
 
-async function seedOptions() {
-  for (const field of Object.values(OptionField)) {
-    const values = DEFAULT_OPTIONS[field];
-    for (let i = 0; i < values.length; i++) {
-      await prisma.selectOption.upsert({
-        where: { field_value: { field, value: values[i] } },
-        update: {},
-        create: { field, value: values[i], order: i },
-      });
-    }
+async function upsertOptions(field: OptionField, values: string[]) {
+  for (let i = 0; i < values.length; i++) {
+    await prisma.selectOption.upsert({
+      where: { field_value: { field, value: values[i] } },
+      update: {},
+      create: { field, value: values[i], order: i },
+    });
   }
-  console.log("Default option lists ensured (Госы/ЦБ/ФСБ/Статус/Прием).");
+}
+
+async function seedOptions() {
+  await upsertOptions(OptionField.STATUS, STATUS_DEFAULTS);
+
+  const staff = await prisma.user.findMany({ select: { fullName: true }, orderBy: { fullName: "asc" } });
+  const staffNames = staff.map((s) => s.fullName);
+  for (const field of STAFF_BACKED_FIELDS) {
+    await upsertOptions(field, staffNames);
+  }
+
+  console.log("Default option lists ensured (Госы/ЦБ/ФСБ/Закрыв/Статус).");
 }
 
 async function main() {

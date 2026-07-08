@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { api, ApiError } from "../api/client";
 import { OPTION_FIELD_LABELS, OptionField, SelectOption } from "../types";
 
-const FIELDS: OptionField[] = ["GOV", "CB", "FSB", "STATUS", "INTAKE"];
+const FIELDS: OptionField[] = ["GOV", "CB", "FSB", "CLOSER", "STATUS"];
 
 function OptionFieldEditor({
   field,
@@ -93,7 +93,7 @@ export function AdminPage() {
       <header className="page-header">
         <div>
           <h1>Админка</h1>
-          <p className="muted">Справочники для полей Госы / ЦБ / ФСБ / Статус / Прием</p>
+          <p className="muted">Справочники для полей Госы / ЦБ / ФСБ / Закрыв / Статус</p>
         </div>
         <div className="header-actions">
           <Link to="/">← К обращениям</Link>

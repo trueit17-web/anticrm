@@ -1,13 +1,8 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 
-const assigneeSelect = {
-  select: { id: true, fullName: true, role: true },
-} as const;
-
 export const appealInclude = {
   operator: { select: { id: true, fullName: true } },
-  closerAssignee: assigneeSelect,
   smsSentBy: { select: { id: true, fullName: true } },
 } satisfies Prisma.AppealInclude;
 
@@ -36,7 +31,7 @@ export interface CreateAppealInput {
   operatorId: number;
   date?: Date;
   phone: string;
-  intake: string;
+  intake?: boolean;
   clientData?: string;
   description?: string;
   status?: string;
@@ -52,14 +47,14 @@ export function createAppeal(input: CreateAppealInput) {
 export interface UpdateAppealInput {
   date?: Date;
   phone?: string;
-  intake?: string;
+  intake?: boolean;
   clientData?: string;
   description?: string;
   status?: string;
   gov?: string | null;
   cb?: string | null;
   fsb?: string | null;
-  closerAssigneeId?: number | null;
+  closer?: string | null;
 }
 
 const FIELD_LABELS: Record<keyof UpdateAppealInput, string> = {
@@ -72,25 +67,14 @@ const FIELD_LABELS: Record<keyof UpdateAppealInput, string> = {
   gov: "Госы",
   cb: "ЦБ",
   fsb: "ФСБ",
-  closerAssigneeId: "Закрыв",
+  closer: "Закрыв",
 };
 
-function formatPlainValue(field: keyof UpdateAppealInput, value: unknown): string | null {
+function resolveDisplayValue(field: keyof UpdateAppealInput, value: unknown): string | null {
+  if (field === "intake") return value ? "Отмечено" : "Не отмечено";
   if (value === null || value === undefined || value === "") return null;
   if (field === "date") return (value as Date).toISOString().slice(0, 10);
   return String(value);
-}
-
-async function resolveDisplayValue(
-  field: keyof UpdateAppealInput,
-  value: unknown
-): Promise<string | null> {
-  if (field === "closerAssigneeId") {
-    if (value === null || value === undefined) return null;
-    const user = await prisma.user.findUnique({ where: { id: value as number } });
-    return user?.fullName ?? null;
-  }
-  return formatPlainValue(field, value);
 }
 
 export async function updateAppealWithHistory(
@@ -115,10 +99,8 @@ export async function updateAppealWithHistory(
     const newComparable = newRaw instanceof Date ? newRaw.toISOString() : newRaw;
     if (oldComparable === newComparable) continue;
 
-    const [oldValue, newValue] = await Promise.all([
-      resolveDisplayValue(key, oldRaw),
-      resolveDisplayValue(key, newRaw),
-    ]);
+    const oldValue = resolveDisplayValue(key, oldRaw);
+    const newValue = resolveDisplayValue(key, newRaw);
 
     historyRows.push({
       appealId: id,

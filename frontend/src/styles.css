@@ -140,6 +140,7 @@ a {
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
+  table-layout: auto;
 }
 
 .appeals-table th,
@@ -147,12 +148,16 @@ a {
   padding: 10px 12px;
   border-bottom: 1px solid var(--border);
   text-align: left;
-  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.appeals-table td select {
+  max-width: 160px;
 }
 
 .appeals-table td.wrap-cell {
-  white-space: normal;
-  min-width: 180px;
+  min-width: 160px;
+  max-width: 320px;
 }
 
 .appeals-table th {
@@ -182,7 +187,8 @@ a {
   background: #e2e8f0;
 }
 
-.cell-sms-sent {
+.cell-sms-sent,
+.cell-intake-active {
   background: #dcfce7;
 }
 

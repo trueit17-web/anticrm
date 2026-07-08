@@ -110,12 +110,12 @@ function DayAppealsTable({ appeals }: { appeals: Appeal[] }) {
               <td>{a.phone}</td>
               <td>{detectMobileOperator(a.phone)}</td>
               <td>{a.smsSentBy ? `${a.smsSentBy.fullName}` : "—"}</td>
-              <td>{a.intake}</td>
+              <td>{a.intake ? "Да" : "—"}</td>
               <td className="wrap-cell">{a.clientData || "—"}</td>
               <td>{a.gov || "—"}</td>
               <td>{a.cb || "—"}</td>
               <td>{a.fsb || "—"}</td>
-              <td>{a.closerAssignee?.fullName ?? "—"}</td>
+              <td>{a.closer || "—"}</td>
               <td>
                 <span className="status-pill">{a.status}</span>
               </td>

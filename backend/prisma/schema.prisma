@@ -18,8 +18,8 @@ enum OptionField {
   GOV
   CB
   FSB
+  CLOSER
   STATUS
-  INTAKE
 }
 
 model SelectOption {
@@ -44,7 +44,6 @@ model User {
   updatedAt    DateTime @updatedAt
 
   appealsAsOperator  Appeal[]        @relation("OperatorAppeals")
-  appealsAsCloser    Appeal[]        @relation("CloserAssignee")
   appealsAsSmsSender Appeal[]        @relation("SmsSender")
   historyEntries     AppealHistory[] @relation("HistoryChangedBy")
 }
@@ -57,17 +56,15 @@ model Appeal {
   operator   User @relation("OperatorAppeals", fields: [operatorId], references: [id])
 
   phone      String
-  intake     String  @default("Телефон")
+  intake     Boolean @default(false)
   clientData String?
 
-  // Free-form tags curated by admins on the /admin page — no longer tied to
-  // a specific employee.
-  gov String?
-  cb  String?
-  fsb String?
-
-  closerAssigneeId Int?
-  closerAssignee   User? @relation("CloserAssignee", fields: [closerAssigneeId], references: [id])
+  // Free-form tags curated by admins on the /admin page — none of these are
+  // live employee references anymore, just admin-curated option lists.
+  gov    String?
+  cb     String?
+  fsb    String?
+  closer String?
 
   status      String  @default("Новое")
   description String?

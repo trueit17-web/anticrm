@@ -1,4 +1,4 @@
-import { Appeal, UserSummary } from "../types";
+import { Appeal } from "../types";
 import { AuthUser } from "../types";
 import { canEditAppeal, canEditAssignments } from "../lib/permissions";
 import { detectMobileOperator } from "../lib/mobileOperator";
@@ -12,40 +12,38 @@ function formatDateTime(dateIso: string, timeSourceIso: string): string {
   return `${datePart}, ${timePart}`;
 }
 
-function formatDateTimeFull(iso: string): string {
-  return new Date(iso).toLocaleString("ru-RU", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+function formatTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
 }
 
-type TagField = "gov" | "cb" | "fsb";
+type TagField = "gov" | "cb" | "fsb" | "closer";
 
 export function AppealsTable({
   appeals,
   currentUser,
   onEdit,
   onToggleSms,
+  onToggleIntake,
   onInlineTagChange,
-  onInlineCloserChange,
+  onInlineStatusChange,
   govOptions,
   cbOptions,
   fsbOptions,
-  staff,
+  closerOptions,
+  statusOptions,
 }: {
   appeals: Appeal[];
   currentUser: AuthUser;
   onEdit: (appeal: Appeal) => void;
   onToggleSms: (appeal: Appeal, sms: boolean) => void;
+  onToggleIntake: (appeal: Appeal, intake: boolean) => void;
   onInlineTagChange: (appeal: Appeal, field: TagField, value: string | null) => void;
-  onInlineCloserChange: (appeal: Appeal, closerAssigneeId: number | null) => void;
+  onInlineStatusChange: (appeal: Appeal, value: string) => void;
   govOptions: string[];
   cbOptions: string[];
   fsbOptions: string[];
-  staff: UserSummary[];
+  closerOptions: string[];
+  statusOptions: string[];
 }) {
   if (appeals.length === 0) {
     return <p className="empty-state">Обращений пока нет.</p>;
@@ -59,10 +57,7 @@ export function AppealsTable({
       return <span>{value || "—"}</span>;
     }
     return (
-      <select
-        value={value}
-        onChange={(e) => onInlineTagChange(appeal, field, e.target.value || null)}
-      >
+      <select value={value} onChange={(e) => onInlineTagChange(appeal, field, e.target.value || null)}>
         <option value="">— не выбрано —</option>
         {options.map((opt) => (
           <option key={opt} value={opt}>
@@ -115,37 +110,35 @@ export function AppealsTable({
                       <span className="muted">
                         {appeal.smsSentBy.fullName}
                         <br />
-                        {formatDateTimeFull(appeal.smsSentAt!)}
+                        {formatTime(appeal.smsSentAt!)}
                       </span>
                     )}
                   </label>
                 </td>
-                <td>{appeal.intake}</td>
+                <td className={appeal.intake ? "cell-intake-active" : undefined}>
+                  <input
+                    type="checkbox"
+                    checked={appeal.intake}
+                    onChange={(e) => onToggleIntake(appeal, e.target.checked)}
+                  />
+                </td>
                 <td className="wrap-cell">{appeal.clientData || "—"}</td>
                 <td>{renderTagSelect(appeal, "gov", govOptions)}</td>
                 <td>{renderTagSelect(appeal, "cb", cbOptions)}</td>
                 <td>{renderTagSelect(appeal, "fsb", fsbOptions)}</td>
+                <td>{renderTagSelect(appeal, "closer", closerOptions)}</td>
                 <td>
                   {canAssign ? (
-                    <select
-                      value={appeal.closerAssignee?.id ?? ""}
-                      onChange={(e) =>
-                        onInlineCloserChange(appeal, e.target.value ? Number(e.target.value) : null)
-                      }
-                    >
-                      <option value="">— не назначено —</option>
-                      {staff.map((s) => (
-                        <option key={s.id} value={s.id}>
-                          {s.fullName}
+                    <select value={appeal.status} onChange={(e) => onInlineStatusChange(appeal, e.target.value)}>
+                      {statusOptions.map((opt) => (
+                        <option key={opt} value={opt}>
+                          {opt}
                         </option>
                       ))}
                     </select>
                   ) : (
-                    <span>{appeal.closerAssignee?.fullName ?? "—"}</span>
+                    <span className="status-pill">{appeal.status}</span>
                   )}
-                </td>
-                <td>
-                  <span className="status-pill">{appeal.status}</span>
                 </td>
                 <td className="wrap-cell">{appeal.description || "—"}</td>
                 <td>

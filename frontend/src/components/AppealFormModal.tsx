@@ -5,9 +5,7 @@ import { api, ApiError } from "../api/client";
 export interface AppealFormValues {
   date: string;
   phone: string;
-  intake: string;
   clientData: string;
-  status: string;
   description: string;
 }
 
@@ -64,23 +62,17 @@ function HistoryList({ appealId }: { appealId: number }) {
 
 export function AppealFormModal({
   appeal,
-  statusOptions,
-  intakeOptions,
   onClose,
   onSubmit,
 }: {
   appeal: Appeal | null;
-  statusOptions: string[];
-  intakeOptions: string[];
   onClose: () => void;
   onSubmit: (values: AppealFormValues) => Promise<void>;
 }) {
   const [values, setValues] = useState<AppealFormValues>({
     date: toDateInputValue(appeal?.date),
     phone: appeal?.phone ?? "",
-    intake: appeal?.intake ?? intakeOptions[0] ?? "",
     clientData: appeal?.clientData ?? "",
-    status: appeal?.status ?? statusOptions[0] ?? "",
     description: appeal?.description ?? "",
   });
   const [error, setError] = useState<string | null>(null);
@@ -124,34 +116,6 @@ export function AppealFormModal({
                 onChange={(e) => setValues((v) => ({ ...v, phone: e.target.value }))}
                 required
               />
-            </label>
-
-            <label>
-              Прием
-              <select
-                value={values.intake}
-                onChange={(e) => setValues((v) => ({ ...v, intake: e.target.value }))}
-              >
-                {intakeOptions.map((opt) => (
-                  <option key={opt} value={opt}>
-                    {opt}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label>
-              Статус
-              <select
-                value={values.status}
-                onChange={(e) => setValues((v) => ({ ...v, status: e.target.value }))}
-              >
-                {statusOptions.map((opt) => (
-                  <option key={opt} value={opt}>
-                    {opt}
-                  </option>
-                ))}
-              </select>
             </label>
 
             <label className="span-2">

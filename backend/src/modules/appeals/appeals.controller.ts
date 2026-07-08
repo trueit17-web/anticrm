@@ -30,7 +30,7 @@ export async function listAppealsHandler(req: Request, res: Response) {
 const createSchema = z.object({
   date: z.coerce.date().optional(),
   phone: z.string().min(1),
-  intake: z.string().min(1),
+  intake: z.boolean().optional(),
   clientData: z.string().optional(),
   description: z.string().optional(),
   status: z.string().min(1).optional(),
@@ -49,23 +49,25 @@ export async function createAppealHandler(req: Request, res: Response) {
   res.status(201).json({ appeal });
 }
 
-const assigneeIdField = z.number().int().positive().nullable().optional();
 const tagField = z.string().nullable().optional();
 
 const updateSchema = z.object({
   date: z.coerce.date().optional(),
   phone: z.string().min(1).optional(),
-  intake: z.string().min(1).optional(),
+  intake: z.boolean().optional(),
   clientData: z.string().optional(),
   description: z.string().optional(),
   status: z.string().min(1).optional(),
   gov: tagField,
   cb: tagField,
   fsb: tagField,
-  closerAssigneeId: assigneeIdField,
+  closer: tagField,
 });
 
-const RESTRICTED_FIELDS = ["gov", "cb", "fsb", "closerAssigneeId"] as const;
+// Госы/ЦБ/ФСБ/Закрыв/Статус are classification fields — only manager/admin
+// may set them, regardless of who owns the appeal. Прием (intake) and phone/
+// description/etc. stay open to any authenticated employee, same as СМС.
+const RESTRICTED_FIELDS = ["gov", "cb", "fsb", "closer", "status"] as const;
 
 export async function updateAppealHandler(req: Request, res: Response) {
   const id = Number(req.params.id);
