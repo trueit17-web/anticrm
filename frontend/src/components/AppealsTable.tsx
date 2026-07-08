@@ -186,6 +186,20 @@ export function AppealsTable({
   return (
     <div className="table-scroll">
       <table className="appeals-table">
+        <colgroup>
+          <col style={{ width: 130 }} />
+          <col style={{ width: 130 }} />
+          <col style={{ width: 160 }} />
+          <col style={{ width: 90 }} />
+          <col style={{ width: 60 }} />
+          <col style={{ width: 130 }} />
+          <col style={{ width: 110 }} />
+          <col style={{ width: 110 }} />
+          <col style={{ width: 110 }} />
+          <col style={{ width: 110 }} />
+          <col style={{ width: 180 }} />
+          <col style={{ width: 150 }} />
+        </colgroup>
         <thead>
           <tr>
             <th>Дата</th>
@@ -235,11 +249,7 @@ export function AppealsTable({
                       onChange={(e) => onToggleSms(appeal, e.target.checked)}
                     />
                     {appeal.smsSentBy && (
-                      <span className="muted">
-                        {appeal.smsSentBy.fullName}
-                        <br />
-                        {formatTime(appeal.smsSentAt!)}
-                      </span>
+                      <span className="muted">{formatTime(appeal.smsSentAt!)}</span>
                     )}
                   </label>
                 </td>

@@ -164,7 +164,7 @@ a {
   width: 100%;
   border-collapse: collapse;
   font-size: 12px;
-  table-layout: auto;
+  table-layout: fixed;
 }
 
 .appeals-table th,
@@ -173,18 +173,19 @@ a {
   border-bottom: 1px solid var(--border);
   text-align: left;
   vertical-align: middle;
+  overflow-wrap: break-word;
 }
 
 .appeals-table td input,
 .appeals-table td select {
-  max-width: 130px;
+  width: 100%;
+  box-sizing: border-box;
   font-size: 12px;
   padding: 4px 6px;
 }
 
 .appeals-table td.wrap-cell {
-  min-width: 120px;
-  max-width: 220px;
+  white-space: normal;
 }
 
 .appeals-table th:last-child,
