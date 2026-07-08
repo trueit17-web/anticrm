@@ -35,7 +35,7 @@ function DailyChart({ data, onPick }: { data: DailyStat[]; onPick: (day: string)
       viewBox={`0 0 ${width} ${height}`}
       className="stats-chart"
       role="img"
-      aria-label="Обращения по дням"
+      aria-label="Трубки по дням"
     >
       {data.map((d, i) => {
         const barHeight = (d.count / max) * (height - padding * 2);
@@ -82,7 +82,7 @@ function DailyChart({ data, onPick }: { data: DailyStat[]; onPick: (day: string)
 
 function DayAppealsTable({ appeals }: { appeals: Appeal[] }) {
   if (appeals.length === 0) {
-    return <p className="empty-state">За этот день обращений нет.</p>;
+    return <p className="empty-state">За этот день трубок нет.</p>;
   }
   return (
     <div className="table-scroll">
@@ -185,7 +185,7 @@ export function StatsPage() {
           <h1>Статистика</h1>
         </div>
         <div className="header-actions">
-          <Link to="/">← К обращениям</Link>
+          <Link to="/">← К трубкам</Link>
         </div>
       </header>
 
@@ -197,19 +197,19 @@ export function StatsPage() {
           <div className="stats-summary">
             <div className="stats-card">
               <span className="stats-card-value">{total}</span>
-              <span className="muted">Всего обращений (30 дней)</span>
+              <span className="muted">Всего трубок (30 дней)</span>
             </div>
           </div>
 
           <section className="stats-section">
-            <h2>Обращения по дням (последние 30 дней) — нажмите на столбец, чтобы посмотреть список</h2>
+            <h2>Трубки по дням (последние 30 дней) — нажмите на столбец, чтобы посмотреть список</h2>
             <div className="table-scroll stats-chart-wrap">
               <DailyChart data={byDate} onPick={loadDay} />
             </div>
           </section>
 
           <section className="stats-section">
-            <h2>Обращения за выбранный день</h2>
+            <h2>Трубки за выбранный день</h2>
             <div className="inline-form">
               <label>
                 Дата
@@ -229,7 +229,7 @@ export function StatsPage() {
                   <thead>
                     <tr>
                       <th>Сотрудник</th>
-                      <th>Количество обращений</th>
+                      <th>Количество трубок</th>
                     </tr>
                   </thead>
                   <tbody>

@@ -73,7 +73,7 @@ export async function updateAppealHandler(req: Request, res: Response) {
   const id = Number(req.params.id);
   const existing = await getAppeal(id);
   if (!existing) {
-    return res.status(404).json({ error: "Обращение не найдено" });
+    return res.status(404).json({ error: "Трубка не найдена" });
   }
 
   // Any authenticated employee may edit any appeal's general fields.
@@ -109,7 +109,7 @@ export async function setSmsHandler(req: Request, res: Response) {
   const id = Number(req.params.id);
   const existing = await getAppeal(id);
   if (!existing) {
-    return res.status(404).json({ error: "Обращение не найдено" });
+    return res.status(404).json({ error: "Трубка не найдена" });
   }
 
   const parsed = smsSchema.safeParse(req.body);

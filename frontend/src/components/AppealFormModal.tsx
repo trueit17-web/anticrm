@@ -96,7 +96,7 @@ export function AppealFormModal({
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-card" onClick={(e) => e.stopPropagation()}>
         <form onSubmit={handleSubmit}>
-          <h2>{appeal ? "Редактировать обращение" : "Новое обращение"}</h2>
+          <h2>{appeal ? "Редактировать трубку" : "Новая трубка"}</h2>
 
           <div className="form-grid">
             <label>

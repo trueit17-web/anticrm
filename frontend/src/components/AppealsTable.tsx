@@ -221,7 +221,7 @@ export function AppealsTable({
           {appeals.length === 0 && !creating && (
             <tr>
               <td colSpan={12} className="empty-state">
-                Обращений пока нет.
+                Трубок пока нет.
               </td>
             </tr>
           )}

@@ -124,7 +124,7 @@ export function UsersPage() {
           <h1>Пользователи</h1>
         </div>
         <div className="header-actions">
-          <Link to="/">← К обращениям</Link>
+          <Link to="/">← К трубкам</Link>
         </div>
       </header>
 

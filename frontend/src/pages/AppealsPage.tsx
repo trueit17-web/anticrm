@@ -36,7 +36,7 @@ export function AppealsPage() {
       const res = await api.get<{ appeals: Appeal[] }>("/appeals");
       setAppeals(res.appeals);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Не удалось загрузить обращения");
+      setError(err instanceof ApiError ? err.message : "Не удалось загрузить трубки");
     } finally {
       setLoading(false);
     }
@@ -115,7 +115,7 @@ export function AppealsPage() {
     <div className="page">
       <header className="page-header">
         <div>
-          <h1>Обращения</h1>
+          <h1>Трубки</h1>
           <p className="muted">
             {user.fullName} · {ROLE_LABELS[user.role]} · за сегодня
           </p>
@@ -135,7 +135,7 @@ export function AppealsPage() {
 
       {!loading && !error && (
         <div className="table-with-fab">
-          <button className="fab" title="Новое обращение" onClick={() => setCreating(true)}>
+          <button className="fab" title="Новая трубка" onClick={() => setCreating(true)}>
             +
           </button>
           <AppealsTable

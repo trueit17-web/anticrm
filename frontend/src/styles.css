@@ -414,6 +414,24 @@ a {
   gap: 6px;
 }
 
+.delete-x {
+  background: transparent;
+  color: var(--danger);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  line-height: 1;
+  font-size: 15px;
+  flex: none;
+}
+
+.delete-x:hover {
+  background: var(--danger);
+  color: white;
+}
+
 .admin-option-list li {
   display: flex;
   justify-content: space-between;

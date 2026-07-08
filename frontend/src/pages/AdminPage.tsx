@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, ApiError } from "../api/client";
-import { OPTION_FIELD_LABELS, OptionField, SelectOption } from "../types";
+import { Appeal, OPTION_FIELD_LABELS, OptionField, SelectOption } from "../types";
 
 const FIELDS: OptionField[] = ["GOV", "CB", "FSB", "CLOSER", "STATUS"];
 
@@ -109,6 +109,66 @@ function OptionFieldEditor({
   );
 }
 
+function formatAppealLine(a: Appeal): string {
+  const date = new Date(a.date).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" });
+  const parts = [date, a.phone];
+  if (a.clientData) parts.push(a.clientData);
+  return parts.join(" — ");
+}
+
+function AppealsDeleteSection() {
+  const [appeals, setAppeals] = useState<Appeal[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  function load() {
+    setLoading(true);
+    setError(null);
+    api
+      .get<{ appeals: Appeal[] }>("/appeals")
+      .then((res) => setAppeals(res.appeals))
+      .catch((err) => setError(err instanceof ApiError ? err.message : "Не удалось загрузить"))
+      .finally(() => setLoading(false));
+  }
+
+  useEffect(load, []);
+
+  async function handleDelete(id: number) {
+    setAppeals((prev) => prev.filter((a) => a.id !== id));
+    try {
+      await api.delete(`/appeals/${id}`);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Не удалось удалить");
+      load();
+    }
+  }
+
+  return (
+    <section className="stats-section">
+      <h2>Трубки за сегодня</h2>
+      {loading && <p className="muted">Загрузка...</p>}
+      {error && <p className="error-text">{error}</p>}
+      {!loading && !error && appeals.length === 0 && <p className="muted">Трубок пока нет.</p>}
+      {!loading && !error && appeals.length > 0 && (
+        <ul className="admin-option-list">
+          {appeals.map((a) => (
+            <li key={a.id}>
+              <span>{formatAppealLine(a)}</span>
+              <button
+                className="delete-x"
+                title="Удалить трубку"
+                onClick={() => handleDelete(a.id)}
+              >
+                ×
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 export function AdminPage() {
   const [options, setOptions] = useState<SelectOption[]>([]);
   const [loading, setLoading] = useState(true);
@@ -134,9 +194,11 @@ export function AdminPage() {
           <p className="muted">Справочники для полей Госы / ЦБ / ФСБ / Закрыв / Статус</p>
         </div>
         <div className="header-actions">
-          <Link to="/">← К обращениям</Link>
+          <Link to="/">← К трубкам</Link>
         </div>
       </header>
+
+      <AppealsDeleteSection />
 
       {loading && <p>Загрузка...</p>}
       {error && <p className="error-text">{error}</p>}
