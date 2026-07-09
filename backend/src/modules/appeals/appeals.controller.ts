@@ -33,6 +33,7 @@ const createSchema = z.object({
   intake: z.boolean().optional(),
   clientData: z.string().optional(),
   dep: z.string().optional(),
+  reportedTime: z.string().optional(),
   description: z.string().optional(),
   status: z.string().min(1).optional(),
 });
@@ -58,6 +59,7 @@ const updateSchema = z.object({
   intake: z.boolean().optional(),
   clientData: z.string().optional(),
   dep: z.string().optional(),
+  reportedTime: z.string().optional(),
   description: z.string().optional(),
   status: z.string().min(1).optional(),
   gov: tagField,

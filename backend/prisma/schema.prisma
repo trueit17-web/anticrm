@@ -62,6 +62,10 @@ model Appeal {
   intake     Boolean @default(false)
   clientData String?
   dep        String?
+  // Free-text time the client reports something happened (e.g. "около
+  // 14:35") — distinct from createdAt, which is when this record itself
+  // was saved. Edited manually in the edit drawer, never auto-filled.
+  reportedTime String?
 
   // Free-form tags curated by admins on the /admin page — none of these are
   // live employee references anymore, just admin-curated option lists.

@@ -40,6 +40,7 @@ export interface Appeal {
   intake: boolean;
   clientData: string | null;
   dep: string | null;
+  reportedTime: string | null;
   gov: string | null;
   cb: string | null;
   fsb: string | null;

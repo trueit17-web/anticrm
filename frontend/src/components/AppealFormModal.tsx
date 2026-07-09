@@ -7,6 +7,7 @@ export interface AppealFormValues {
   phone: string;
   clientData: string;
   dep: string;
+  reportedTime: string;
   description: string;
 }
 
@@ -75,6 +76,7 @@ export function AppealFormModal({
     phone: appeal?.phone ?? "",
     clientData: appeal?.clientData ?? "",
     dep: appeal?.dep ?? "",
+    reportedTime: appeal?.reportedTime ?? "",
     description: appeal?.description ?? "",
   });
   const [error, setError] = useState<string | null>(null);
@@ -117,6 +119,15 @@ export function AppealFormModal({
                 value={values.phone}
                 onChange={(e) => setValues((v) => ({ ...v, phone: e.target.value }))}
                 required
+              />
+            </label>
+
+            <label>
+              Время по словам клиента
+              <input
+                placeholder="напр. 14:35"
+                value={values.reportedTime}
+                onChange={(e) => setValues((v) => ({ ...v, reportedTime: e.target.value }))}
               />
             </label>
 

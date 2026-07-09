@@ -34,6 +34,7 @@ export interface CreateAppealInput {
   intake?: boolean;
   clientData?: string;
   dep?: string;
+  reportedTime?: string;
   description?: string;
   status?: string;
 }
@@ -51,6 +52,7 @@ export interface UpdateAppealInput {
   intake?: boolean;
   clientData?: string;
   dep?: string;
+  reportedTime?: string;
   description?: string;
   status?: string;
   gov?: string | null;
@@ -65,6 +67,7 @@ const FIELD_LABELS: Record<keyof UpdateAppealInput, string> = {
   intake: "Прием",
   clientData: "Данные клиента",
   dep: "Деп.",
+  reportedTime: "Время по словам клиента",
   description: "Описание",
   status: "Статус",
   gov: "Госы",

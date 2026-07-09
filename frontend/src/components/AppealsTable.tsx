@@ -247,6 +247,12 @@ export function AppealsTable({
                   {appeal.operator.fullName}
                   <br />
                   {formatDateTime(appeal.date, appeal.createdAt)}
+                  {appeal.reportedTime && (
+                    <>
+                      <br />
+                      <span className="muted">со слов: {appeal.reportedTime}</span>
+                    </>
+                  )}
                 </td>
                 <td className={smsSent ? "cell-sms-sent" : undefined}>
                   {appeal.phone}
