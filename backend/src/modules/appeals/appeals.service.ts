@@ -67,7 +67,7 @@ const FIELD_LABELS: Record<keyof UpdateAppealInput, string> = {
   intake: "Прием",
   clientData: "Данные клиента",
   dep: "Деп.",
-  reportedTime: "Время по словам клиента",
+  reportedTime: "Время события",
   description: "Описание",
   status: "Статус",
   gov: "Госы",
