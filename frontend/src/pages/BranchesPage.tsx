@@ -4,10 +4,54 @@ import { api, ApiError } from "../api/client";
 import { Branch } from "../types";
 import { BranchSwitcher } from "../components/BranchSwitcher";
 
+function BranchRow({
+  branch,
+  onCancel,
+  onSaved,
+}: {
+  branch: Branch;
+  onCancel: () => void;
+  onSaved: () => void;
+}) {
+  const [name, setName] = useState(branch.name);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  async function handleSave(e: FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setSaving(true);
+    try {
+      await api.patch(`/branches/${branch.id}`, { name });
+      onSaved();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Не удалось сохранить");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <li>
+      <form className="inline-form" onSubmit={handleSave}>
+        <input value={name} onChange={(e) => setName(e.target.value)} required />
+        <button type="submit" disabled={saving}>
+          {saving ? "Сохранение..." : "Сохранить"}
+        </button>
+        <button type="button" className="secondary" onClick={onCancel}>
+          Отмена
+        </button>
+      </form>
+      {error && <p className="error-text">{error}</p>}
+    </li>
+  );
+}
+
 export function BranchesPage() {
   const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<number | null>(null);
 
   const [name, setName] = useState("");
   const [creating, setCreating] = useState(false);
@@ -74,11 +118,26 @@ export function BranchesPage() {
 
       {!loading && !error && (
         <ul className="admin-option-list">
-          {branches.map((b) => (
-            <li key={b.id}>
-              <span>{b.name}</span>
-            </li>
-          ))}
+          {branches.map((b) =>
+            editingId === b.id ? (
+              <BranchRow
+                key={b.id}
+                branch={b}
+                onCancel={() => setEditingId(null)}
+                onSaved={() => {
+                  setEditingId(null);
+                  load();
+                }}
+              />
+            ) : (
+              <li key={b.id}>
+                <span>{b.name}</span>
+                <button className="link-button" onClick={() => setEditingId(b.id)}>
+                  Редактировать
+                </button>
+              </li>
+            )
+          )}
         </ul>
       )}
     </div>
