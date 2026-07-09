@@ -1,4 +1,4 @@
-export type Role = "USER" | "MANAGER" | "ADMIN";
+export type Role = "USER" | "MANAGER" | "ADMIN" | "SUPERADMIN";
 
 export type OptionField = "GOV" | "CB" | "FSB" | "CLOSER" | "STATUS";
 
@@ -6,6 +6,7 @@ export const ROLE_LABELS: Record<Role, string> = {
   USER: "Пользователь",
   MANAGER: "Менеджер",
   ADMIN: "Администратор",
+  SUPERADMIN: "Суперадминистратор",
 };
 
 export const OPTION_FIELD_LABELS: Record<OptionField, string> = {
@@ -21,6 +22,7 @@ export interface AuthUser {
   username: string;
   fullName: string;
   role: Role;
+  branchId: number | null;
 }
 
 export interface UserSummary {
@@ -29,6 +31,13 @@ export interface UserSummary {
   fullName: string;
   role: Role;
   active: boolean;
+  createdAt: string;
+  branch: { id: number; name: string } | null;
+}
+
+export interface Branch {
+  id: number;
+  name: string;
   createdAt: string;
 }
 

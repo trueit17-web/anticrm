@@ -14,20 +14,21 @@ function dayRange(date: Date) {
   return { start, end };
 }
 
-export function listAppealsByDate(date: Date) {
+export function listAppealsByDate(branchId: number, date: Date) {
   const { start, end } = dayRange(date);
   return prisma.appeal.findMany({
-    where: { date: { gte: start, lt: end } },
+    where: { branchId, date: { gte: start, lt: end } },
     include: appealInclude,
     orderBy: [{ date: "asc" }, { id: "asc" }],
   });
 }
 
-export function getAppeal(id: number) {
-  return prisma.appeal.findUnique({ where: { id }, include: appealInclude });
+export function getAppeal(id: number, branchId: number) {
+  return prisma.appeal.findFirst({ where: { id, branchId }, include: appealInclude });
 }
 
 export interface CreateAppealInput {
+  branchId: number;
   operatorId: number;
   date?: Date;
   phone: string;
@@ -85,10 +86,11 @@ function resolveDisplayValue(field: keyof UpdateAppealInput, value: unknown): st
 
 export async function updateAppealWithHistory(
   id: number,
+  branchId: number,
   changes: UpdateAppealInput,
   changedById: number
 ) {
-  const before = await prisma.appeal.findUnique({ where: { id } });
+  const before = await prisma.appeal.findFirst({ where: { id, branchId } });
   if (!before) return null;
 
   const updated = await prisma.appeal.update({
@@ -125,12 +127,13 @@ export async function updateAppealWithHistory(
   return updated;
 }
 
-export function deleteAppeal(id: number) {
-  return prisma.appeal.delete({ where: { id } });
+export async function deleteAppeal(id: number, branchId: number) {
+  const result = await prisma.appeal.deleteMany({ where: { id, branchId } });
+  return result.count > 0;
 }
 
-export async function setSmsSent(id: number, sent: boolean, userId: number) {
-  const before = await prisma.appeal.findUnique({ where: { id } });
+export async function setSmsSent(id: number, branchId: number, sent: boolean, userId: number) {
+  const before = await prisma.appeal.findFirst({ where: { id, branchId } });
   if (!before) return null;
 
   const updated = await prisma.appeal.update({
@@ -155,7 +158,9 @@ export async function setSmsSent(id: number, sent: boolean, userId: number) {
   return updated;
 }
 
-export function getAppealHistory(appealId: number) {
+export async function getAppealHistory(appealId: number, branchId: number) {
+  const appeal = await prisma.appeal.findFirst({ where: { id: appealId, branchId }, select: { id: true } });
+  if (!appeal) return null;
   return prisma.appealHistory.findMany({
     where: { appealId },
     include: { changedBy: { select: { id: true, fullName: true } } },
@@ -174,9 +179,10 @@ export interface DailyStat {
   count: number;
 }
 
-export async function getOperatorStats(): Promise<OperatorStat[]> {
+export async function getOperatorStats(branchId: number): Promise<OperatorStat[]> {
   const grouped = await prisma.appeal.groupBy({
     by: ["operatorId"],
+    where: { branchId },
     _count: { _all: true },
   });
 
@@ -196,11 +202,11 @@ export async function getOperatorStats(): Promise<OperatorStat[]> {
     .sort((a, b) => b.count - a.count);
 }
 
-export async function getDailyStats(days: number): Promise<DailyStat[]> {
+export async function getDailyStats(branchId: number, days: number): Promise<DailyStat[]> {
   const rows = await prisma.$queryRaw<{ day: string; count: bigint }[]>`
     SELECT to_char(date_trunc('day', "date"), 'YYYY-MM-DD') AS day, count(*)::bigint AS count
     FROM "Appeal"
-    WHERE "date" >= NOW() - (${days}::text || ' days')::interval
+    WHERE "branchId" = ${branchId} AND "date" >= NOW() - (${days}::text || ' days')::interval
     GROUP BY day
     ORDER BY day
   `;

@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, ApiError } from "../api/client";
+import { useAuth } from "../auth/AuthContext";
 import { Appeal, DailyStat, OperatorStat } from "../types";
 import { detectMobileOperator } from "../lib/mobileOperator";
+import { BranchSwitcher } from "../components/BranchSwitcher";
 
 function formatDay(day: string): string {
   const d = new Date(day + "T00:00:00");
@@ -156,6 +158,7 @@ function DayAppealsTable({ appeals }: { appeals: Appeal[] }) {
 }
 
 export function StatsPage() {
+  const { user } = useAuth();
   const [byOperator, setByOperator] = useState<OperatorStat[]>([]);
   const [byDate, setByDate] = useState<DailyStat[]>([]);
   const [loading, setLoading] = useState(true);
@@ -194,6 +197,7 @@ export function StatsPage() {
           <h1>Статистика</h1>
         </div>
         <div className="header-actions">
+          {user?.role === "SUPERADMIN" && <BranchSwitcher />}
           <Link to="/">← К трубкам</Link>
         </div>
       </header>

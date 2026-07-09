@@ -1,6 +1,7 @@
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4000/api";
 
 const TOKEN_KEY = "crm_token";
+const BRANCH_KEY = "crm_branch_id";
 
 export function getToken(): string | null {
   return localStorage.getItem(TOKEN_KEY);
@@ -12,6 +13,26 @@ export function setToken(token: string): void {
 
 export function clearToken(): void {
   localStorage.removeItem(TOKEN_KEY);
+}
+
+// Only meaningful for SUPERADMIN accounts, which aren't tied to a branch —
+// this is which branch they're currently acting on. Ignored by the backend
+// for every other role, so it's safe to always send it.
+export function getActiveBranchId(): number | null {
+  const v = localStorage.getItem(BRANCH_KEY);
+  return v ? Number(v) : null;
+}
+
+export function setActiveBranchId(id: number | null): void {
+  if (id === null) localStorage.removeItem(BRANCH_KEY);
+  else localStorage.setItem(BRANCH_KEY, String(id));
+}
+
+function withBranchParam(path: string): string {
+  const branchId = getActiveBranchId();
+  if (branchId === null) return path;
+  const sep = path.includes("?") ? "&" : "?";
+  return `${path}${sep}branchId=${branchId}`;
 }
 
 export class ApiError extends Error {
@@ -32,7 +53,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     headers.Authorization = `Bearer ${token}`;
   }
 
-  const res = await fetch(`${API_URL}${path}`, { ...options, headers });
+  const res = await fetch(`${API_URL}${withBranchParam(path)}`, { ...options, headers });
 
   if (res.status === 204) {
     return undefined as T;

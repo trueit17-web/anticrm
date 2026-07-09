@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../auth/AuthContext";
-import { api, ApiError } from "../api/client";
+import { api, ApiError, getActiveBranchId } from "../api/client";
 import { Appeal, ROLE_LABELS, SelectOption } from "../types";
 import { AppealsTable, NewAppealValues } from "../components/AppealsTable";
 import { AppealFormModal, AppealFormValues } from "../components/AppealFormModal";
+import { BranchSwitcher } from "../components/BranchSwitcher";
 import { Link } from "react-router-dom";
 
 type TagField = "gov" | "cb" | "fsb" | "closer";
@@ -52,6 +53,8 @@ export function AppealsPage() {
   }, []);
 
   if (!user) return null;
+
+  const branchRequired = user.role === "SUPERADMIN" && getActiveBranchId() === null;
 
   async function handleSubmitCreate(values: NewAppealValues) {
     await api.post("/appeals", values);
@@ -121,9 +124,11 @@ export function AppealsPage() {
           </p>
         </div>
         <div className="header-actions">
+          {user.role === "SUPERADMIN" && <BranchSwitcher />}
+          {user.role === "SUPERADMIN" && <Link to="/branches">Филиалы</Link>}
           <Link to="/stats">Статистика</Link>
-          {user.role === "ADMIN" && <Link to="/admin">Админка</Link>}
-          {user.role === "ADMIN" && <Link to="/users">Пользователи</Link>}
+          {(user.role === "ADMIN" || user.role === "SUPERADMIN") && <Link to="/admin">Админка</Link>}
+          {(user.role === "ADMIN" || user.role === "SUPERADMIN") && <Link to="/users">Пользователи</Link>}
           <button className="secondary" onClick={logout}>
             Выйти
           </button>
@@ -132,8 +137,11 @@ export function AppealsPage() {
 
       {loading && <p>Загрузка...</p>}
       {error && <p className="error-text">{error}</p>}
+      {branchRequired && (
+        <p className="muted">Выберите филиал переключателем сверху, чтобы увидеть трубки.</p>
+      )}
 
-      {!loading && !error && (
+      {!loading && !error && !branchRequired && (
         <div className="table-with-fab">
           <button className="fab" title="Новая трубка" onClick={() => setCreating(true)}>
             +

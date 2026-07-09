@@ -17,6 +17,6 @@ selectOptionsRouter.use(requireAuth);
 selectOptionsRouter.get("/", asyncHandler(listOptionsHandler));
 
 // Only admins curate the lists themselves.
-selectOptionsRouter.post("/", requireRole(Role.ADMIN), asyncHandler(createOptionHandler));
-selectOptionsRouter.patch("/:id", requireRole(Role.ADMIN), asyncHandler(updateOptionHandler));
-selectOptionsRouter.delete("/:id", requireRole(Role.ADMIN), asyncHandler(deleteOptionHandler));
+selectOptionsRouter.post("/", requireRole(Role.ADMIN, Role.SUPERADMIN), asyncHandler(createOptionHandler));
+selectOptionsRouter.patch("/:id", requireRole(Role.ADMIN, Role.SUPERADMIN), asyncHandler(updateOptionHandler));
+selectOptionsRouter.delete("/:id", requireRole(Role.ADMIN, Role.SUPERADMIN), asyncHandler(deleteOptionHandler));

@@ -11,6 +11,9 @@ enum Role {
   USER
   MANAGER
   ADMIN
+  // Sees and manages every branch; not tied to any single branchId. Only
+  // role that can create branches and the first admin for each one.
+  SUPERADMIN
 }
 
 // Admin-configurable dropdown lists (managed on the /admin page).
@@ -22,8 +25,20 @@ enum OptionField {
   STATUS
 }
 
+model Branch {
+  id        Int      @id @default(autoincrement())
+  name      String
+  createdAt DateTime @default(now())
+
+  users         User[]
+  appeals       Appeal[]
+  selectOptions SelectOption[]
+}
+
 model SelectOption {
   id        Int         @id @default(autoincrement())
+  branchId  Int
+  branch    Branch      @relation(fields: [branchId], references: [id])
   field     OptionField
   value     String
   order     Int         @default(0)
@@ -32,8 +47,8 @@ model SelectOption {
   color     String?
   createdAt DateTime    @default(now())
 
-  @@unique([field, value])
-  @@index([field])
+  @@unique([branchId, field, value])
+  @@index([branchId, field])
 }
 
 model User {
@@ -46,14 +61,24 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  // Set once at registration time; null only for SUPERADMIN accounts, which
+  // aren't scoped to any single branch.
+  branchId Int?
+  branch   Branch? @relation(fields: [branchId], references: [id])
+
   appealsAsOperator  Appeal[]        @relation("OperatorAppeals")
   appealsAsSmsSender Appeal[]        @relation("SmsSender")
   historyEntries     AppealHistory[] @relation("HistoryChangedBy")
+
+  @@index([branchId])
 }
 
 model Appeal {
   id     Int      @id @default(autoincrement())
   date   DateTime @default(now())
+
+  branchId Int
+  branch   Branch @relation(fields: [branchId], references: [id])
 
   operatorId Int
   operator   User @relation("OperatorAppeals", fields: [operatorId], references: [id])
@@ -86,6 +111,7 @@ model Appeal {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([branchId])
   @@index([operatorId])
   @@index([status])
   @@index([date])

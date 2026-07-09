@@ -1,7 +1,9 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, ApiError } from "../api/client";
+import { useAuth } from "../auth/AuthContext";
 import { Appeal, OPTION_FIELD_LABELS, OptionField, SelectOption } from "../types";
+import { BranchSwitcher } from "../components/BranchSwitcher";
 
 const FIELDS: OptionField[] = ["GOV", "CB", "FSB", "CLOSER", "STATUS"];
 
@@ -170,6 +172,7 @@ function AppealsDeleteSection() {
 }
 
 export function AdminPage() {
+  const { user } = useAuth();
   const [options, setOptions] = useState<SelectOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -194,6 +197,7 @@ export function AdminPage() {
           <p className="muted">Справочники для полей Госы / ЦБ / ФСБ / Закрыв / Статус</p>
         </div>
         <div className="header-actions">
+          {user?.role === "SUPERADMIN" && <BranchSwitcher />}
           <Link to="/">← К трубкам</Link>
         </div>
       </header>

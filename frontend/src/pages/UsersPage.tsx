@@ -1,14 +1,18 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, ApiError } from "../api/client";
+import { useAuth } from "../auth/AuthContext";
 import { ROLE_LABELS, Role, UserSummary } from "../types";
+import { BranchSwitcher } from "../components/BranchSwitcher";
 
 function EditUserRow({
   user,
+  showBranchColumn,
   onCancel,
   onSaved,
 }: {
   user: UserSummary;
+  showBranchColumn: boolean;
   onCancel: () => void;
   onSaved: () => void;
 }) {
@@ -36,7 +40,7 @@ function EditUserRow({
   return (
     <tr>
       <td>{user.username}</td>
-      <td colSpan={3}>
+      <td colSpan={showBranchColumn ? 4 : 3}>
         <form className="inline-form" onSubmit={handleSave}>
           <input value={fullName} onChange={(e) => setFullName(e.target.value)} required />
           <input
@@ -60,6 +64,12 @@ function EditUserRow({
 }
 
 export function UsersPage() {
+  const { user: currentUser } = useAuth();
+  const isSuperadmin = currentUser?.role === "SUPERADMIN";
+  const assignableRoles = (Object.keys(ROLE_LABELS) as Role[]).filter(
+    (r) => r !== "SUPERADMIN" || isSuperadmin
+  );
+
   const [users, setUsers] = useState<UserSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -122,8 +132,14 @@ export function UsersPage() {
       <header className="page-header">
         <div>
           <h1>Пользователи</h1>
+          {isSuperadmin && (
+            <p className="muted">
+              Новый сотрудник регистрируется в филиал, выбранный переключателем справа.
+            </p>
+          )}
         </div>
         <div className="header-actions">
+          {isSuperadmin && <BranchSwitcher />}
           <Link to="/">← К трубкам</Link>
         </div>
       </header>
@@ -150,9 +166,9 @@ export function UsersPage() {
           required
         />
         <select value={role} onChange={(e) => setRole(e.target.value as Role)}>
-          {Object.entries(ROLE_LABELS).map(([value, label]) => (
+          {assignableRoles.map((value) => (
             <option key={value} value={value}>
-              {label}
+              {ROLE_LABELS[value]}
             </option>
           ))}
         </select>
@@ -172,6 +188,7 @@ export function UsersPage() {
               <th>Логин</th>
               <th>Имя</th>
               <th>Роль</th>
+              {isSuperadmin && <th>Филиал</th>}
               <th>Статус</th>
               <th></th>
             </tr>
@@ -182,6 +199,7 @@ export function UsersPage() {
                 <EditUserRow
                   key={u.id}
                   user={u}
+                  showBranchColumn={isSuperadmin}
                   onCancel={() => setEditingId(null)}
                   onSaved={() => {
                     setEditingId(null);
@@ -194,13 +212,14 @@ export function UsersPage() {
                   <td>{u.fullName}</td>
                   <td>
                     <select value={u.role} onChange={(e) => changeRole(u, e.target.value as Role)}>
-                      {Object.entries(ROLE_LABELS).map(([value, label]) => (
+                      {assignableRoles.map((value) => (
                         <option key={value} value={value}>
-                          {label}
+                          {ROLE_LABELS[value]}
                         </option>
                       ))}
                     </select>
                   </td>
+                  {isSuperadmin && <td>{u.branch?.name ?? "—"}</td>}
                   <td>{u.active ? "Активен" : "Отключён"}</td>
                   <td>
                     <button className="link-button" onClick={() => setEditingId(u.id)}>

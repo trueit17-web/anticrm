@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { Role } from "@prisma/client";
 import { z } from "zod";
+import { resolveBranchId } from "../../utils/branchScope";
 import {
   createAppeal,
   deleteAppeal,
@@ -22,8 +23,12 @@ function parseDateParam(raw: unknown): Date {
 }
 
 export async function listAppealsHandler(req: Request, res: Response) {
+  const branchId = resolveBranchId(req);
+  if (branchId === null) {
+    return res.json({ appeals: [] });
+  }
   const date = parseDateParam(req.query.date);
-  const appeals = await listAppealsByDate(date);
+  const appeals = await listAppealsByDate(branchId, date);
   res.json({ appeals });
 }
 
@@ -39,6 +44,11 @@ const createSchema = z.object({
 });
 
 export async function createAppealHandler(req: Request, res: Response) {
+  const branchId = resolveBranchId(req);
+  if (branchId === null) {
+    return res.status(400).json({ error: "Выберите филиал" });
+  }
+
   const parsed = createSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ error: "Проверьте поля формы", details: parsed.error.flatten() });
@@ -46,6 +56,7 @@ export async function createAppealHandler(req: Request, res: Response) {
 
   const appeal = await createAppeal({
     ...parsed.data,
+    branchId,
     operatorId: req.user!.id,
   });
   res.status(201).json({ appeal });
@@ -74,14 +85,20 @@ const updateSchema = z.object({
 const RESTRICTED_FIELDS = ["gov", "cb", "fsb", "closer", "status"] as const;
 
 export async function updateAppealHandler(req: Request, res: Response) {
+  const branchId = resolveBranchId(req);
+  if (branchId === null) {
+    return res.status(400).json({ error: "Выберите филиал" });
+  }
+
   const id = Number(req.params.id);
-  const existing = await getAppeal(id);
+  const existing = await getAppeal(id, branchId);
   if (!existing) {
     return res.status(404).json({ error: "Трубка не найдена" });
   }
 
   // Any authenticated employee may edit any appeal's general fields.
-  const isManagerOrAdmin = req.user!.role === Role.MANAGER || req.user!.role === Role.ADMIN;
+  const isManagerOrAdmin =
+    req.user!.role === Role.MANAGER || req.user!.role === Role.ADMIN || req.user!.role === Role.SUPERADMIN;
 
   const parsed = updateSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -97,42 +114,65 @@ export async function updateAppealHandler(req: Request, res: Response) {
     }
   }
 
-  const appeal = await updateAppealWithHistory(id, data, req.user!.id);
+  const appeal = await updateAppealWithHistory(id, branchId, data, req.user!.id);
   res.json({ appeal });
 }
 
 export async function deleteAppealHandler(req: Request, res: Response) {
+  const branchId = resolveBranchId(req);
+  if (branchId === null) {
+    return res.status(400).json({ error: "Выберите филиал" });
+  }
+
   const id = Number(req.params.id);
-  await deleteAppeal(id);
+  const deleted = await deleteAppeal(id, branchId);
+  if (!deleted) {
+    return res.status(404).json({ error: "Трубка не найдена" });
+  }
   res.status(204).send();
 }
 
 const smsSchema = z.object({ sms: z.boolean() });
 
 export async function setSmsHandler(req: Request, res: Response) {
-  const id = Number(req.params.id);
-  const existing = await getAppeal(id);
-  if (!existing) {
-    return res.status(404).json({ error: "Трубка не найдена" });
+  const branchId = resolveBranchId(req);
+  if (branchId === null) {
+    return res.status(400).json({ error: "Выберите филиал" });
   }
 
+  const id = Number(req.params.id);
   const parsed = smsSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ error: "Проверьте поля формы", details: parsed.error.flatten() });
   }
 
   // Any authenticated employee may mark SMS sent/unsent on any appeal.
-  const appeal = await setSmsSent(id, parsed.data.sms, req.user!.id);
+  const appeal = await setSmsSent(id, branchId, parsed.data.sms, req.user!.id);
+  if (!appeal) {
+    return res.status(404).json({ error: "Трубка не найдена" });
+  }
   res.json({ appeal });
 }
 
 export async function getHistoryHandler(req: Request, res: Response) {
+  const branchId = resolveBranchId(req);
+  if (branchId === null) {
+    return res.status(400).json({ error: "Выберите филиал" });
+  }
+
   const id = Number(req.params.id);
-  const history = await getAppealHistory(id);
+  const history = await getAppealHistory(id, branchId);
+  if (history === null) {
+    return res.status(404).json({ error: "Трубка не найдена" });
+  }
   res.json({ history });
 }
 
-export async function getStatsHandler(_req: Request, res: Response) {
-  const [byOperator, byDate] = await Promise.all([getOperatorStats(), getDailyStats(30)]);
+export async function getStatsHandler(req: Request, res: Response) {
+  const branchId = resolveBranchId(req);
+  if (branchId === null) {
+    return res.json({ byOperator: [], byDate: [] });
+  }
+  const [byOperator, byDate] = await Promise.all([getOperatorStats(branchId), getDailyStats(branchId, 30)]);
   res.json({ byOperator, byDate });
 }

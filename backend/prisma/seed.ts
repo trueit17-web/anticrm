@@ -9,7 +9,13 @@ const STATUS_DEFAULTS = ["Новое", "В работе", "Консультац�
 // Госы/ЦБ/ФСБ/Закрыв start out empty on purpose — admins fill them in with
 // real values on the /admin page instead of getting placeholder data.
 
-async function seedAdmin() {
+async function ensureDefaultBranch() {
+  const existing = await prisma.branch.findFirst({ orderBy: { id: "asc" } });
+  if (existing) return existing;
+  return prisma.branch.create({ data: { name: "Главный офис" } });
+}
+
+async function seedAdmin(branchId: number) {
   const username = process.env.SEED_ADMIN_USERNAME ?? "admin";
   const password = process.env.SEED_ADMIN_PASSWORD ?? "ChangeMe123!";
   const fullName = process.env.SEED_ADMIN_FULLNAME ?? "Administrator";
@@ -22,30 +28,57 @@ async function seedAdmin() {
 
   const passwordHash = await bcrypt.hash(password, 10);
   await prisma.user.create({
-    data: { username, passwordHash, fullName, role: Role.ADMIN },
+    data: { username, passwordHash, fullName, role: Role.ADMIN, branchId },
   });
 
   console.log(`Created admin user "${username}". Change the password after first login.`);
 }
 
-async function upsertOptions(field: OptionField, values: string[]) {
+// Optional: only runs when SEED_SUPERADMIN_USERNAME is set. This is the only
+// supported way to bootstrap a SUPERADMIN account (branch-scoped admins
+// can't create one), since it's meant to be a one-time deploy step, not a
+// user manageable through the normal Users page.
+async function seedSuperadmin() {
+  const username = process.env.SEED_SUPERADMIN_USERNAME;
+  if (!username) return;
+
+  const password = process.env.SEED_SUPERADMIN_PASSWORD ?? "ChangeMe123!";
+  const fullName = process.env.SEED_SUPERADMIN_FULLNAME ?? "Super Admin";
+
+  const existing = await prisma.user.findUnique({ where: { username } });
+  if (existing) {
+    console.log(`Superadmin user "${username}" already exists, skipping.`);
+    return;
+  }
+
+  const passwordHash = await bcrypt.hash(password, 10);
+  await prisma.user.create({
+    data: { username, passwordHash, fullName, role: Role.SUPERADMIN, branchId: null },
+  });
+
+  console.log(`Created superadmin user "${username}". Change the password after first login.`);
+}
+
+async function upsertOptions(branchId: number, field: OptionField, values: string[]) {
   for (let i = 0; i < values.length; i++) {
     await prisma.selectOption.upsert({
-      where: { field_value: { field, value: values[i] } },
+      where: { branchId_field_value: { branchId, field, value: values[i] } },
       update: {},
-      create: { field, value: values[i], order: i },
+      create: { branchId, field, value: values[i], order: i },
     });
   }
 }
 
-async function seedOptions() {
-  await upsertOptions(OptionField.STATUS, STATUS_DEFAULTS);
+async function seedOptions(branchId: number) {
+  await upsertOptions(branchId, OptionField.STATUS, STATUS_DEFAULTS);
   console.log("Default status list ensured. Госы/ЦБ/ФСБ/Закрыв left empty for admins to fill in.");
 }
 
 async function main() {
-  await seedAdmin();
-  await seedOptions();
+  const branch = await ensureDefaultBranch();
+  await seedAdmin(branch.id);
+  await seedOptions(branch.id);
+  await seedSuperadmin();
 }
 
 main()

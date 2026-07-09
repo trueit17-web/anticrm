@@ -34,4 +34,8 @@ appealsRouter.patch("/:id/sms", asyncHandler(setSmsHandler));
 
 appealsRouter.get("/:id/history", asyncHandler(getHistoryHandler));
 
-appealsRouter.delete("/:id", requireRole(Role.MANAGER, Role.ADMIN), asyncHandler(deleteAppealHandler));
+appealsRouter.delete(
+  "/:id",
+  requireRole(Role.MANAGER, Role.ADMIN, Role.SUPERADMIN),
+  asyncHandler(deleteAppealHandler)
+);

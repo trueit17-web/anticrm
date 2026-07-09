@@ -26,6 +26,7 @@ export async function login(username: string, password: string) {
     username: user.username,
     fullName: user.fullName,
     role: user.role,
+    branchId: user.branchId,
   };
 
   const token = jwt.sign(authUser, env.jwtSecret, { expiresIn: env.jwtExpiresIn as jwt.SignOptions["expiresIn"] });

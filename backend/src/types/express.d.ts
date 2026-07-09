@@ -5,6 +5,8 @@ export interface AuthUser {
   username: string;
   fullName: string;
   role: Role;
+  // Null only for SUPERADMIN accounts, which aren't tied to one branch.
+  branchId: number | null;
 }
 
 declare global {

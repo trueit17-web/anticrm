@@ -6,6 +6,7 @@ import { AppealsPage } from "./pages/AppealsPage";
 import { UsersPage } from "./pages/UsersPage";
 import { StatsPage } from "./pages/StatsPage";
 import { AdminPage } from "./pages/AdminPage";
+import { BranchesPage } from "./pages/BranchesPage";
 
 export function App() {
   return (
@@ -23,7 +24,7 @@ export function App() {
         <Route
           path="/users"
           element={
-            <ProtectedRoute roles={["ADMIN"]}>
+            <ProtectedRoute roles={["ADMIN", "SUPERADMIN"]}>
               <UsersPage />
             </ProtectedRoute>
           }
@@ -39,8 +40,16 @@ export function App() {
         <Route
           path="/admin"
           element={
-            <ProtectedRoute roles={["ADMIN"]}>
+            <ProtectedRoute roles={["ADMIN", "SUPERADMIN"]}>
               <AdminPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/branches"
+          element={
+            <ProtectedRoute roles={["SUPERADMIN"]}>
+              <BranchesPage />
             </ProtectedRoute>
           }
         />

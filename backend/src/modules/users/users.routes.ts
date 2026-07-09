@@ -9,8 +9,8 @@ export const usersRouter = Router();
 usersRouter.use(requireAuth);
 
 // Manager/Admin need the user list to populate assignment dropdowns (Госы/ЦБ/ФСБ/Закрыв).
-usersRouter.get("/", requireRole(Role.MANAGER, Role.ADMIN), asyncHandler(listUsersHandler));
+usersRouter.get("/", requireRole(Role.MANAGER, Role.ADMIN, Role.SUPERADMIN), asyncHandler(listUsersHandler));
 
 // Only Admin manages accounts.
-usersRouter.post("/", requireRole(Role.ADMIN), asyncHandler(createUserHandler));
-usersRouter.patch("/:id", requireRole(Role.ADMIN), asyncHandler(updateUserHandler));
+usersRouter.post("/", requireRole(Role.ADMIN, Role.SUPERADMIN), asyncHandler(createUserHandler));
+usersRouter.patch("/:id", requireRole(Role.ADMIN, Role.SUPERADMIN), asyncHandler(updateUserHandler));

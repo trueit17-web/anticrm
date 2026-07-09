@@ -1,5 +1,5 @@
 import { createContext, ReactNode, useContext, useEffect, useState } from "react";
-import { api, clearToken, getToken, setToken } from "../api/client";
+import { api, clearToken, getToken, setActiveBranchId, setToken } from "../api/client";
 import { AuthUser } from "../types";
 
 interface AuthContextValue {
@@ -39,6 +39,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   function logout() {
     clearToken();
+    setActiveBranchId(null);
     setUser(null);
   }
 
