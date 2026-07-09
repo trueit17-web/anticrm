@@ -5,7 +5,7 @@ import { resolveBranchId } from "../../utils/branchScope";
 import { createOption, deleteOption, listOptions, updateOption } from "./select-options.service";
 
 export async function listOptionsHandler(req: Request, res: Response) {
-  const branchId = resolveBranchId(req);
+  const branchId = await resolveBranchId(req);
   if (branchId === null) {
     return res.json({ options: [] });
   }
@@ -19,7 +19,7 @@ const createSchema = z.object({
 });
 
 export async function createOptionHandler(req: Request, res: Response) {
-  const branchId = resolveBranchId(req);
+  const branchId = await resolveBranchId(req);
   if (branchId === null) {
     return res.status(400).json({ error: "Выберите филиал" });
   }
@@ -50,7 +50,7 @@ const updateSchema = z.object({
 });
 
 export async function updateOptionHandler(req: Request, res: Response) {
-  const branchId = resolveBranchId(req);
+  const branchId = await resolveBranchId(req);
   if (branchId === null) {
     return res.status(400).json({ error: "Выберите филиал" });
   }
@@ -68,7 +68,7 @@ export async function updateOptionHandler(req: Request, res: Response) {
 }
 
 export async function deleteOptionHandler(req: Request, res: Response) {
-  const branchId = resolveBranchId(req);
+  const branchId = await resolveBranchId(req);
   if (branchId === null) {
     return res.status(400).json({ error: "Выберите филиал" });
   }

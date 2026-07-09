@@ -23,7 +23,7 @@ function parseDateParam(raw: unknown): Date {
 }
 
 export async function listAppealsHandler(req: Request, res: Response) {
-  const branchId = resolveBranchId(req);
+  const branchId = await resolveBranchId(req);
   if (branchId === null) {
     return res.json({ appeals: [] });
   }
@@ -44,7 +44,7 @@ const createSchema = z.object({
 });
 
 export async function createAppealHandler(req: Request, res: Response) {
-  const branchId = resolveBranchId(req);
+  const branchId = await resolveBranchId(req);
   if (branchId === null) {
     return res.status(400).json({ error: "Выберите филиал" });
   }
@@ -85,7 +85,7 @@ const updateSchema = z.object({
 const RESTRICTED_FIELDS = ["gov", "cb", "fsb", "closer", "status"] as const;
 
 export async function updateAppealHandler(req: Request, res: Response) {
-  const branchId = resolveBranchId(req);
+  const branchId = await resolveBranchId(req);
   if (branchId === null) {
     return res.status(400).json({ error: "Выберите филиал" });
   }
@@ -119,7 +119,7 @@ export async function updateAppealHandler(req: Request, res: Response) {
 }
 
 export async function deleteAppealHandler(req: Request, res: Response) {
-  const branchId = resolveBranchId(req);
+  const branchId = await resolveBranchId(req);
   if (branchId === null) {
     return res.status(400).json({ error: "Выберите филиал" });
   }
@@ -135,7 +135,7 @@ export async function deleteAppealHandler(req: Request, res: Response) {
 const smsSchema = z.object({ sms: z.boolean() });
 
 export async function setSmsHandler(req: Request, res: Response) {
-  const branchId = resolveBranchId(req);
+  const branchId = await resolveBranchId(req);
   if (branchId === null) {
     return res.status(400).json({ error: "Выберите филиал" });
   }
@@ -155,7 +155,7 @@ export async function setSmsHandler(req: Request, res: Response) {
 }
 
 export async function getHistoryHandler(req: Request, res: Response) {
-  const branchId = resolveBranchId(req);
+  const branchId = await resolveBranchId(req);
   if (branchId === null) {
     return res.status(400).json({ error: "Выберите филиал" });
   }
@@ -169,7 +169,7 @@ export async function getHistoryHandler(req: Request, res: Response) {
 }
 
 export async function getStatsHandler(req: Request, res: Response) {
-  const branchId = resolveBranchId(req);
+  const branchId = await resolveBranchId(req);
   if (branchId === null) {
     return res.json({ byOperator: [], byDate: [] });
   }

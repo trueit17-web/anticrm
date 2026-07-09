@@ -15,9 +15,10 @@ export function clearToken(): void {
   localStorage.removeItem(TOKEN_KEY);
 }
 
-// Only meaningful for SUPERADMIN accounts, which aren't tied to a branch —
-// this is which branch they're currently acting on. Ignored by the backend
-// for every other role, so it's safe to always send it.
+// Which branch the app is currently acting on. Only matters for accounts
+// that can switch branches (SUPERADMIN, or a manager granted extra branch
+// access) — the backend falls back to the account's home branch for anyone
+// else, so it's safe to always send it.
 export function getActiveBranchId(): number | null {
   const v = localStorage.getItem(BRANCH_KEY);
   return v ? Number(v) : null;
@@ -74,5 +75,7 @@ export const api = {
     request<T>(path, { method: "POST", body: data ? JSON.stringify(data) : undefined }),
   patch: <T>(path: string, data?: unknown) =>
     request<T>(path, { method: "PATCH", body: data ? JSON.stringify(data) : undefined }),
+  put: <T>(path: string, data?: unknown) =>
+    request<T>(path, { method: "PUT", body: data ? JSON.stringify(data) : undefined }),
   delete: <T>(path: string) => request<T>(path, { method: "DELETE" }),
 };

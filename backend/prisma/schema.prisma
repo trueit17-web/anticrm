@@ -33,6 +33,23 @@ model Branch {
   users         User[]
   appeals       Appeal[]
   selectOptions SelectOption[]
+  userAccess    UserBranchAccess[]
+}
+
+// Extra branches a user can switch into beyond their home branch (User.branchId).
+// Set up by SUPERADMIN for managers who work cases across multiple offices.
+model UserBranchAccess {
+  id       Int @id @default(autoincrement())
+  userId   Int
+  user     User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  branchId Int
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, branchId])
+  @@index([userId])
+  @@index([branchId])
 }
 
 model SelectOption {
@@ -69,6 +86,7 @@ model User {
   appealsAsOperator  Appeal[]        @relation("OperatorAppeals")
   appealsAsSmsSender Appeal[]        @relation("SmsSender")
   historyEntries     AppealHistory[] @relation("HistoryChangedBy")
+  branchAccess       UserBranchAccess[]
 
   @@index([branchId])
 }

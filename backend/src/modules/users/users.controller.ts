@@ -2,10 +2,11 @@ import { Request, Response } from "express";
 import { Prisma, Role } from "@prisma/client";
 import { z } from "zod";
 import { resolveBranchId } from "../../utils/branchScope";
+import { getUserBranchAccess, setUserBranchAccess } from "../branches/branches.service";
 import { createUser, listUsers, updateUser } from "./users.service";
 
 export async function listUsersHandler(req: Request, res: Response) {
-  const branchId = resolveBranchId(req);
+  const branchId = await resolveBranchId(req);
   const users = await listUsers(branchId);
   res.json({ users });
 }
@@ -30,7 +31,7 @@ export async function createUserHandler(req: Request, res: Response) {
 
   // SUPERADMIN accounts aren't tied to a branch; every other role is
   // registered into whichever branch the request is scoped to.
-  const branchId = parsed.data.role === Role.SUPERADMIN ? null : resolveBranchId(req);
+  const branchId = parsed.data.role === Role.SUPERADMIN ? null : await resolveBranchId(req);
   if (branchId === null && parsed.data.role !== Role.SUPERADMIN) {
     return res.status(400).json({ error: "Выберите филиал" });
   }
@@ -64,10 +65,28 @@ export async function updateUserHandler(req: Request, res: Response) {
     return res.status(403).json({ error: "Недостаточно прав" });
   }
 
-  const branchId = resolveBranchId(req);
+  const branchId = await resolveBranchId(req);
   const user = await updateUser(id, branchId, parsed.data);
   if (!user) {
     return res.status(404).json({ error: "Пользователь не найден" });
   }
   res.json({ user });
+}
+
+export async function getUserBranchAccessHandler(req: Request, res: Response) {
+  const id = Number(req.params.id);
+  const access = await getUserBranchAccess(id);
+  res.json({ branches: access.map((a) => a.branch) });
+}
+
+const branchAccessSchema = z.object({ branchIds: z.array(z.number().int()) });
+
+export async function setUserBranchAccessHandler(req: Request, res: Response) {
+  const id = Number(req.params.id);
+  const parsed = branchAccessSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: "Проверьте поля формы", details: parsed.error.flatten() });
+  }
+  const access = await setUserBranchAccess(id, parsed.data.branchIds);
+  res.json({ branches: access.map((a) => a.branch) });
 }

@@ -479,3 +479,17 @@ a {
   text-align: center;
   color: var(--muted);
 }
+
+.branch-access-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 20px;
+  margin: 8px 0;
+}
+
+.branch-access-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+}

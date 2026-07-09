@@ -124,7 +124,7 @@ export function AppealsPage() {
           </p>
         </div>
         <div className="header-actions">
-          {user.role === "SUPERADMIN" && <BranchSwitcher />}
+          <BranchSwitcher />
           {user.role === "SUPERADMIN" && <Link to="/branches">Филиалы</Link>}
           <Link to="/stats">Статистика</Link>
           {(user.role === "ADMIN" || user.role === "SUPERADMIN") && <Link to="/admin">Админка</Link>}

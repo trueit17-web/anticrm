@@ -1,9 +1,17 @@
 import { Request, Response } from "express";
 import { z } from "zod";
-import { createBranch, listBranches, updateBranch } from "./branches.service";
+import { createBranch, listAccessibleBranches, listBranches, updateBranch } from "./branches.service";
 
 export async function listBranchesHandler(_req: Request, res: Response) {
   const branches = await listBranches();
+  res.json({ branches });
+}
+
+// Every role calls this to know which branches they may switch into —
+// SUPERADMIN gets all of them, everyone else gets their home branch plus
+// whatever's been granted to them.
+export async function listMyBranchesHandler(req: Request, res: Response) {
+  const branches = await listAccessibleBranches(req.user!);
   res.json({ branches });
 }
 

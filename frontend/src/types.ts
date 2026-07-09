@@ -33,6 +33,8 @@ export interface UserSummary {
   active: boolean;
   createdAt: string;
   branch: { id: number; name: string } | null;
+  // Extra branches this user can switch into beyond their home branch.
+  branchAccess: { id: number; name: string }[];
 }
 
 export interface Branch {

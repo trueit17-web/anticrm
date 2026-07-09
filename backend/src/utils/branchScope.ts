@@ -1,14 +1,29 @@
 import { Request } from "express";
 import { Role } from "@prisma/client";
+import { prisma } from "../lib/prisma";
 
 // SUPERADMIN accounts aren't tied to a branch — they pick which one to act
-// on via ?branchId=. Every other role is locked to the branch set on their
-// account at registration time; any branchId query param is ignored for them.
-export function resolveBranchId(req: Request): number | null {
+// on via ?branchId=, and may pick any branch that exists. Every other role
+// has a home branch (User.branchId) set at registration, plus optionally
+// extra branches granted by a SUPERADMIN (UserBranchAccess) for managers
+// who work cases across offices. Requesting a branch outside that set
+// silently falls back to their home branch rather than erroring.
+export async function resolveBranchId(req: Request): Promise<number | null> {
+  const raw = req.query.branchId;
+  const requested = typeof raw === "string" ? Number(raw) : NaN;
+  const hasRequested = Number.isInteger(requested);
+
   if (req.user!.role === Role.SUPERADMIN) {
-    const raw = req.query.branchId;
-    const parsed = typeof raw === "string" ? Number(raw) : NaN;
-    return Number.isInteger(parsed) ? parsed : null;
+    return hasRequested ? requested : null;
   }
-  return req.user!.branchId;
+
+  const homeBranchId = req.user!.branchId;
+  if (!hasRequested || requested === homeBranchId) {
+    return homeBranchId;
+  }
+
+  const granted = await prisma.userBranchAccess.findUnique({
+    where: { userId_branchId: { userId: req.user!.id, branchId: requested } },
+  });
+  return granted ? requested : homeBranchId;
 }

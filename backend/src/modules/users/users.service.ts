@@ -10,16 +10,22 @@ const publicUserSelect = {
   active: true,
   createdAt: true,
   branch: { select: { id: true, name: true } },
+  branchAccess: { select: { branch: { select: { id: true, name: true } } } },
 } as const;
+
+function toUserSummary<T extends { branchAccess: { branch: { id: number; name: string } }[] }>(user: T) {
+  return { ...user, branchAccess: user.branchAccess.map((a) => a.branch) };
+}
 
 // branchId === null means "no branch selected" (SUPERADMIN viewing across
 // all branches) — list everyone in that case rather than nobody.
-export function listUsers(branchId: number | null) {
-  return prisma.user.findMany({
+export async function listUsers(branchId: number | null) {
+  const users = await prisma.user.findMany({
     where: branchId === null ? {} : { branchId },
     select: publicUserSelect,
     orderBy: { fullName: "asc" },
   });
+  return users.map(toUserSummary);
 }
 
 export async function createUser(input: {
@@ -30,7 +36,7 @@ export async function createUser(input: {
   branchId: number | null;
 }) {
   const passwordHash = await hashPassword(input.password);
-  return prisma.user.create({
+  const user = await prisma.user.create({
     data: {
       username: input.username,
       passwordHash,
@@ -40,6 +46,7 @@ export async function createUser(input: {
     },
     select: publicUserSelect,
   });
+  return toUserSummary(user);
 }
 
 export async function updateUser(
@@ -58,5 +65,6 @@ export async function updateUser(
   const where = branchId === null ? { id } : { id, branchId };
   const result = await prisma.user.updateMany({ where, data });
   if (result.count === 0) return null;
-  return prisma.user.findUnique({ where: { id }, select: publicUserSelect });
+  const user = await prisma.user.findUnique({ where: { id }, select: publicUserSelect });
+  return user ? toUserSummary(user) : null;
 }

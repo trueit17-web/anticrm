@@ -2,17 +2,17 @@ import { FormEvent, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, ApiError } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
-import { ROLE_LABELS, Role, UserSummary } from "../types";
+import { Branch, ROLE_LABELS, Role, UserSummary } from "../types";
 import { BranchSwitcher } from "../components/BranchSwitcher";
 
 function EditUserRow({
   user,
-  showBranchColumn,
+  colSpan,
   onCancel,
   onSaved,
 }: {
   user: UserSummary;
-  showBranchColumn: boolean;
+  colSpan: number;
   onCancel: () => void;
   onSaved: () => void;
 }) {
@@ -40,7 +40,7 @@ function EditUserRow({
   return (
     <tr>
       <td>{user.username}</td>
-      <td colSpan={showBranchColumn ? 4 : 3}>
+      <td colSpan={colSpan}>
         <form className="inline-form" onSubmit={handleSave}>
           <input value={fullName} onChange={(e) => setFullName(e.target.value)} required />
           <input
@@ -63,6 +63,80 @@ function EditUserRow({
   );
 }
 
+function BranchAccessRow({
+  user,
+  branches,
+  colSpan,
+  onCancel,
+  onSaved,
+}: {
+  user: UserSummary;
+  branches: Branch[];
+  colSpan: number;
+  onCancel: () => void;
+  onSaved: () => void;
+}) {
+  const [selected, setSelected] = useState<Set<number>>(new Set(user.branchAccess.map((b) => b.id)));
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  function toggle(id: number) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  async function handleSave() {
+    setError(null);
+    setSaving(true);
+    try {
+      await api.put(`/users/${user.id}/branch-access`, { branchIds: Array.from(selected) });
+      onSaved();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Не удалось сохранить");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const otherBranches = branches.filter((b) => b.id !== user.branch?.id);
+
+  return (
+    <tr>
+      <td>{user.username}</td>
+      <td colSpan={colSpan}>
+        <p className="muted">
+          Доп. филиалы для {user.fullName} (кроме домашнего — {user.branch?.name ?? "—"}):
+        </p>
+        {otherBranches.length === 0 ? (
+          <p className="muted">Других филиалов нет.</p>
+        ) : (
+          <div className="branch-access-list">
+            {otherBranches.map((b) => (
+              <label key={b.id} className="branch-access-option">
+                <input type="checkbox" checked={selected.has(b.id)} onChange={() => toggle(b.id)} />
+                {b.name}
+              </label>
+            ))}
+          </div>
+        )}
+        <div className="inline-form">
+          <button onClick={handleSave} disabled={saving}>
+            {saving ? "Сохранение..." : "Сохранить"}
+          </button>
+          <button className="secondary" onClick={onCancel}>
+            Отмена
+          </button>
+        </div>
+        {error && <p className="error-text">{error}</p>}
+      </td>
+    </tr>
+  );
+}
+
 export function UsersPage() {
   const { user: currentUser } = useAuth();
   const isSuperadmin = currentUser?.role === "SUPERADMIN";
@@ -71,9 +145,11 @@ export function UsersPage() {
   );
 
   const [users, setUsers] = useState<UserSummary[]>([]);
+  const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [accessEditingId, setAccessEditingId] = useState<number | null>(null);
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -97,6 +173,13 @@ export function UsersPage() {
 
   useEffect(() => {
     loadUsers();
+    if (isSuperadmin) {
+      api
+        .get<{ branches: Branch[] }>("/branches")
+        .then((res) => setBranches(res.branches))
+        .catch(() => {});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function handleCreate(e: FormEvent) {
@@ -127,6 +210,8 @@ export function UsersPage() {
     await loadUsers();
   }
 
+  const editColSpan = isSuperadmin ? 5 : 3;
+
   return (
     <div className="page">
       <header className="page-header">
@@ -134,12 +219,13 @@ export function UsersPage() {
           <h1>Пользователи</h1>
           {isSuperadmin && (
             <p className="muted">
-              Новый сотрудник регистрируется в филиал, выбранный переключателем справа.
+              Новый сотрудник регистрируется в филиал, выбранный переключателем справа. Доступ к
+              дополнительным филиалам настраивается кнопкой «Доступ» в строке сотрудника.
             </p>
           )}
         </div>
         <div className="header-actions">
-          {isSuperadmin && <BranchSwitcher />}
+          <BranchSwitcher />
           <Link to="/">← К трубкам</Link>
         </div>
       </header>
@@ -189,24 +275,43 @@ export function UsersPage() {
               <th>Имя</th>
               <th>Роль</th>
               {isSuperadmin && <th>Филиал</th>}
+              {isSuperadmin && <th>Доп. доступ</th>}
               <th>Статус</th>
               <th></th>
             </tr>
           </thead>
           <tbody>
-            {users.map((u) =>
-              editingId === u.id ? (
-                <EditUserRow
-                  key={u.id}
-                  user={u}
-                  showBranchColumn={isSuperadmin}
-                  onCancel={() => setEditingId(null)}
-                  onSaved={() => {
-                    setEditingId(null);
-                    loadUsers();
-                  }}
-                />
-              ) : (
+            {users.map((u) => {
+              if (editingId === u.id) {
+                return (
+                  <EditUserRow
+                    key={u.id}
+                    user={u}
+                    colSpan={editColSpan}
+                    onCancel={() => setEditingId(null)}
+                    onSaved={() => {
+                      setEditingId(null);
+                      loadUsers();
+                    }}
+                  />
+                );
+              }
+              if (accessEditingId === u.id) {
+                return (
+                  <BranchAccessRow
+                    key={u.id}
+                    user={u}
+                    branches={branches}
+                    colSpan={editColSpan}
+                    onCancel={() => setAccessEditingId(null)}
+                    onSaved={() => {
+                      setAccessEditingId(null);
+                      loadUsers();
+                    }}
+                  />
+                );
+              }
+              return (
                 <tr key={u.id}>
                   <td>{u.username}</td>
                   <td>{u.fullName}</td>
@@ -220,18 +325,26 @@ export function UsersPage() {
                     </select>
                   </td>
                   {isSuperadmin && <td>{u.branch?.name ?? "—"}</td>}
+                  {isSuperadmin && (
+                    <td>{u.branchAccess.length > 0 ? u.branchAccess.map((b) => b.name).join(", ") : "—"}</td>
+                  )}
                   <td>{u.active ? "Активен" : "Отключён"}</td>
                   <td>
                     <button className="link-button" onClick={() => setEditingId(u.id)}>
                       Редактировать
                     </button>{" "}
+                    {isSuperadmin && (
+                      <button className="link-button" onClick={() => setAccessEditingId(u.id)}>
+                        Доступ
+                      </button>
+                    )}{" "}
                     <button className="link-button" onClick={() => toggleActive(u)}>
                       {u.active ? "Отключить" : "Включить"}
                     </button>
                   </td>
                 </tr>
-              )
-            )}
+              );
+            })}
           </tbody>
         </table>
       )}
