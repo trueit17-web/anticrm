@@ -4,15 +4,6 @@ import { AuthUser } from "../types";
 import { canEditAppeal, canEditAssignments } from "../lib/permissions";
 import { detectMobileOperator } from "../lib/mobileOperator";
 
-function formatDateTime(dateIso: string, timeSourceIso: string): string {
-  const datePart = new Date(dateIso).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" });
-  const timePart = new Date(timeSourceIso).toLocaleTimeString("ru-RU", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-  return `${datePart}, ${timePart}`;
-}
-
 function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
 }
@@ -244,9 +235,7 @@ export function AppealsTable({
             return (
               <tr key={appeal.id} style={rowColor ? { backgroundColor: rowColor } : undefined}>
                 <td>
-                  {appeal.operator.fullName}
-                  <br />
-                  {formatDateTime(appeal.date, appeal.createdAt)}
+                  {appeal.operator.fullName}, {formatTime(appeal.createdAt)}
                   {appeal.reportedTime && (
                     <>
                       <br />
