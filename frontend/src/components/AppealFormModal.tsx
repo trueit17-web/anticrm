@@ -6,6 +6,7 @@ export interface AppealFormValues {
   date: string;
   phone: string;
   clientData: string;
+  dep: string;
   description: string;
 }
 
@@ -73,6 +74,7 @@ export function AppealFormModal({
     date: toDateInputValue(appeal?.date),
     phone: appeal?.phone ?? "",
     clientData: appeal?.clientData ?? "",
+    dep: appeal?.dep ?? "",
     description: appeal?.description ?? "",
   });
   const [error, setError] = useState<string | null>(null);
@@ -124,6 +126,14 @@ export function AppealFormModal({
                 value={values.clientData}
                 onChange={(e) => setValues((v) => ({ ...v, clientData: e.target.value }))}
                 rows={2}
+              />
+            </label>
+
+            <label className="span-2">
+              Деп.
+              <input
+                value={values.dep}
+                onChange={(e) => setValues((v) => ({ ...v, dep: e.target.value }))}
               />
             </label>
 

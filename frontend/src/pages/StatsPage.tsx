@@ -93,6 +93,7 @@ function DayAppealsTable({ appeals }: { appeals: Appeal[] }) {
           <col style={{ width: 90 }} />
           <col style={{ width: 160 }} />
           <col style={{ width: 90 }} />
+          <col style={{ width: 90 }} />
           <col style={{ width: 60 }} />
           <col style={{ width: 110 }} />
           <col style={{ width: 130 }} />
@@ -107,6 +108,7 @@ function DayAppealsTable({ appeals }: { appeals: Appeal[] }) {
             <th>Телефон</th>
             <th>Опер. (моб.)</th>
             <th>Данные клиента</th>
+            <th>Деп.</th>
             <th>СМС</th>
             <th>Прием</th>
             <th>Госы</th>
@@ -127,14 +129,21 @@ function DayAppealsTable({ appeals }: { appeals: Appeal[] }) {
               </td>
               <td>{a.phone}</td>
               <td>{detectMobileOperator(a.phone)}</td>
-              <td className="wrap-cell">{a.clientData || "—"}</td>
+              <td className="wrap-cell" title={a.clientData ?? undefined}>
+                {a.clientData || "—"}
+              </td>
+              <td className="wrap-cell" title={a.dep ?? undefined}>
+                {a.dep || "—"}
+              </td>
               <td>{a.smsSentBy ? `${a.smsSentBy.fullName}` : "—"}</td>
               <td>{a.intake ? "Да" : "—"}</td>
               <td>{a.gov || "—"}</td>
               <td>
                 <span className="status-pill">{a.status}</span>
               </td>
-              <td className="wrap-cell">{a.description || "—"}</td>
+              <td className="wrap-cell" title={a.description ?? undefined}>
+                {a.description || "—"}
+              </td>
               <td>{a.cb || "—"}</td>
               <td>{a.fsb || "—"}</td>
               <td>{a.closer || "—"}</td>

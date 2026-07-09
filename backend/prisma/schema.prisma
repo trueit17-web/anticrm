@@ -61,6 +61,7 @@ model Appeal {
   phone      String
   intake     Boolean @default(false)
   clientData String?
+  dep        String?
 
   // Free-form tags curated by admins on the /admin page — none of these are
   // live employee references anymore, just admin-curated option lists.

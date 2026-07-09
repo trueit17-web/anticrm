@@ -39,6 +39,7 @@ export interface Appeal {
   phone: string;
   intake: boolean;
   clientData: string | null;
+  dep: string | null;
   gov: string | null;
   cb: string | null;
   fsb: string | null;

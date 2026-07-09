@@ -185,7 +185,10 @@ a {
 }
 
 .appeals-table td.wrap-cell {
-  white-space: normal;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: default;
 }
 
 .appeals-table th:last-child,

@@ -27,6 +27,7 @@ export interface NewAppealValues {
   date: string;
   phone: string;
   clientData: string;
+  dep: string;
   description: string;
 }
 
@@ -41,6 +42,7 @@ function NewAppealRow({
     date: todayInputValue(),
     phone: "",
     clientData: "",
+    dep: "",
     description: "",
   });
   const [error, setError] = useState<string | null>(null);
@@ -94,6 +96,14 @@ function NewAppealRow({
             onKeyDown={handleKeyDown}
           />
         </td>
+        <td>
+          <input
+            placeholder="Деп."
+            value={values.dep}
+            onChange={(e) => setValues((v) => ({ ...v, dep: e.target.value }))}
+            onKeyDown={handleKeyDown}
+          />
+        </td>
         <td colSpan={2} className="muted">
           зададутся после создания
         </td>
@@ -121,7 +131,7 @@ function NewAppealRow({
       </tr>
       {error && (
         <tr>
-          <td colSpan={12} className="error-text">
+          <td colSpan={13} className="error-text">
             {error}
           </td>
         </tr>
@@ -192,6 +202,7 @@ export function AppealsTable({
           <col style={{ width: 130 }} />
           <col style={{ width: 160 }} />
           <col style={{ width: 90 }} />
+          <col style={{ width: 90 }} />
           <col style={{ width: 60 }} />
           <col style={{ width: 110 }} />
           <col style={{ width: 130 }} />
@@ -206,6 +217,7 @@ export function AppealsTable({
             <th>Дата</th>
             <th>Телефон</th>
             <th>Данные клиента</th>
+            <th>Деп.</th>
             <th>СМС</th>
             <th>Прием</th>
             <th>Госы</th>
@@ -220,7 +232,7 @@ export function AppealsTable({
         <tbody>
           {appeals.length === 0 && !creating && (
             <tr>
-              <td colSpan={12} className="empty-state">
+              <td colSpan={13} className="empty-state">
                 Трубок пока нет.
               </td>
             </tr>
@@ -241,7 +253,12 @@ export function AppealsTable({
                   <br />
                   <span className="muted">{detectMobileOperator(appeal.phone)}</span>
                 </td>
-                <td className="wrap-cell">{appeal.clientData || "—"}</td>
+                <td className="wrap-cell" title={appeal.clientData ?? undefined}>
+                  {appeal.clientData || "—"}
+                </td>
+                <td className="wrap-cell" title={appeal.dep ?? undefined}>
+                  {appeal.dep || "—"}
+                </td>
                 <td>
                   <label className="sms-cell">
                     <input
@@ -275,7 +292,9 @@ export function AppealsTable({
                     <span className="status-pill">{appeal.status}</span>
                   )}
                 </td>
-                <td className="wrap-cell">{appeal.description || "—"}</td>
+                <td className="wrap-cell" title={appeal.description ?? undefined}>
+                  {appeal.description || "—"}
+                </td>
                 <td>{renderTagSelect(appeal, "cb", cbOptions)}</td>
                 <td>{renderTagSelect(appeal, "fsb", fsbOptions)}</td>
                 <td>{renderTagSelect(appeal, "closer", closerOptions)}</td>
