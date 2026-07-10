@@ -23,6 +23,7 @@ export interface AuthUser {
   fullName: string;
   role: Role;
   branchId: number | null;
+  branchName: string | null;
 }
 
 export interface UserSummary {

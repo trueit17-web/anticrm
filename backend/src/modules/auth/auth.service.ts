@@ -31,6 +31,7 @@ export async function login(
   const updated = await prisma.user.update({
     where: { id: user.id },
     data: { sessionVersion: { increment: 1 } },
+    include: { branch: true },
   });
 
   await prisma.loginEvent.create({
@@ -43,6 +44,7 @@ export async function login(
     fullName: updated.fullName,
     role: updated.role,
     branchId: updated.branchId,
+    branchName: updated.branch?.name ?? null,
   };
 
   const token = jwt.sign({ id: updated.id, sessionVersion: updated.sessionVersion }, env.jwtSecret, {

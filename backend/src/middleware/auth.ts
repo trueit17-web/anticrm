@@ -32,7 +32,7 @@ export const requireAuth = asyncHandler(async (req: Request, res: Response, next
     return;
   }
 
-  const user = await prisma.user.findUnique({ where: { id: payload.id } });
+  const user = await prisma.user.findUnique({ where: { id: payload.id }, include: { branch: true } });
   if (!user || !user.active || user.sessionVersion !== payload.sessionVersion) {
     res.status(401).json({ error: "Сессия завершена — выполнен вход с другого устройства" });
     return;
@@ -44,6 +44,7 @@ export const requireAuth = asyncHandler(async (req: Request, res: Response, next
     fullName: user.fullName,
     role: user.role,
     branchId: user.branchId,
+    branchName: user.branch?.name ?? null,
   };
   next();
 });

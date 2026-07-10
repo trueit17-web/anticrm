@@ -1,14 +1,15 @@
 :root {
   color-scheme: light;
   font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --bg: #f4f6f9;
-  --card: #ffffff;
-  --border: #dde3ea;
-  --text: #1c2530;
-  --muted: #6b7684;
-  --primary: #2563eb;
-  --primary-dark: #1d4ed8;
-  --danger: #dc2626;
+  --bg: #26282d;
+  --card: #faf7f0;
+  --border: #e4ddc9;
+  --text: #241f1a;
+  --muted: #857a68;
+  --text-on-dark: #ece7db;
+  --primary: #b8492f;
+  --primary-dark: #8f3722;
+  --danger: #d6493c;
 }
 
 * {
@@ -17,7 +18,41 @@
 
 body {
   margin: 0;
-  background: var(--bg);
+  min-height: 100vh;
+  color: var(--text-on-dark);
+  background-color: var(--bg);
+  /* Subtle seigaiha (青海波) wave-scale motif — the "endless waves" pattern
+     worn on armor and kimono since the samurai era — tiled at low opacity
+     so it reads as texture, not decoration. */
+  background-image: radial-gradient(
+      circle at 100% 50%,
+      transparent 23%,
+      rgba(236, 231, 219, 0.032) 24%,
+      rgba(236, 231, 219, 0.032) 33%,
+      transparent 34%,
+      transparent 100%
+    ),
+    radial-gradient(
+      circle at 0% 50%,
+      transparent 23%,
+      rgba(236, 231, 219, 0.032) 24%,
+      rgba(236, 231, 219, 0.032) 33%,
+      transparent 34%,
+      transparent 100%
+    );
+  background-size: 42px 21px;
+  background-attachment: fixed;
+}
+
+/* Card-like surfaces sit on the light "washi paper" tone regardless of the
+   graphite page background, so they pin text back to the dark on-card palette. */
+.table-scroll,
+.stats-card,
+.admin-option-list li,
+.modal-card,
+.auth-card,
+.inline-form,
+.appeals-table {
   color: var(--text);
 }
 
@@ -100,12 +135,46 @@ a {
   justify-content: space-between;
   align-items: flex-start;
   margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(236, 231, 219, 0.12);
+}
+
+.page-header h1 {
+  margin: 0;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  color: var(--text-on-dark);
 }
 
 .header-actions {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
+}
+
+.icon-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 8px;
+  background: rgba(236, 231, 219, 0.06);
+  border: 1px solid rgba(236, 231, 219, 0.14);
+  color: var(--text-on-dark);
+  text-decoration: none;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.icon-link svg {
+  display: block;
+}
+
+.icon-link:hover {
+  background: rgba(184, 73, 47, 0.16);
+  border-color: rgba(184, 73, 47, 0.5);
+  color: #e8815f;
 }
 
 .muted {
@@ -148,7 +217,7 @@ a {
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.4);
+  box-shadow: 0 2px 8px rgba(184, 73, 47, 0.45);
 }
 
 .table-scroll {
@@ -201,19 +270,19 @@ a {
 }
 
 .appeals-table th:last-child {
-  background: #f8fafc;
+  background: #f1ead8;
 }
 
 .new-appeal-row td {
-  background: #f8fafc;
+  background: #f1ead8;
 }
 
 .new-appeal-row td:last-child {
-  background: #f8fafc;
+  background: #f1ead8;
 }
 
 .appeals-table th {
-  background: #f8fafc;
+  background: #f1ead8;
   font-weight: 600;
   position: sticky;
   top: 0;

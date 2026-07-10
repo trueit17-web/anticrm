@@ -4,6 +4,7 @@ import { api, ApiError } from "../api/client";
 import { Appeal, DailyStat, OperatorStat } from "../types";
 import { detectMobileOperator } from "../lib/mobileOperator";
 import { BranchSwitcher } from "../components/BranchSwitcher";
+import { IconBack } from "../components/icons";
 
 function formatDay(day: string): string {
   const d = new Date(day + "T00:00:00");
@@ -196,7 +197,9 @@ export function StatsPage() {
         </div>
         <div className="header-actions">
           <BranchSwitcher />
-          <Link to="/">← К трубкам</Link>
+          <Link to="/" className="icon-link" title="К трубкам" aria-label="К трубкам">
+            <IconBack />
+          </Link>
         </div>
       </header>
 

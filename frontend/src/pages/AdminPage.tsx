@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { api, ApiError } from "../api/client";
 import { Appeal, OPTION_FIELD_LABELS, OptionField, SelectOption } from "../types";
 import { BranchSwitcher } from "../components/BranchSwitcher";
+import { IconBack } from "../components/icons";
 
 const FIELDS: OptionField[] = ["GOV", "CB", "FSB", "CLOSER", "STATUS"];
 
@@ -196,7 +197,9 @@ export function AdminPage() {
         </div>
         <div className="header-actions">
           <BranchSwitcher />
-          <Link to="/">← К трубкам</Link>
+          <Link to="/" className="icon-link" title="К трубкам" aria-label="К трубкам">
+            <IconBack />
+          </Link>
         </div>
       </header>
 

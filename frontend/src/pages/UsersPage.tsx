@@ -4,6 +4,7 @@ import { api, ApiError } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import { Branch, LoginEvent, ROLE_LABELS, Role, UserSummary } from "../types";
 import { BranchSwitcher } from "../components/BranchSwitcher";
+import { IconBack } from "../components/icons";
 
 function formatEventTime(iso: string): string {
   return new Date(iso).toLocaleString("ru-RU", {
@@ -291,7 +292,9 @@ export function UsersPage() {
         </div>
         <div className="header-actions">
           <BranchSwitcher />
-          <Link to="/">← К трубкам</Link>
+          <Link to="/" className="icon-link" title="К трубкам" aria-label="К трубкам">
+            <IconBack />
+          </Link>
         </div>
       </header>
 
@@ -333,6 +336,7 @@ export function UsersPage() {
       {error && <p className="error-text">{error}</p>}
 
       {!loading && !error && (
+        <div className="table-scroll">
         <table className="appeals-table">
           <thead>
             <tr>
@@ -428,6 +432,7 @@ export function UsersPage() {
             })}
           </tbody>
         </table>
+        </div>
       )}
     </div>
   );

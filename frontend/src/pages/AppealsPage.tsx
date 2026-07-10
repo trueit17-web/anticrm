@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../auth/AuthContext";
 import { api, ApiError, getActiveBranchId } from "../api/client";
-import { Appeal, ROLE_LABELS, SelectOption } from "../types";
+import { Appeal, Branch, ROLE_LABELS, SelectOption } from "../types";
 import { AppealsTable, NewAppealValues } from "../components/AppealsTable";
 import { AppealFormModal, AppealFormValues } from "../components/AppealFormModal";
 import { BranchSwitcher } from "../components/BranchSwitcher";
+import { IconAdmin, IconLogout, IconStats, IconTorii, IconUsers } from "../components/icons";
 import { Link } from "react-router-dom";
 
 type TagField = "gov" | "cb" | "fsb" | "closer";
@@ -29,6 +30,7 @@ export function AppealsPage() {
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<Appeal | null>(null);
   const [creating, setCreating] = useState(false);
+  const [branchName, setBranchName] = useState<string | null>(user?.branchName ?? null);
 
   async function loadAppeals() {
     setLoading(true);
@@ -48,6 +50,17 @@ export function AppealsPage() {
     api
       .get<{ options: SelectOption[] }>("/select-options")
       .then((res) => setOptions(res.options))
+      .catch(() => {});
+    // Refines the header title for SUPERADMIN/multi-branch accounts, whose
+    // active branch (picked via the switcher) can differ from their home one.
+    api
+      .get<{ branches: Branch[] }>("/branches/mine")
+      .then((res) => {
+        const activeId = getActiveBranchId();
+        const active = activeId ? res.branches.find((b) => b.id === activeId) : null;
+        if (active) setBranchName(active.name);
+        else if (res.branches.length === 1) setBranchName(res.branches[0].name);
+      })
       .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -118,19 +131,33 @@ export function AppealsPage() {
     <div className="page">
       <header className="page-header">
         <div>
-          <h1>Трубки</h1>
+          <h1>{branchName ?? "Трубки"}</h1>
           <p className="muted">
             {user.fullName} · {ROLE_LABELS[user.role]} · за сегодня
           </p>
         </div>
         <div className="header-actions">
           <BranchSwitcher />
-          {user.role === "SUPERADMIN" && <Link to="/branches">Филиалы</Link>}
-          <Link to="/stats">Статистика</Link>
-          {(user.role === "ADMIN" || user.role === "SUPERADMIN") && <Link to="/admin">Админка</Link>}
-          {(user.role === "ADMIN" || user.role === "SUPERADMIN") && <Link to="/users">Пользователи</Link>}
-          <button className="secondary" onClick={logout}>
-            Выйти
+          {user.role === "SUPERADMIN" && (
+            <Link to="/branches" className="icon-link" title="Филиалы" aria-label="Филиалы">
+              <IconTorii />
+            </Link>
+          )}
+          <Link to="/stats" className="icon-link" title="Статистика" aria-label="Статистика">
+            <IconStats />
+          </Link>
+          {(user.role === "ADMIN" || user.role === "SUPERADMIN") && (
+            <Link to="/admin" className="icon-link" title="Админка" aria-label="Админка">
+              <IconAdmin />
+            </Link>
+          )}
+          {(user.role === "ADMIN" || user.role === "SUPERADMIN") && (
+            <Link to="/users" className="icon-link" title="Пользователи" aria-label="Пользователи">
+              <IconUsers />
+            </Link>
+          )}
+          <button className="icon-link" title="Выйти" aria-label="Выйти" onClick={logout}>
+            <IconLogout />
           </button>
         </div>
       </header>
