@@ -1,7 +1,7 @@
 :root {
   color-scheme: light;
   font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --bg: #26282d;
+  --bg: #4d5058;
   --card: #faf7f0;
   --border: #e4ddc9;
   --text: #241f1a;
@@ -20,27 +20,7 @@ body {
   margin: 0;
   min-height: 100vh;
   color: var(--text-on-dark);
-  background-color: var(--bg);
-  /* Subtle seigaiha (青海波) wave-scale motif — the "endless waves" pattern
-     worn on armor and kimono since the samurai era — tiled at low opacity
-     so it reads as texture, not decoration. */
-  background-image: radial-gradient(
-      circle at 100% 50%,
-      transparent 23%,
-      rgba(236, 231, 219, 0.032) 24%,
-      rgba(236, 231, 219, 0.032) 33%,
-      transparent 34%,
-      transparent 100%
-    ),
-    radial-gradient(
-      circle at 0% 50%,
-      transparent 23%,
-      rgba(236, 231, 219, 0.032) 24%,
-      rgba(236, 231, 219, 0.032) 33%,
-      transparent 34%,
-      transparent 100%
-    );
-  background-size: 42px 21px;
+  background: linear-gradient(160deg, #575a62 0%, #454850 60%, #3c3f46 100%);
   background-attachment: fixed;
 }
 
