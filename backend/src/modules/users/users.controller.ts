@@ -3,7 +3,7 @@ import { Prisma, Role } from "@prisma/client";
 import { z } from "zod";
 import { resolveBranchId } from "../../utils/branchScope";
 import { getUserBranchAccess, setUserBranchAccess } from "../branches/branches.service";
-import { createUser, listUsers, updateUser } from "./users.service";
+import { createUser, getUserLoginEvents, listUsers, updateUser } from "./users.service";
 
 export async function listUsersHandler(req: Request, res: Response) {
   const branchId = await resolveBranchId(req);
@@ -89,4 +89,14 @@ export async function setUserBranchAccessHandler(req: Request, res: Response) {
   }
   const access = await setUserBranchAccess(id, parsed.data.branchIds);
   res.json({ branches: access.map((a) => a.branch) });
+}
+
+export async function getUserLoginEventsHandler(req: Request, res: Response) {
+  const id = Number(req.params.id);
+  const branchId = await resolveBranchId(req);
+  const events = await getUserLoginEvents(id, branchId);
+  if (events === null) {
+    return res.status(404).json({ error: "Пользователь не найден" });
+  }
+  res.json({ events });
 }

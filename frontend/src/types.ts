@@ -84,6 +84,13 @@ export interface SelectOption {
   createdAt: string;
 }
 
+export interface LoginEvent {
+  id: number;
+  ip: string | null;
+  userAgent: string | null;
+  createdAt: string;
+}
+
 export interface HistoryEntry {
   id: number;
   field: string;

@@ -14,7 +14,10 @@ export async function loginHandler(req: Request, res: Response) {
   }
 
   try {
-    const result = await login(parsed.data.username, parsed.data.password);
+    const result = await login(parsed.data.username, parsed.data.password, {
+      ip: req.ip ?? null,
+      userAgent: req.headers["user-agent"] ?? null,
+    });
     return res.json(result);
   } catch (err) {
     if (err instanceof InvalidCredentialsError) {

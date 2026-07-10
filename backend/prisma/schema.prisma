@@ -83,12 +83,36 @@ model User {
   branchId Int?
   branch   Branch? @relation(fields: [branchId], references: [id])
 
+  // Bumped on every successful login; a JWT is only valid if its embedded
+  // sessionVersion still matches. This is what makes logging in from a new
+  // place invalidate any token issued before it — one active session at a
+  // time per account, so a shared password stops working for the other side
+  // as soon as either party logs in again.
+  sessionVersion Int @default(0)
+
   appealsAsOperator  Appeal[]        @relation("OperatorAppeals")
   appealsAsSmsSender Appeal[]        @relation("SmsSender")
   historyEntries     AppealHistory[] @relation("HistoryChangedBy")
   branchAccess       UserBranchAccess[]
+  loginEvents        LoginEvent[]
 
   @@index([branchId])
+}
+
+// One row per successful login — lets an admin see who's been accessing an
+// account from where, e.g. to spot a shared password being used elsewhere.
+model LoginEvent {
+  id     Int  @id @default(autoincrement())
+  userId Int
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  ip        String?
+  userAgent String?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
 }
 
 model Appeal {

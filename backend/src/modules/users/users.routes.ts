@@ -4,6 +4,7 @@ import { requireAuth, requireRole } from "../../middleware/auth";
 import {
   createUserHandler,
   getUserBranchAccessHandler,
+  getUserLoginEventsHandler,
   listUsersHandler,
   setUserBranchAccessHandler,
   updateUserHandler,
@@ -24,3 +25,10 @@ usersRouter.patch("/:id", requireRole(Role.ADMIN, Role.SUPERADMIN), asyncHandler
 // Only SUPERADMIN grants a user access to branches beyond their home one.
 usersRouter.get("/:id/branch-access", requireRole(Role.SUPERADMIN), asyncHandler(getUserBranchAccessHandler));
 usersRouter.put("/:id/branch-access", requireRole(Role.SUPERADMIN), asyncHandler(setUserBranchAccessHandler));
+
+// Admin/superadmin can review who's been logging into an account from where.
+usersRouter.get(
+  "/:id/login-events",
+  requireRole(Role.ADMIN, Role.SUPERADMIN),
+  asyncHandler(getUserLoginEventsHandler)
+);

@@ -68,3 +68,18 @@ export async function updateUser(
   const user = await prisma.user.findUnique({ where: { id }, select: publicUserSelect });
   return user ? toUserSummary(user) : null;
 }
+
+// branchId === null means SUPERADMIN with no branch selected — may inspect
+// anyone's login history; everyone else is confined to their own branch's accounts.
+export async function getUserLoginEvents(id: number, branchId: number | null) {
+  const where = branchId === null ? { id } : { id, branchId };
+  const user = await prisma.user.findFirst({ where, select: { id: true } });
+  if (!user) return null;
+
+  return prisma.loginEvent.findMany({
+    where: { userId: id },
+    orderBy: { createdAt: "desc" },
+    take: 20,
+    select: { id: true, ip: true, userAgent: true, createdAt: true },
+  });
+}

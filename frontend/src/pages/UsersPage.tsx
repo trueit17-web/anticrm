@@ -1,9 +1,19 @@
-import { FormEvent, useEffect, useState } from "react";
+import { Fragment, FormEvent, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, ApiError } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
-import { Branch, ROLE_LABELS, Role, UserSummary } from "../types";
+import { Branch, LoginEvent, ROLE_LABELS, Role, UserSummary } from "../types";
 import { BranchSwitcher } from "../components/BranchSwitcher";
+
+function formatEventTime(iso: string): string {
+  return new Date(iso).toLocaleString("ru-RU", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
 function EditUserRow({
   user,
@@ -137,6 +147,59 @@ function BranchAccessRow({
   );
 }
 
+function LoginHistoryRow({
+  userId,
+  colSpan,
+  onClose,
+}: {
+  userId: number;
+  colSpan: number;
+  onClose: () => void;
+}) {
+  const [events, setEvents] = useState<LoginEvent[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    api
+      .get<{ events: LoginEvent[] }>(`/users/${userId}/login-events`)
+      .then((res) => setEvents(res.events))
+      .catch((err) => setError(err instanceof ApiError ? err.message : "Не удалось загрузить"));
+  }, [userId]);
+
+  return (
+    <tr>
+      <td colSpan={colSpan}>
+        <div className="login-history">
+          <div className="login-history-head">
+            <span className="muted">История входов (последние 20)</span>
+            <button className="link-button" onClick={onClose}>
+              Свернуть
+            </button>
+          </div>
+          {error && <p className="error-text">{error}</p>}
+          {!error && events === null && <p className="muted">Загрузка...</p>}
+          {!error && events !== null && events.length === 0 && (
+            <p className="muted">Входов пока не было.</p>
+          )}
+          {!error && events !== null && events.length > 0 && (
+            <ul className="login-history-list">
+              {events.map((e) => (
+                <li key={e.id}>
+                  <span>{formatEventTime(e.createdAt)}</span>
+                  <span className="muted">{e.ip ?? "—"}</span>
+                  <span className="muted login-history-ua" title={e.userAgent ?? undefined}>
+                    {e.userAgent ?? "—"}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </td>
+    </tr>
+  );
+}
+
 export function UsersPage() {
   const { user: currentUser } = useAuth();
   const isSuperadmin = currentUser?.role === "SUPERADMIN";
@@ -150,6 +213,7 @@ export function UsersPage() {
   const [error, setError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [accessEditingId, setAccessEditingId] = useState<number | null>(null);
+  const [loginHistoryId, setLoginHistoryId] = useState<number | null>(null);
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -211,6 +275,7 @@ export function UsersPage() {
   }
 
   const editColSpan = isSuperadmin ? 5 : 3;
+  const totalColumns = isSuperadmin ? 7 : 5;
 
   return (
     <div className="page">
@@ -311,38 +376,54 @@ export function UsersPage() {
                   />
                 );
               }
+              const historyOpen = loginHistoryId === u.id;
               return (
-                <tr key={u.id}>
-                  <td>{u.username}</td>
-                  <td>{u.fullName}</td>
-                  <td>
-                    <select value={u.role} onChange={(e) => changeRole(u, e.target.value as Role)}>
-                      {assignableRoles.map((value) => (
-                        <option key={value} value={value}>
-                          {ROLE_LABELS[value]}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                  {isSuperadmin && <td>{u.branch?.name ?? "—"}</td>}
-                  {isSuperadmin && (
-                    <td>{u.branchAccess.length > 0 ? u.branchAccess.map((b) => b.name).join(", ") : "—"}</td>
-                  )}
-                  <td>{u.active ? "Активен" : "Отключён"}</td>
-                  <td>
-                    <button className="link-button" onClick={() => setEditingId(u.id)}>
-                      Редактировать
-                    </button>{" "}
+                <Fragment key={u.id}>
+                  <tr>
+                    <td>{u.username}</td>
+                    <td>{u.fullName}</td>
+                    <td>
+                      <select value={u.role} onChange={(e) => changeRole(u, e.target.value as Role)}>
+                        {assignableRoles.map((value) => (
+                          <option key={value} value={value}>
+                            {ROLE_LABELS[value]}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    {isSuperadmin && <td>{u.branch?.name ?? "—"}</td>}
                     {isSuperadmin && (
-                      <button className="link-button" onClick={() => setAccessEditingId(u.id)}>
-                        Доступ
+                      <td>{u.branchAccess.length > 0 ? u.branchAccess.map((b) => b.name).join(", ") : "—"}</td>
+                    )}
+                    <td>{u.active ? "Активен" : "Отключён"}</td>
+                    <td>
+                      <button className="link-button" onClick={() => setEditingId(u.id)}>
+                        Редактировать
+                      </button>{" "}
+                      {isSuperadmin && (
+                        <button className="link-button" onClick={() => setAccessEditingId(u.id)}>
+                          Доступ
+                        </button>
+                      )}{" "}
+                      <button
+                        className="link-button"
+                        onClick={() => setLoginHistoryId(historyOpen ? null : u.id)}
+                      >
+                        {historyOpen ? "Скрыть входы" : "История входов"}
+                      </button>{" "}
+                      <button className="link-button" onClick={() => toggleActive(u)}>
+                        {u.active ? "Отключить" : "Включить"}
                       </button>
-                    )}{" "}
-                    <button className="link-button" onClick={() => toggleActive(u)}>
-                      {u.active ? "Отключить" : "Включить"}
-                    </button>
-                  </td>
-                </tr>
+                    </td>
+                  </tr>
+                  {historyOpen && (
+                    <LoginHistoryRow
+                      userId={u.id}
+                      colSpan={totalColumns}
+                      onClose={() => setLoginHistoryId(null)}
+                    />
+                  )}
+                </Fragment>
               );
             })}
           </tbody>

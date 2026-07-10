@@ -493,3 +493,40 @@ a {
   gap: 6px;
   font-size: 14px;
 }
+
+.login-history {
+  padding: 4px 0;
+}
+
+.login-history-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.login-history-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.login-history-list li {
+  display: flex;
+  gap: 16px;
+  font-size: 13px;
+}
+
+.login-history-list li > span:first-child {
+  min-width: 130px;
+}
+
+.login-history-ua {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 480px;
+}
