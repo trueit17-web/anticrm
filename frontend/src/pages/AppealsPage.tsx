@@ -32,16 +32,23 @@ export function AppealsPage() {
   const [creating, setCreating] = useState(false);
   const [branchName, setBranchName] = useState<string | null>(user?.branchName ?? null);
 
-  async function loadAppeals() {
-    setLoading(true);
-    setError(null);
+  // `silent` is used for the background poll below: it refreshes the data
+  // without flashing the loading state or an error banner over the table
+  // the operator is currently looking at / working in.
+  async function loadAppeals(opts?: { silent?: boolean }) {
+    if (!opts?.silent) {
+      setLoading(true);
+      setError(null);
+    }
     try {
       const res = await api.get<{ appeals: Appeal[] }>("/appeals");
       setAppeals(res.appeals);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Не удалось загрузить трубки");
+      if (!opts?.silent) {
+        setError(err instanceof ApiError ? err.message : "Не удалось загрузить трубки");
+      }
     } finally {
-      setLoading(false);
+      if (!opts?.silent) setLoading(false);
     }
   }
 
@@ -62,6 +69,18 @@ export function AppealsPage() {
         else if (res.branches.length === 1) setBranchName(res.branches[0].name);
       })
       .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    // Keeps everyone's table in sync with what other operators are doing —
+    // paused while the tab isn't visible so it doesn't poll in the background.
+    const id = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        loadAppeals({ silent: true });
+      }
+    }, 5000);
+    return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
