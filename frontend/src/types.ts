@@ -82,6 +82,9 @@ export interface SelectOption {
   value: string;
   order: number;
   color: string | null;
+  // Only meaningful for field "STATUS": the status a new trubka gets when
+  // none is set explicitly.
+  isDefault: boolean;
   createdAt: string;
 }
 

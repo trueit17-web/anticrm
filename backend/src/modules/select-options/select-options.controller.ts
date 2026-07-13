@@ -47,6 +47,7 @@ const updateSchema = z.object({
     .regex(/^#[0-9a-fA-F]{6}$/, "Цвет должен быть в формате #rrggbb")
     .nullable()
     .optional(),
+  isDefault: z.boolean().optional(),
 });
 
 export async function updateOptionHandler(req: Request, res: Response) {

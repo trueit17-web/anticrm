@@ -61,7 +61,13 @@ function OptionFieldEditor({
     onChange();
   }
 
+  async function handleSetDefault(id: number) {
+    await api.patch(`/select-options/${id}`, { isDefault: true });
+    onChange();
+  }
+
   const showColor = field === "STATUS";
+  const showDefault = field === "STATUS";
 
   return (
     <section className="stats-section">
@@ -88,6 +94,16 @@ function OptionFieldEditor({
                     ))}
                   </span>
                 )}
+                {showDefault &&
+                  (o.isDefault ? (
+                    <span className="default-badge" title="Статус новых трубок по умолчанию">
+                      ★ По умолчанию
+                    </span>
+                  ) : (
+                    <button className="link-button" onClick={() => handleSetDefault(o.id)}>
+                      Сделать по умолчанию
+                    </button>
+                  ))}
                 <button className="link-button" onClick={() => handleDelete(o.id)}>
                   Удалить
                 </button>

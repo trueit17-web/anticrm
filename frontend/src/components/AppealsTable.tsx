@@ -23,9 +23,11 @@ export interface NewAppealValues {
 }
 
 function NewAppealRow({
+  defaultStatus,
   onCancel,
   onSubmit,
 }: {
+  defaultStatus: string;
   onCancel: () => void;
   onSubmit: (values: NewAppealValues) => Promise<void>;
 }) {
@@ -99,7 +101,7 @@ function NewAppealRow({
           зададутся после создания
         </td>
         <td className="muted">—</td>
-        <td className="muted">Новое</td>
+        <td className="muted">{defaultStatus}</td>
         <td>
           <input
             placeholder="Описание"
@@ -145,6 +147,7 @@ export function AppealsTable({
   closerOptions,
   statusOptions,
   statusColors,
+  defaultStatus,
   creating,
   onCancelCreate,
   onSubmitCreate,
@@ -162,6 +165,7 @@ export function AppealsTable({
   closerOptions: string[];
   statusOptions: string[];
   statusColors: Record<string, string>;
+  defaultStatus: string;
   creating: boolean;
   onCancelCreate: () => void;
   onSubmitCreate: (values: NewAppealValues) => Promise<void>;
@@ -303,7 +307,9 @@ export function AppealsTable({
               </tr>
             );
           })}
-          {creating && <NewAppealRow onCancel={onCancelCreate} onSubmit={onSubmitCreate} />}
+          {creating && (
+            <NewAppealRow defaultStatus={defaultStatus} onCancel={onCancelCreate} onSubmit={onSubmitCreate} />
+          )}
         </tbody>
       </table>
     </div>

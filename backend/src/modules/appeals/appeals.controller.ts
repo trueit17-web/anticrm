@@ -1,7 +1,8 @@
 import { Request, Response } from "express";
-import { Role } from "@prisma/client";
+import { OptionField, Role } from "@prisma/client";
 import { z } from "zod";
 import { resolveBranchId } from "../../utils/branchScope";
+import { getDefaultOptionValue } from "../select-options/select-options.service";
 import {
   createAppeal,
   deleteAppeal,
@@ -54,8 +55,15 @@ export async function createAppealHandler(req: Request, res: Response) {
     return res.status(400).json({ error: "Проверьте поля формы", details: parsed.error.flatten() });
   }
 
+  // An explicit status in the request wins; otherwise fall back to whichever
+  // STATUS option the branch has marked as default (Админка), and if none
+  // is configured, omit the key entirely so Prisma's own column default
+  // ("Новое") applies.
+  const status = parsed.data.status ?? (await getDefaultOptionValue(branchId, OptionField.STATUS));
+
   const appeal = await createAppeal({
     ...parsed.data,
+    status,
     branchId,
     operatorId: req.user!.id,
   });

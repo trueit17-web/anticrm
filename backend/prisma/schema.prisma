@@ -62,6 +62,10 @@ model SelectOption {
   // Only meaningful for field=STATUS: the row-highlight color for appeals
   // with this status. Hex string, e.g. "#dcfce7".
   color     String?
+  // Only meaningful for field=STATUS: the status a new trubka gets when
+  // none is set explicitly. At most one true per branch+field — enforced
+  // in the service layer (unset the others) rather than in the DB.
+  isDefault Boolean     @default(false)
   createdAt DateTime    @default(now())
 
   @@unique([branchId, field, value])

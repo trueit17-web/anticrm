@@ -525,6 +525,13 @@ a {
   box-shadow: 0 0 0 2px var(--card);
 }
 
+.default-badge {
+  color: var(--primary-dark);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .page-loading {
   padding: 60px;
   text-align: center;

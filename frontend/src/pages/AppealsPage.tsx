@@ -22,6 +22,11 @@ function statusColorMap(options: SelectOption[]): Record<string, string> {
   return map;
 }
 
+function defaultStatusValue(options: SelectOption[]): string {
+  const statuses = options.filter((o) => o.field === "STATUS");
+  return statuses.find((o) => o.isDefault)?.value ?? statuses[0]?.value ?? "Новое";
+}
+
 export function AppealsPage() {
   const { user, logout } = useAuth();
   const [appeals, setAppeals] = useState<Appeal[]>([]);
@@ -206,6 +211,7 @@ export function AppealsPage() {
             closerOptions={optionValues(options, "CLOSER")}
             statusOptions={optionValues(options, "STATUS")}
             statusColors={statusColorMap(options)}
+            defaultStatus={defaultStatusValue(options)}
             creating={creating}
             onCancelCreate={() => setCreating(false)}
             onSubmitCreate={handleSubmitCreate}
