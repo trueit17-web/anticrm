@@ -23,10 +23,12 @@ export interface NewAppealValues {
 }
 
 function NewAppealRow({
+  rowNumber,
   defaultStatus,
   onCancel,
   onSubmit,
 }: {
+  rowNumber: number;
   defaultStatus: string;
   onCancel: () => void;
   onSubmit: (values: NewAppealValues) => Promise<void>;
@@ -64,6 +66,7 @@ function NewAppealRow({
   return (
     <>
       <tr className="new-appeal-row">
+        <td className="muted">{rowNumber}</td>
         <td>
           <input
             type="date"
@@ -124,7 +127,7 @@ function NewAppealRow({
       </tr>
       {error && (
         <tr>
-          <td colSpan={13} className="error-text">
+          <td colSpan={14} className="error-text">
             {error}
           </td>
         </tr>
@@ -193,6 +196,7 @@ export function AppealsTable({
     <div className="table-scroll">
       <table className="appeals-table">
         <colgroup>
+          <col style={{ width: 36 }} />
           <col style={{ width: 110 }} />
           <col style={{ width: 130 }} />
           <col style={{ width: 160 }} />
@@ -209,6 +213,7 @@ export function AppealsTable({
         </colgroup>
         <thead>
           <tr>
+            <th>№</th>
             <th>Дата</th>
             <th>Телефон</th>
             <th>Данные клиента</th>
@@ -227,17 +232,18 @@ export function AppealsTable({
         <tbody>
           {appeals.length === 0 && !creating && (
             <tr>
-              <td colSpan={13} className="empty-state">
+              <td colSpan={14} className="empty-state">
                 Трубок пока нет.
               </td>
             </tr>
           )}
-          {appeals.map((appeal) => {
+          {appeals.map((appeal, index) => {
             const editable = canEditAppeal(currentUser, appeal);
             const smsSent = !!appeal.smsSentBy;
             const rowColor = statusColors[appeal.status];
             return (
               <tr key={appeal.id} style={rowColor ? { backgroundColor: rowColor } : undefined}>
+                <td className="muted">{index + 1}</td>
                 <td>
                   {appeal.operator.fullName}, {formatTime(appeal.createdAt)}
                   {appeal.reportedTime && (
@@ -308,7 +314,12 @@ export function AppealsTable({
             );
           })}
           {creating && (
-            <NewAppealRow defaultStatus={defaultStatus} onCancel={onCancelCreate} onSubmit={onSubmitCreate} />
+            <NewAppealRow
+              rowNumber={appeals.length + 1}
+              defaultStatus={defaultStatus}
+              onCancel={onCancelCreate}
+              onSubmit={onSubmitCreate}
+            />
           )}
         </tbody>
       </table>
