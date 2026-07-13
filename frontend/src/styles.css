@@ -459,6 +459,47 @@ a {
   display: block;
 }
 
+.stats-panels {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.stats-panel {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  color: var(--text);
+}
+
+.stats-panel-main {
+  flex: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+
+.stats-panel-side {
+  flex: 1;
+  min-width: 0;
+}
+
+.stats-subtable h3 {
+  font-size: 14px;
+  margin: 0 0 8px;
+}
+
+.sortable-th {
+  cursor: pointer;
+  user-select: none;
+}
+
+.sortable-th:hover {
+  color: var(--primary);
+}
+
 .admin-option-list {
   list-style: none;
   padding: 0;

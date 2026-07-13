@@ -7,6 +7,13 @@ import { BranchSwitcher } from "../components/BranchSwitcher";
 import { IconBack } from "../components/icons";
 
 type Period = "today" | "week" | "custom";
+type SortKey = "label" | "count";
+type SortDir = "asc" | "desc";
+
+interface LabeledCount {
+  label: string;
+  count: number;
+}
 
 function todayInputValue(): string {
   return new Date().toISOString().slice(0, 10);
@@ -169,33 +176,61 @@ function DayAppealsTable({ appeals }: { appeals: Appeal[] }) {
   );
 }
 
-function BucketTable({ title, rows, valueHeader }: { title: string; rows: StatBucket[]; valueHeader: string }) {
+// Breakdown table with clickable column headers — click "Сотрудник"/"Госы"/
+// etc. to sort alphabetically, click "Трубок" to sort by count; click again
+// to flip direction.
+function SortableBreakdown({ title, labelHeader, rows }: { title: string; labelHeader: string; rows: LabeledCount[] }) {
+  const [sortKey, setSortKey] = useState<SortKey>("count");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+
+  function toggleSort(key: SortKey) {
+    if (key === sortKey) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir(key === "count" ? "desc" : "asc");
+    }
+  }
+
+  function arrow(key: SortKey) {
+    if (sortKey !== key) return "";
+    return sortDir === "asc" ? " ▲" : " ▼";
+  }
+
+  const sorted = [...rows].sort((a, b) => {
+    const cmp = sortKey === "count" ? a.count - b.count : a.label.localeCompare(b.label, "ru");
+    return sortDir === "asc" ? cmp : -cmp;
+  });
+
   return (
-    <section className="stats-section">
-      <h2>{title}</h2>
+    <div className="stats-subtable">
+      <h3>{title}</h3>
       {rows.length === 0 ? (
         <p className="empty-state">Нет данных.</p>
       ) : (
-        <div className="table-scroll">
-          <table className="appeals-table">
-            <thead>
-              <tr>
-                <th>{valueHeader}</th>
-                <th>Количество трубок</th>
+        <table className="appeals-table">
+          <thead>
+            <tr>
+              <th className="sortable-th" onClick={() => toggleSort("label")}>
+                {labelHeader}
+                {arrow("label")}
+              </th>
+              <th className="sortable-th" onClick={() => toggleSort("count")}>
+                Трубок{arrow("count")}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((r) => (
+              <tr key={r.label}>
+                <td>{r.label}</td>
+                <td>{r.count}</td>
               </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r.value}>
-                  <td>{r.value}</td>
-                  <td>{r.count}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </table>
       )}
-    </section>
+    </div>
   );
 }
 
@@ -284,6 +319,10 @@ export function StatsPage() {
             </label>
           </>
         )}
+        <label>
+          За день
+          <input type="date" value={selectedDay} onChange={(e) => loadDay(e.target.value)} />
+        </label>
       </div>
 
       {loading && <p>Загрузка...</p>}
@@ -305,45 +344,36 @@ export function StatsPage() {
             </div>
           </section>
 
-          <section className="stats-section">
-            <h2>Трубки за выбранный день</h2>
-            <div className="inline-form">
-              <label>
-                Дата
-                <input type="date" value={selectedDay} onChange={(e) => loadDay(e.target.value)} />
-              </label>
-            </div>
-            {selectedDay && (dayLoading ? <p>Загрузка...</p> : <DayAppealsTable appeals={dayAppeals} />)}
-          </section>
+          {selectedDay && (
+            <section className="stats-section">
+              <h2>Трубки за {formatDay(selectedDay)}</h2>
+              {dayLoading ? <p>Загрузка...</p> : <DayAppealsTable appeals={dayAppeals} />}
+            </section>
+          )}
 
           <section className="stats-section">
-            <h2>По сотрудникам</h2>
-            {byOperator.length === 0 ? (
-              <p className="empty-state">Нет данных.</p>
-            ) : (
-              <div className="table-scroll">
-                <table className="appeals-table">
-                  <thead>
-                    <tr>
-                      <th>Сотрудник</th>
-                      <th>Количество трубок</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {byOperator.map((o) => (
-                      <tr key={o.operatorId}>
-                        <td>{o.fullName}</td>
-                        <td>{o.count}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            <div className="stats-panels">
+              <div className="stats-panel stats-panel-main">
+                <SortableBreakdown
+                  title="По трубкам"
+                  labelHeader="Сотрудник"
+                  rows={byOperator.map((o) => ({ label: o.fullName, count: o.count }))}
+                />
+                <SortableBreakdown
+                  title="По Госам"
+                  labelHeader="Госы"
+                  rows={byGov.map((g) => ({ label: g.value, count: g.count }))}
+                />
               </div>
-            )}
+              <div className="stats-panel stats-panel-side">
+                <SortableBreakdown
+                  title="По Статусам"
+                  labelHeader="Статус"
+                  rows={byStatus.map((s) => ({ label: s.value, count: s.count }))}
+                />
+              </div>
+            </div>
           </section>
-
-          <BucketTable title="По полю «Госы»" rows={byGov} valueHeader="Госы" />
-          <BucketTable title="По статусу" rows={byStatus} valueHeader="Статус" />
         </>
       )}
     </div>
