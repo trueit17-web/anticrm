@@ -8,8 +8,7 @@ import {
   deleteAppeal,
   getAppeal,
   getAppealHistory,
-  getDailyStats,
-  getOperatorStats,
+  getStatsForRange,
   listAppealsByDate,
   setSmsSent,
   updateAppealWithHistory,
@@ -176,11 +175,31 @@ export async function getHistoryHandler(req: Request, res: Response) {
   res.json({ history });
 }
 
+// `to` is expected exclusive (start of the day after the last day wanted) —
+// the frontend computes this for each of its "today"/"week"/custom presets.
+// Falls back to "today" if the range is missing or unparseable.
+function parseRangeParams(req: Request): { from: Date; to: Date } {
+  const rawFrom = req.query.from;
+  const rawTo = req.query.to;
+  const from = typeof rawFrom === "string" ? new Date(rawFrom) : null;
+  const to = typeof rawTo === "string" ? new Date(rawTo) : null;
+  if (from && !Number.isNaN(from.getTime()) && to && !Number.isNaN(to.getTime())) {
+    return { from, to };
+  }
+
+  const start = new Date();
+  start.setUTCHours(0, 0, 0, 0);
+  const end = new Date(start);
+  end.setUTCDate(end.getUTCDate() + 1);
+  return { from: start, to: end };
+}
+
 export async function getStatsHandler(req: Request, res: Response) {
   const branchId = await resolveBranchId(req);
   if (branchId === null) {
-    return res.json({ byOperator: [], byDate: [] });
+    return res.json({ total: 0, byOperator: [], byGov: [], byStatus: [], byDate: [] });
   }
-  const [byOperator, byDate] = await Promise.all([getOperatorStats(branchId), getDailyStats(branchId, 30)]);
-  res.json({ byOperator, byDate });
+  const { from, to } = parseRangeParams(req);
+  const stats = await getStatsForRange(branchId, from, to);
+  res.json(stats);
 }

@@ -76,6 +76,19 @@ export interface DailyStat {
   count: number;
 }
 
+export interface StatBucket {
+  value: string;
+  count: number;
+}
+
+export interface RangeStats {
+  total: number;
+  byOperator: OperatorStat[];
+  byGov: StatBucket[];
+  byStatus: StatBucket[];
+  byDate: DailyStat[];
+}
+
 export interface SelectOption {
   id: number;
   field: OptionField;

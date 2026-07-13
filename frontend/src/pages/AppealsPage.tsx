@@ -27,6 +27,14 @@ function defaultStatusValue(options: SelectOption[]): string {
   return statuses.find((o) => o.isDefault)?.value ?? statuses[0]?.value ?? "Новое";
 }
 
+function todayInputValue(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function formatRuDate(isoDate: string): string {
+  return new Date(`${isoDate}T00:00:00`).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
 export function AppealsPage() {
   const { user, logout } = useAuth();
   const [appeals, setAppeals] = useState<Appeal[]>([]);
@@ -36,6 +44,9 @@ export function AppealsPage() {
   const [editing, setEditing] = useState<Appeal | null>(null);
   const [creating, setCreating] = useState(false);
   const [branchName, setBranchName] = useState<string | null>(user?.branchName ?? null);
+  // Only SUPERADMIN gets to pick a date other than today (see the date input
+  // in the header) — everyone else always works off today's trubki.
+  const [selectedDate, setSelectedDate] = useState(todayInputValue());
 
   // `silent` is used for the background poll below: it refreshes the data
   // without flashing the loading state or an error banner over the table
@@ -46,7 +57,7 @@ export function AppealsPage() {
       setError(null);
     }
     try {
-      const res = await api.get<{ appeals: Appeal[] }>("/appeals");
+      const res = await api.get<{ appeals: Appeal[] }>(`/appeals?date=${selectedDate}`);
       setAppeals(res.appeals);
     } catch (err) {
       if (!opts?.silent) {
@@ -58,7 +69,6 @@ export function AppealsPage() {
   }
 
   useEffect(() => {
-    loadAppeals();
     api
       .get<{ options: SelectOption[] }>("/select-options")
       .then((res) => setOptions(res.options))
@@ -78,8 +88,15 @@ export function AppealsPage() {
   }, []);
 
   useEffect(() => {
+    // Re-runs on mount and whenever the SUPERADMIN date picker changes.
+    loadAppeals();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDate]);
+
+  useEffect(() => {
     // Keeps everyone's table in sync with what other operators are doing —
     // paused while the tab isn't visible so it doesn't poll in the background.
+    // Depends on selectedDate so it keeps polling whichever date is open.
     const id = setInterval(() => {
       if (document.visibilityState === "visible") {
         loadAppeals({ silent: true });
@@ -87,7 +104,7 @@ export function AppealsPage() {
     }, 5000);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [selectedDate]);
 
   if (!user) return null;
 
@@ -151,16 +168,34 @@ export function AppealsPage() {
     }
   }
 
+  async function handleDeleteAppeal(appeal: Appeal) {
+    setAppeals((prev) => prev.filter((a) => a.id !== appeal.id));
+    try {
+      await api.delete(`/appeals/${appeal.id}`);
+    } finally {
+      await loadAppeals();
+    }
+  }
+
   return (
     <div className="page">
       <header className="page-header">
         <div>
           <h1>{branchName ?? "Трубки"}</h1>
           <p className="muted">
-            {user.fullName} · {ROLE_LABELS[user.role]} · за сегодня
+            {user.fullName} · {ROLE_LABELS[user.role]} ·{" "}
+            {selectedDate === todayInputValue() ? "за сегодня" : `за ${formatRuDate(selectedDate)}`}
           </p>
         </div>
         <div className="header-actions">
+          {user.role === "SUPERADMIN" && (
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              title="Показать трубки за дату"
+            />
+          )}
           <BranchSwitcher />
           {user.role === "SUPERADMIN" && (
             <Link to="/branches" className="icon-link" title="Филиалы" aria-label="Филиалы">
@@ -205,6 +240,7 @@ export function AppealsPage() {
             onToggleIntake={handleToggleIntake}
             onInlineTagChange={handleInlineTagChange}
             onInlineStatusChange={handleInlineStatusChange}
+            onDelete={user.role === "SUPERADMIN" ? handleDeleteAppeal : undefined}
             govOptions={optionValues(options, "GOV")}
             cbOptions={optionValues(options, "CB")}
             fsbOptions={optionValues(options, "FSB")}
@@ -212,6 +248,7 @@ export function AppealsPage() {
             statusOptions={optionValues(options, "STATUS")}
             statusColors={statusColorMap(options)}
             defaultStatus={defaultStatusValue(options)}
+            listDate={selectedDate}
             creating={creating}
             onCancelCreate={() => setCreating(false)}
             onSubmitCreate={handleSubmitCreate}

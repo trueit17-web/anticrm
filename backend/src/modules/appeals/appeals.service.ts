@@ -174,41 +174,67 @@ export interface OperatorStat {
   count: number;
 }
 
+export interface StatBucket {
+  value: string;
+  count: number;
+}
+
 export interface DailyStat {
   day: string;
   count: number;
 }
 
-export async function getOperatorStats(branchId: number): Promise<OperatorStat[]> {
-  const grouped = await prisma.appeal.groupBy({
-    by: ["operatorId"],
-    where: { branchId },
-    _count: { _all: true },
-  });
+export interface RangeStats {
+  total: number;
+  byOperator: OperatorStat[];
+  byGov: StatBucket[];
+  byStatus: StatBucket[];
+  byDate: DailyStat[];
+}
 
-  const operatorIds = grouped.map((g) => g.operatorId);
+// `to` is exclusive — callers pass the start of the day *after* the last day
+// they want included, same convention as dayRange() above.
+export async function getStatsForRange(branchId: number, from: Date, to: Date): Promise<RangeStats> {
+  const where = { branchId, date: { gte: from, lt: to } };
+
+  const [operatorGroups, govGroups, statusGroups, dateRows, total] = await Promise.all([
+    prisma.appeal.groupBy({ by: ["operatorId"], where, _count: { _all: true } }),
+    prisma.appeal.groupBy({ by: ["gov"], where, _count: { _all: true } }),
+    prisma.appeal.groupBy({ by: ["status"], where, _count: { _all: true } }),
+    prisma.$queryRaw<{ day: string; count: bigint }[]>`
+      SELECT to_char(date_trunc('day', "date"), 'YYYY-MM-DD') AS day, count(*)::bigint AS count
+      FROM "Appeal"
+      WHERE "branchId" = ${branchId} AND "date" >= ${from} AND "date" < ${to}
+      GROUP BY day
+      ORDER BY day
+    `,
+    prisma.appeal.count({ where }),
+  ]);
+
+  const operatorIds = operatorGroups.map((g) => g.operatorId);
   const users = await prisma.user.findMany({
     where: { id: { in: operatorIds } },
     select: { id: true, fullName: true },
   });
   const nameById = new Map(users.map((u) => [u.id, u.fullName]));
 
-  return grouped
+  const byOperator = operatorGroups
     .map((g) => ({
       operatorId: g.operatorId,
       fullName: nameById.get(g.operatorId) ?? "—",
       count: g._count._all,
     }))
     .sort((a, b) => b.count - a.count);
-}
 
-export async function getDailyStats(branchId: number, days: number): Promise<DailyStat[]> {
-  const rows = await prisma.$queryRaw<{ day: string; count: bigint }[]>`
-    SELECT to_char(date_trunc('day', "date"), 'YYYY-MM-DD') AS day, count(*)::bigint AS count
-    FROM "Appeal"
-    WHERE "branchId" = ${branchId} AND "date" >= NOW() - (${days}::text || ' days')::interval
-    GROUP BY day
-    ORDER BY day
-  `;
-  return rows.map((r) => ({ day: r.day, count: Number(r.count) }));
+  const byGov = govGroups
+    .map((g) => ({ value: g.gov ?? "—", count: g._count._all }))
+    .sort((a, b) => b.count - a.count);
+
+  const byStatus = statusGroups
+    .map((g) => ({ value: g.status, count: g._count._all }))
+    .sort((a, b) => b.count - a.count);
+
+  const byDate = dateRows.map((r) => ({ day: r.day, count: Number(r.count) }));
+
+  return { total, byOperator, byGov, byStatus, byDate };
 }

@@ -8,10 +8,6 @@ function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
 }
 
-function todayInputValue(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
 type TagField = "gov" | "cb" | "fsb" | "closer";
 
 export interface NewAppealValues {
@@ -24,17 +20,19 @@ export interface NewAppealValues {
 
 function NewAppealRow({
   rowNumber,
+  initialDate,
   defaultStatus,
   onCancel,
   onSubmit,
 }: {
   rowNumber: number;
+  initialDate: string;
   defaultStatus: string;
   onCancel: () => void;
   onSubmit: (values: NewAppealValues) => Promise<void>;
 }) {
   const [values, setValues] = useState<NewAppealValues>({
-    date: todayInputValue(),
+    date: initialDate,
     phone: "",
     clientData: "",
     dep: "",
@@ -144,6 +142,7 @@ export function AppealsTable({
   onToggleIntake,
   onInlineTagChange,
   onInlineStatusChange,
+  onDelete,
   govOptions,
   cbOptions,
   fsbOptions,
@@ -151,6 +150,7 @@ export function AppealsTable({
   statusOptions,
   statusColors,
   defaultStatus,
+  listDate,
   creating,
   onCancelCreate,
   onSubmitCreate,
@@ -162,6 +162,9 @@ export function AppealsTable({
   onToggleIntake: (appeal: Appeal, intake: boolean) => void;
   onInlineTagChange: (appeal: Appeal, field: TagField, value: string | null) => void;
   onInlineStatusChange: (appeal: Appeal, value: string) => void;
+  // Only passed for roles allowed to delete straight from this table
+  // (currently SUPERADMIN, so they can clean up any date's trubki).
+  onDelete?: (appeal: Appeal) => void;
   govOptions: string[];
   cbOptions: string[];
   fsbOptions: string[];
@@ -169,6 +172,10 @@ export function AppealsTable({
   statusOptions: string[];
   statusColors: Record<string, string>;
   defaultStatus: string;
+  // Date currently being viewed (YYYY-MM-DD) — the create row defaults to
+  // this instead of always today, so creating while browsing history (as
+  // SUPERADMIN) doesn't silently backdate to today.
+  listDate: string;
   creating: boolean;
   onCancelCreate: () => void;
   onSubmitCreate: (values: NewAppealValues) => Promise<void>;
@@ -309,6 +316,18 @@ export function AppealsTable({
                       Изменить
                     </button>
                   )}
+                  {onDelete && (
+                    <>
+                      {" "}
+                      <button
+                        className="delete-x"
+                        title="Удалить трубку"
+                        onClick={() => onDelete(appeal)}
+                      >
+                        ×
+                      </button>
+                    </>
+                  )}
                 </td>
               </tr>
             );
@@ -316,6 +335,7 @@ export function AppealsTable({
           {creating && (
             <NewAppealRow
               rowNumber={appeals.length + 1}
+              initialDate={listDate}
               defaultStatus={defaultStatus}
               onCancel={onCancelCreate}
               onSubmit={onSubmitCreate}

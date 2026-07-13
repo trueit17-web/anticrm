@@ -1,10 +1,22 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, ApiError } from "../api/client";
-import { Appeal, DailyStat, OperatorStat } from "../types";
+import { Appeal, DailyStat, OperatorStat, RangeStats, StatBucket } from "../types";
 import { detectMobileOperator } from "../lib/mobileOperator";
 import { BranchSwitcher } from "../components/BranchSwitcher";
 import { IconBack } from "../components/icons";
+
+type Period = "today" | "week" | "custom";
+
+function todayInputValue(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function addDays(isoDate: string, delta: number): string {
+  const d = new Date(`${isoDate}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + delta);
+  return d.toISOString().slice(0, 10);
+}
 
 function formatDay(day: string): string {
   const d = new Date(day + "T00:00:00");
@@ -22,7 +34,7 @@ function formatDateTime(dateIso: string, timeSourceIso: string): string {
 
 function DailyChart({ data, onPick }: { data: DailyStat[]; onPick: (day: string) => void }) {
   if (data.length === 0) {
-    return <p className="empty-state">Нет данных за последние 30 дней.</p>;
+    return <p className="empty-state">Нет данных за выбранный период.</p>;
   }
 
   const max = Math.max(...data.map((d) => d.count), 1);
@@ -157,8 +169,45 @@ function DayAppealsTable({ appeals }: { appeals: Appeal[] }) {
   );
 }
 
+function BucketTable({ title, rows, valueHeader }: { title: string; rows: StatBucket[]; valueHeader: string }) {
+  return (
+    <section className="stats-section">
+      <h2>{title}</h2>
+      {rows.length === 0 ? (
+        <p className="empty-state">Нет данных.</p>
+      ) : (
+        <div className="table-scroll">
+          <table className="appeals-table">
+            <thead>
+              <tr>
+                <th>{valueHeader}</th>
+                <th>Количество трубок</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.value}>
+                  <td>{r.value}</td>
+                  <td>{r.count}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
 export function StatsPage() {
+  const [period, setPeriod] = useState<Period>("today");
+  const [customFrom, setCustomFrom] = useState(todayInputValue());
+  const [customTo, setCustomTo] = useState(todayInputValue());
+
+  const [total, setTotal] = useState(0);
   const [byOperator, setByOperator] = useState<OperatorStat[]>([]);
+  const [byGov, setByGov] = useState<StatBucket[]>([]);
+  const [byStatus, setByStatus] = useState<StatBucket[]>([]);
   const [byDate, setByDate] = useState<DailyStat[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -168,15 +217,26 @@ export function StatsPage() {
   const [dayLoading, setDayLoading] = useState(false);
 
   useEffect(() => {
+    if (period === "custom" && (!customFrom || !customTo || customFrom > customTo)) {
+      return;
+    }
+    const from = period === "today" ? todayInputValue() : period === "week" ? addDays(todayInputValue(), -6) : customFrom;
+    const to = period === "custom" ? addDays(customTo, 1) : addDays(todayInputValue(), 1);
+
+    setLoading(true);
+    setError(null);
     api
-      .get<{ byOperator: OperatorStat[]; byDate: DailyStat[] }>("/appeals/stats")
+      .get<RangeStats>(`/appeals/stats?from=${from}&to=${to}`)
       .then((res) => {
+        setTotal(res.total);
         setByOperator(res.byOperator);
+        setByGov(res.byGov);
+        setByStatus(res.byStatus);
         setByDate(res.byDate);
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : "Не удалось загрузить статистику"))
       .finally(() => setLoading(false));
-  }, []);
+  }, [period, customFrom, customTo]);
 
   function loadDay(day: string) {
     setSelectedDay(day);
@@ -187,7 +247,7 @@ export function StatsPage() {
       .finally(() => setDayLoading(false));
   }
 
-  const total = byOperator.reduce((sum, o) => sum + o.count, 0);
+  const periodLabel = period === "today" ? "сегодня" : period === "week" ? "7 дней" : "период";
 
   return (
     <div className="page">
@@ -203,6 +263,29 @@ export function StatsPage() {
         </div>
       </header>
 
+      <div className="inline-form">
+        <label>
+          Период
+          <select value={period} onChange={(e) => setPeriod(e.target.value as Period)}>
+            <option value="today">Сегодня</option>
+            <option value="week">Неделя</option>
+            <option value="custom">Период</option>
+          </select>
+        </label>
+        {period === "custom" && (
+          <>
+            <label>
+              С
+              <input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} />
+            </label>
+            <label>
+              По
+              <input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} />
+            </label>
+          </>
+        )}
+      </div>
+
       {loading && <p>Загрузка...</p>}
       {error && <p className="error-text">{error}</p>}
 
@@ -211,12 +294,12 @@ export function StatsPage() {
           <div className="stats-summary">
             <div className="stats-card">
               <span className="stats-card-value">{total}</span>
-              <span className="muted">Всего трубок (30 дней)</span>
+              <span className="muted">Всего трубок ({periodLabel})</span>
             </div>
           </div>
 
           <section className="stats-section">
-            <h2>Трубки по дням (последние 30 дней) — нажмите на столбец, чтобы посмотреть список</h2>
+            <h2>Трубки по дням — нажмите на столбец, чтобы посмотреть список</h2>
             <div className="table-scroll stats-chart-wrap">
               <DailyChart data={byDate} onPick={loadDay} />
             </div>
@@ -234,7 +317,7 @@ export function StatsPage() {
           </section>
 
           <section className="stats-section">
-            <h2>По операторам</h2>
+            <h2>По сотрудникам</h2>
             {byOperator.length === 0 ? (
               <p className="empty-state">Нет данных.</p>
             ) : (
@@ -258,6 +341,9 @@ export function StatsPage() {
               </div>
             )}
           </section>
+
+          <BucketTable title="По полю «Госы»" rows={byGov} valueHeader="Госы" />
+          <BucketTable title="По статусу" rows={byStatus} valueHeader="Статус" />
         </>
       )}
     </div>
