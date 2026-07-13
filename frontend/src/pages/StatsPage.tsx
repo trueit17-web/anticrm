@@ -7,8 +7,6 @@ import { BranchSwitcher } from "../components/BranchSwitcher";
 import { IconBack } from "../components/icons";
 
 type Period = "today" | "week" | "custom";
-type SortKey = "label" | "count";
-type SortDir = "asc" | "desc";
 
 interface LabeledCount {
   label: string;
@@ -176,31 +174,8 @@ function DayAppealsTable({ appeals }: { appeals: Appeal[] }) {
   );
 }
 
-// Breakdown table with clickable column headers — click "Сотрудник"/"Госы"/
-// etc. to sort alphabetically, click "Трубок" to sort by count; click again
-// to flip direction.
-function SortableBreakdown({ title, labelHeader, rows }: { title: string; labelHeader: string; rows: LabeledCount[] }) {
-  const [sortKey, setSortKey] = useState<SortKey>("count");
-  const [sortDir, setSortDir] = useState<SortDir>("desc");
-
-  function toggleSort(key: SortKey) {
-    if (key === sortKey) {
-      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    } else {
-      setSortKey(key);
-      setSortDir(key === "count" ? "desc" : "asc");
-    }
-  }
-
-  function arrow(key: SortKey) {
-    if (sortKey !== key) return "";
-    return sortDir === "asc" ? " ▲" : " ▼";
-  }
-
-  const sorted = [...rows].sort((a, b) => {
-    const cmp = sortKey === "count" ? a.count - b.count : a.label.localeCompare(b.label, "ru");
-    return sortDir === "asc" ? cmp : -cmp;
-  });
+function SortableBreakdown({ title, rows }: { title: string; rows: LabeledCount[] }) {
+  const sorted = [...rows].sort((a, b) => b.count - a.count);
 
   return (
     <div className="stats-subtable">
@@ -209,17 +184,6 @@ function SortableBreakdown({ title, labelHeader, rows }: { title: string; labelH
         <p className="empty-state">Нет данных.</p>
       ) : (
         <table className="appeals-table">
-          <thead>
-            <tr>
-              <th className="sortable-th" onClick={() => toggleSort("label")}>
-                {labelHeader}
-                {arrow("label")}
-              </th>
-              <th className="sortable-th" onClick={() => toggleSort("count")}>
-                Трубок{arrow("count")}
-              </th>
-            </tr>
-          </thead>
           <tbody>
             {sorted.map((r) => (
               <tr key={r.label}>
@@ -353,22 +317,21 @@ export function StatsPage() {
 
           <section className="stats-section">
             <div className="stats-panels">
-              <div className="stats-panel stats-panel-main">
+              <div className="stats-panel">
                 <SortableBreakdown
                   title="По трубкам"
-                  labelHeader="Сотрудник"
                   rows={byOperator.map((o) => ({ label: o.fullName, count: o.count }))}
                 />
+              </div>
+              <div className="stats-panel">
                 <SortableBreakdown
                   title="По Госам"
-                  labelHeader="Госы"
                   rows={byGov.map((g) => ({ label: g.value, count: g.count }))}
                 />
               </div>
-              <div className="stats-panel stats-panel-side">
+              <div className="stats-panel">
                 <SortableBreakdown
                   title="По Статусам"
-                  labelHeader="Статус"
                   rows={byStatus.map((s) => ({ label: s.value, count: s.count }))}
                 />
               </div>
