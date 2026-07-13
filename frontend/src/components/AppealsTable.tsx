@@ -256,7 +256,7 @@ export function AppealsTable({
                   {appeal.reportedTime && (
                     <>
                       <br />
-                      <span className="muted">событие: {appeal.reportedTime}</span>
+                      <span className="muted">код: {appeal.reportedTime}</span>
                     </>
                   )}
                 </td>

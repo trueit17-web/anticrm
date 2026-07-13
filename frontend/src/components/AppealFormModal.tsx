@@ -123,7 +123,7 @@ export function AppealFormModal({
             </label>
 
             <label>
-              Время события
+              Время кода
               <input
                 placeholder="напр. 14:35"
                 value={values.reportedTime}
