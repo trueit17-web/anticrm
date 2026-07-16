@@ -65,7 +65,7 @@ function NewAppealRow({
   return (
     <>
       <tr className="new-appeal-row">
-        <td className="muted">{rowNumber}</td>
+        <td className="muted col-num">{rowNumber}</td>
         <td>
           <input
             type="date"
@@ -99,11 +99,11 @@ function NewAppealRow({
             onKeyDown={handleKeyDown}
           />
         </td>
-        <td colSpan={2} className="muted">
+        <td colSpan={2} className="muted col-center">
           зададутся после создания
         </td>
-        <td className="muted">—</td>
-        <td className="muted">{defaultStatus}</td>
+        <td className="muted col-center">—</td>
+        <td className="muted col-center">{defaultStatus}</td>
         <td>
           <input
             placeholder="Описание"
@@ -112,7 +112,7 @@ function NewAppealRow({
             onKeyDown={handleKeyDown}
           />
         </td>
-        <td colSpan={3} className="muted">
+        <td colSpan={3} className="muted col-center">
           —
         </td>
         <td>
@@ -221,19 +221,19 @@ export function AppealsTable({
         </colgroup>
         <thead>
           <tr>
-            <th>№</th>
-            <th>Дата</th>
-            <th>Телефон</th>
-            <th>Данные клиента</th>
-            <th>Деп.</th>
-            <th>СМС</th>
-            <th>Прием</th>
-            <th>Госы</th>
-            <th>Статус</th>
-            <th>Описание</th>
-            <th>ЦБ</th>
-            <th>ФСБ</th>
-            <th>Закрыв</th>
+            <th className="col-num">🔢 №</th>
+            <th className="col-center">📅 Дата</th>
+            <th>📞 Телефон</th>
+            <th>🧾 Данные клиента</th>
+            <th>💰 Деп.</th>
+            <th className="col-center">💬 СМС</th>
+            <th className="col-center">📥 Прием</th>
+            <th className="col-center">🏛️ Госы</th>
+            <th className="col-center">🚦 Статус</th>
+            <th>📝 Описание</th>
+            <th className="col-center">🏦 ЦБ</th>
+            <th className="col-center">🛡️ ФСБ</th>
+            <th className="col-center">🔒 Закрыв</th>
             <th></th>
           </tr>
         </thead>
@@ -251,8 +251,8 @@ export function AppealsTable({
             const rowColor = statusColors[appeal.status];
             return (
               <tr key={appeal.id} style={rowColor ? { backgroundColor: rowColor } : undefined}>
-                <td className="muted">{index + 1}</td>
-                <td>
+                <td className="muted col-num">{index + 1}</td>
+                <td className="col-center">
                   {appeal.operator.fullName}, {formatTime(appeal.createdAt)}
                   {appeal.reportedTime && (
                     <>
@@ -272,7 +272,7 @@ export function AppealsTable({
                 <td className="wrap-cell" title={appeal.dep ?? undefined}>
                   {appeal.dep || "—"}
                 </td>
-                <td>
+                <td className={`col-center${smsSent ? " cell-sms-sent" : ""}`}>
                   {smsSent ? (
                     <button
                       type="button"
@@ -290,15 +290,15 @@ export function AppealsTable({
                     />
                   )}
                 </td>
-                <td className={appeal.intake ? "cell-intake-active" : undefined}>
+                <td className={`col-center${appeal.intake ? " cell-intake-active" : ""}`}>
                   <input
                     type="checkbox"
                     checked={appeal.intake}
                     onChange={(e) => onToggleIntake(appeal, e.target.checked)}
                   />
                 </td>
-                <td>{renderTagSelect(appeal, "gov", govOptions)}</td>
-                <td>
+                <td className="col-center">{renderTagSelect(appeal, "gov", govOptions)}</td>
+                <td className="col-center">
                   {canAssign ? (
                     <select value={appeal.status} onChange={(e) => onInlineStatusChange(appeal, e.target.value)}>
                       {statusOptions.map((opt) => (
@@ -314,10 +314,10 @@ export function AppealsTable({
                 <td className="wrap-cell" title={appeal.description ?? undefined}>
                   {appeal.description || "—"}
                 </td>
-                <td>{renderTagSelect(appeal, "cb", cbOptions)}</td>
-                <td>{renderTagSelect(appeal, "fsb", fsbOptions)}</td>
-                <td>{renderTagSelect(appeal, "closer", closerOptions)}</td>
-                <td>
+                <td className="col-center">{renderTagSelect(appeal, "cb", cbOptions)}</td>
+                <td className="col-center">{renderTagSelect(appeal, "fsb", fsbOptions)}</td>
+                <td className="col-center">{renderTagSelect(appeal, "closer", closerOptions)}</td>
+                <td className="col-center">
                   {editable && (
                     <button className="icon-btn" title="Изменить" aria-label="Изменить" onClick={() => onEdit(appeal)}>
                       <IconEdit width={16} height={16} />

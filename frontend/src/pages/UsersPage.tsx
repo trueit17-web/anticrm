@@ -340,12 +340,12 @@ export function UsersPage() {
         <table className="appeals-table table-auto">
           <thead>
             <tr>
-              <th>Логин</th>
-              <th>Имя</th>
-              <th>Роль</th>
-              {isSuperadmin && <th>Филиал</th>}
-              {isSuperadmin && <th>Доп. доступ</th>}
-              <th>Статус</th>
+              <th>🔑 Логин</th>
+              <th>👤 Имя</th>
+              <th className="col-center">🎭 Роль</th>
+              {isSuperadmin && <th>🏢 Филиал</th>}
+              {isSuperadmin && <th>🔐 Доп. доступ</th>}
+              <th className="col-center">🚦 Статус</th>
               <th></th>
             </tr>
           </thead>
@@ -386,7 +386,7 @@ export function UsersPage() {
                   <tr>
                     <td>{u.username}</td>
                     <td>{u.fullName}</td>
-                    <td>
+                    <td className="col-center">
                       <select value={u.role} onChange={(e) => changeRole(u, e.target.value as Role)}>
                         {assignableRoles.map((value) => (
                           <option key={value} value={value}>
@@ -399,7 +399,7 @@ export function UsersPage() {
                     {isSuperadmin && (
                       <td>{u.branchAccess.length > 0 ? u.branchAccess.map((b) => b.name).join(", ") : "—"}</td>
                     )}
-                    <td>{u.active ? "Активен" : "Отключён"}</td>
+                    <td className="col-center">{u.active ? "Активен" : "Отключён"}</td>
                     <td>
                       <button
                         className="icon-btn"

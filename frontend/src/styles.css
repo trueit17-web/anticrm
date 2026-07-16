@@ -237,6 +237,18 @@ a {
   overflow-wrap: break-word;
 }
 
+.appeals-table th {
+  font-weight: 700;
+}
+
+.appeals-table .col-num {
+  text-align: right;
+}
+
+.appeals-table .col-center {
+  text-align: center;
+}
+
 .appeals-table td input,
 .appeals-table td select {
   width: 100%;

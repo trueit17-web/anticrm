@@ -123,49 +123,49 @@ function DayAppealsTable({ appeals }: { appeals: Appeal[] }) {
         </colgroup>
         <thead>
           <tr>
-            <th>Дата</th>
-            <th>Телефон</th>
-            <th>Опер. (моб.)</th>
-            <th>Данные клиента</th>
-            <th>Деп.</th>
-            <th>СМС</th>
-            <th>Прием</th>
-            <th>Госы</th>
-            <th>Статус</th>
-            <th>Описание</th>
-            <th>ЦБ</th>
-            <th>ФСБ</th>
-            <th>Закрыв</th>
+            <th className="col-center">📅 Дата</th>
+            <th>📞 Телефон</th>
+            <th className="col-center">📱 Опер. (моб.)</th>
+            <th>🧾 Данные клиента</th>
+            <th>💰 Деп.</th>
+            <th className="col-center">💬 СМС</th>
+            <th className="col-center">📥 Прием</th>
+            <th className="col-center">🏛️ Госы</th>
+            <th className="col-center">🚦 Статус</th>
+            <th>📝 Описание</th>
+            <th className="col-center">🏦 ЦБ</th>
+            <th className="col-center">🛡️ ФСБ</th>
+            <th className="col-center">🔒 Закрыв</th>
           </tr>
         </thead>
         <tbody>
           {appeals.map((a) => (
             <tr key={a.id}>
-              <td>
+              <td className="col-center">
                 {a.operator.fullName}
                 <br />
                 {formatDateTime(a.date, a.createdAt)}
               </td>
               <td>{a.phone}</td>
-              <td>{detectMobileOperator(a.phone)}</td>
+              <td className="col-center">{detectMobileOperator(a.phone)}</td>
               <td className="wrap-cell" title={a.clientData ?? undefined}>
                 {a.clientData || "—"}
               </td>
               <td className="wrap-cell" title={a.dep ?? undefined}>
                 {a.dep || "—"}
               </td>
-              <td>{a.smsSentBy ? `${a.smsSentBy.fullName}` : "—"}</td>
-              <td>{a.intake ? "Да" : "—"}</td>
-              <td>{a.gov || "—"}</td>
-              <td>
+              <td className="col-center">{a.smsSentBy ? `${a.smsSentBy.fullName}` : "—"}</td>
+              <td className="col-center">{a.intake ? "Да" : "—"}</td>
+              <td className="col-center">{a.gov || "—"}</td>
+              <td className="col-center">
                 <span className="status-pill">{a.status}</span>
               </td>
               <td className="wrap-cell" title={a.description ?? undefined}>
                 {a.description || "—"}
               </td>
-              <td>{a.cb || "—"}</td>
-              <td>{a.fsb || "—"}</td>
-              <td>{a.closer || "—"}</td>
+              <td className="col-center">{a.cb || "—"}</td>
+              <td className="col-center">{a.fsb || "—"}</td>
+              <td className="col-center">{a.closer || "—"}</td>
             </tr>
           ))}
         </tbody>
@@ -188,7 +188,7 @@ function SortableBreakdown({ title, rows }: { title: string; rows: LabeledCount[
             {sorted.map((r) => (
               <tr key={r.label}>
                 <td>{r.label}</td>
-                <td>{r.count}</td>
+                <td className="col-num">{r.count}</td>
               </tr>
             ))}
           </tbody>
