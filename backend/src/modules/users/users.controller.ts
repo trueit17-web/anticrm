@@ -1,9 +1,20 @@
 import { Request, Response } from "express";
 import { Prisma, Role } from "@prisma/client";
 import { z } from "zod";
+import path from "path";
+import fs from "fs";
 import { resolveBranchId } from "../../utils/branchScope";
+import { AVATARS_DIR } from "../../config/uploads";
 import { getUserBranchAccess, setUserBranchAccess } from "../branches/branches.service";
-import { createUser, getUserLoginEvents, listUsers, updateUser } from "./users.service";
+import {
+  createUser,
+  getUserAvatarUrl,
+  getUserCard,
+  getUserLoginEvents,
+  listUsers,
+  setUserAvatar,
+  updateUser,
+} from "./users.service";
 
 export async function listUsersHandler(req: Request, res: Response) {
   const branchId = await resolveBranchId(req);
@@ -52,6 +63,8 @@ const updateUserSchema = z.object({
   role: z.nativeEnum(Role).optional(),
   active: z.boolean().optional(),
   password: z.string().min(6).optional(),
+  telegram: z.string().nullable().optional(),
+  bio: z.string().nullable().optional(),
 });
 
 export async function updateUserHandler(req: Request, res: Response) {
@@ -99,4 +112,44 @@ export async function getUserLoginEventsHandler(req: Request, res: Response) {
     return res.status(404).json({ error: "Пользователь не найден" });
   }
   res.json({ events });
+}
+
+// Popup card shown when clicking a name in a table — any authenticated
+// employee may look up a colleague's card (name/avatar/telegram/bio + a
+// quick trubki count), same branch-visibility rule as the rest of /users.
+export async function getUserCardHandler(req: Request, res: Response) {
+  const id = Number(req.params.id);
+  const branchId = await resolveBranchId(req);
+  const card = await getUserCard(id, branchId);
+  if (!card) {
+    return res.status(404).json({ error: "Пользователь не найден" });
+  }
+  res.json({ card });
+}
+
+export async function uploadAvatarHandler(req: Request, res: Response) {
+  const id = Number(req.params.id);
+  const file = req.file;
+  if (!file) {
+    return res.status(400).json({ error: "Файл не получен" });
+  }
+
+  const branchId = await resolveBranchId(req);
+  const previousAvatarUrl = await getUserAvatarUrl(id);
+
+  const avatarUrl = `/uploads/avatars/${file.filename}`;
+  const updated = await setUserAvatar(id, branchId, avatarUrl);
+  if (!updated) {
+    // Roll back the file we just wrote — the user wasn't found/accessible.
+    fs.unlink(file.path, () => {});
+    return res.status(404).json({ error: "Пользователь не найден" });
+  }
+
+  // Best-effort cleanup of the old file so avatars don't pile up on disk.
+  if (previousAvatarUrl && previousAvatarUrl.startsWith("/uploads/avatars/")) {
+    const oldPath = path.join(AVATARS_DIR, path.basename(previousAvatarUrl));
+    fs.unlink(oldPath, () => {});
+  }
+
+  res.json({ avatarUrl });
 }

@@ -5,12 +5,16 @@ import { Appeal, DailyStat, OperatorStat, RangeStats, StatBucket } from "../type
 import { detectMobileOperator } from "../lib/mobileOperator";
 import { BranchSwitcher } from "../components/BranchSwitcher";
 import { IconBack } from "../components/icons";
+import { EmployeeNameButton } from "../components/EmployeeCard";
 
 type Period = "today" | "week" | "custom";
 
 interface LabeledCount {
   label: string;
   count: number;
+  // Only set for the "По трубкам" (operator) breakdown — lets the row's
+  // name open the employee card popup like everywhere else.
+  operatorId?: number;
 }
 
 function todayInputValue(): string {
@@ -142,7 +146,7 @@ function DayAppealsTable({ appeals }: { appeals: Appeal[] }) {
           {appeals.map((a) => (
             <tr key={a.id}>
               <td className="col-center">
-                {a.operator.fullName}
+                <EmployeeNameButton id={a.operator.id} fullName={a.operator.fullName} />
                 <br />
                 {formatDateTime(a.date, a.createdAt)}
               </td>
@@ -187,7 +191,13 @@ function SortableBreakdown({ title, rows }: { title: string; rows: LabeledCount[
           <tbody>
             {sorted.map((r) => (
               <tr key={r.label}>
-                <td>{r.label}</td>
+                <td>
+                  {r.operatorId !== undefined ? (
+                    <EmployeeNameButton id={r.operatorId} fullName={r.label} />
+                  ) : (
+                    r.label
+                  )}
+                </td>
                 <td className="col-num">{r.count}</td>
               </tr>
             ))}
@@ -332,7 +342,7 @@ export function StatsPage() {
               <div className="stats-panel">
                 <SortableBreakdown
                   title="По трубкам"
-                  rows={byOperator.map((o) => ({ label: o.fullName, count: o.count }))}
+                  rows={byOperator.map((o) => ({ label: o.fullName, count: o.count, operatorId: o.operatorId }))}
                 />
               </div>
               <div className="stats-panel">

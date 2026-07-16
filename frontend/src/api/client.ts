@@ -1,5 +1,14 @@
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4000/api";
 
+// Uploaded files (avatars etc.) are served from the API origin, but outside
+// the "/api" prefix — this strips it so <img src> can point at them directly.
+const FILE_ORIGIN = API_URL.replace(/\/api\/?$/, "");
+
+export function fileUrl(path: string | null | undefined): string | null {
+  if (!path) return null;
+  return `${FILE_ORIGIN}${path}`;
+}
+
 const TOKEN_KEY = "crm_token";
 const BRANCH_KEY = "crm_branch_id";
 
@@ -69,6 +78,26 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   return body as T;
 }
 
+async function upload<T>(path: string, formData: FormData): Promise<T> {
+  const token = getToken();
+  const headers: Record<string, string> = {};
+  if (token) headers.Authorization = `Bearer ${token}`;
+
+  // No Content-Type here — the browser sets multipart/form-data with the
+  // right boundary itself; setting it manually would break the upload.
+  const res = await fetch(`${API_URL}${withBranchParam(path)}`, {
+    method: "POST",
+    headers,
+    body: formData,
+  });
+
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new ApiError(res.status, body.error ?? "Ошибка запроса");
+  }
+  return body as T;
+}
+
 export const api = {
   get: <T>(path: string) => request<T>(path),
   post: <T>(path: string, data?: unknown) =>
@@ -78,4 +107,5 @@ export const api = {
   put: <T>(path: string, data?: unknown) =>
     request<T>(path, { method: "PUT", body: data ? JSON.stringify(data) : undefined }),
   delete: <T>(path: string) => request<T>(path, { method: "DELETE" }),
+  upload,
 };

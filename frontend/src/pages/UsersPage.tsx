@@ -1,10 +1,11 @@
 import { Fragment, FormEvent, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { api, ApiError } from "../api/client";
+import { api, ApiError, fileUrl } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import { Branch, LoginEvent, ROLE_LABELS, Role, UserSummary } from "../types";
 import { BranchSwitcher } from "../components/BranchSwitcher";
 import { IconBack, IconEdit, IconKey } from "../components/icons";
+import { EmployeeNameButton } from "../components/EmployeeCard";
 
 function formatEventTime(iso: string): string {
   return new Date(iso).toLocaleString("ru-RU", {
@@ -29,6 +30,11 @@ function EditUserRow({
 }) {
   const [fullName, setFullName] = useState(user.fullName);
   const [password, setPassword] = useState("");
+  const [telegram, setTelegram] = useState(user.telegram ?? "");
+  const [bio, setBio] = useState(user.bio ?? "");
+  const [avatarUrl, setAvatarUrl] = useState(user.avatarUrl);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -37,7 +43,11 @@ function EditUserRow({
     setError(null);
     setSaving(true);
     try {
-      const data: { fullName: string; password?: string } = { fullName };
+      const data: { fullName: string; password?: string; telegram: string; bio: string } = {
+        fullName,
+        telegram,
+        bio,
+      };
       if (password) data.password = password;
       await api.patch(`/users/${user.id}`, data);
       onSaved();
@@ -47,6 +57,25 @@ function EditUserRow({
       setSaving(false);
     }
   }
+
+  async function handleAvatarUpload() {
+    if (!avatarFile) return;
+    setError(null);
+    setAvatarUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("avatar", avatarFile);
+      const res = await api.upload<{ avatarUrl: string }>(`/users/${user.id}/avatar`, formData);
+      setAvatarUrl(res.avatarUrl);
+      setAvatarFile(null);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Не удалось загрузить фото");
+    } finally {
+      setAvatarUploading(false);
+    }
+  }
+
+  const avatarSrc = fileUrl(avatarUrl);
 
   return (
     <tr>
@@ -61,6 +90,17 @@ function EditUserRow({
             onChange={(e) => setPassword(e.target.value)}
             minLength={6}
           />
+          <input
+            placeholder="Telegram (@ник)"
+            value={telegram}
+            onChange={(e) => setTelegram(e.target.value)}
+          />
+          <textarea
+            placeholder="Описание"
+            value={bio}
+            onChange={(e) => setBio(e.target.value)}
+            rows={2}
+          />
           <button type="submit" disabled={saving}>
             {saving ? "Сохранение..." : "Сохранить"}
           </button>
@@ -68,6 +108,17 @@ function EditUserRow({
             Отмена
           </button>
         </form>
+        <div className="inline-form">
+          {avatarSrc && <img className="employee-card-avatar" src={avatarSrc} alt={fullName} />}
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            onChange={(e) => setAvatarFile(e.target.files?.[0] ?? null)}
+          />
+          <button type="button" disabled={!avatarFile || avatarUploading} onClick={handleAvatarUpload}>
+            {avatarUploading ? "Загрузка..." : "Загрузить фото"}
+          </button>
+        </div>
         {error && <p className="error-text">{error}</p>}
       </td>
     </tr>
@@ -385,7 +436,9 @@ export function UsersPage() {
                 <Fragment key={u.id}>
                   <tr>
                     <td>{u.username}</td>
-                    <td>{u.fullName}</td>
+                    <td>
+                      <EmployeeNameButton id={u.id} fullName={u.fullName} />
+                    </td>
                     <td className="col-center">
                       <select value={u.role} onChange={(e) => changeRole(u, e.target.value as Role)}>
                         {assignableRoles.map((value) => (

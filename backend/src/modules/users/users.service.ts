@@ -9,6 +9,9 @@ const publicUserSelect = {
   role: true,
   active: true,
   createdAt: true,
+  avatarUrl: true,
+  telegram: true,
+  bio: true,
   branch: { select: { id: true, name: true } },
   branchAccess: { select: { branch: { select: { id: true, name: true } } } },
 } as const;
@@ -52,13 +55,22 @@ export async function createUser(input: {
 export async function updateUser(
   id: number,
   branchId: number | null,
-  input: Partial<{ fullName: string; role: Role; active: boolean; password: string }>
+  input: Partial<{
+    fullName: string;
+    role: Role;
+    active: boolean;
+    password: string;
+    telegram: string | null;
+    bio: string | null;
+  }>
 ) {
   const data: Record<string, unknown> = {};
   if (input.fullName !== undefined) data.fullName = input.fullName;
   if (input.role !== undefined) data.role = input.role;
   if (input.active !== undefined) data.active = input.active;
   if (input.password) data.passwordHash = await hashPassword(input.password);
+  if (input.telegram !== undefined) data.telegram = input.telegram || null;
+  if (input.bio !== undefined) data.bio = input.bio || null;
 
   // branchId === null (SUPERADMIN, no branch selected) may edit anyone;
   // everyone else is confined to their own branch's accounts.
@@ -82,4 +94,58 @@ export async function getUserLoginEvents(id: number, branchId: number | null) {
     take: 20,
     select: { id: true, ip: true, userAgent: true, createdAt: true },
   });
+}
+
+function dayStart(date: Date): Date {
+  const d = new Date(date);
+  d.setUTCHours(0, 0, 0, 0);
+  return d;
+}
+
+// Popup employee card shown when clicking a name in a table — profile
+// fields plus a quick trubki count (today / last 7 days / all time).
+// branchId === null (SUPERADMIN, no branch selected) sees anyone and their
+// all-branch totals; everyone else is confined to their own branch's
+// accounts and that branch's counts, same access rule as the rest of /users.
+export async function getUserCard(id: number, branchId: number | null) {
+  const where = branchId === null ? { id } : { id, branchId };
+  const user = await prisma.user.findFirst({
+    where,
+    select: { id: true, fullName: true, avatarUrl: true, telegram: true, bio: true, branchId: true },
+  });
+  if (!user) return null;
+
+  const today = dayStart(new Date());
+  const tomorrow = new Date(today);
+  tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+  const weekAgo = new Date(today);
+  weekAgo.setUTCDate(weekAgo.getUTCDate() - 6);
+
+  const appealWhere = { operatorId: id, branchId: branchId ?? user.branchId ?? undefined, deletedAt: null };
+
+  const [todayCount, weekCount, totalCount] = await Promise.all([
+    prisma.appeal.count({ where: { ...appealWhere, date: { gte: today, lt: tomorrow } } }),
+    prisma.appeal.count({ where: { ...appealWhere, date: { gte: weekAgo, lt: tomorrow } } }),
+    prisma.appeal.count({ where: appealWhere }),
+  ]);
+
+  return {
+    id: user.id,
+    fullName: user.fullName,
+    avatarUrl: user.avatarUrl,
+    telegram: user.telegram,
+    bio: user.bio,
+    stats: { today: todayCount, week: weekCount, total: totalCount },
+  };
+}
+
+export async function setUserAvatar(id: number, branchId: number | null, avatarUrl: string) {
+  const where = branchId === null ? { id } : { id, branchId };
+  const result = await prisma.user.updateMany({ where, data: { avatarUrl } });
+  return result.count > 0;
+}
+
+export async function getUserAvatarUrl(id: number): Promise<string | null> {
+  const user = await prisma.user.findUnique({ where: { id }, select: { avatarUrl: true } });
+  return user?.avatarUrl ?? null;
 }

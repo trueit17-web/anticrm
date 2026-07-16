@@ -94,6 +94,12 @@ model User {
   // as soon as either party logs in again.
   sessionVersion Int @default(0)
 
+  // Employee-card fields, shown in the popup card when clicking a name in
+  // a table — set by an admin from the Users page, not self-service.
+  avatarUrl String?
+  telegram  String?
+  bio       String?
+
   appealsAsOperator  Appeal[]        @relation("OperatorAppeals")
   appealsAsSmsSender Appeal[]        @relation("SmsSender")
   historyEntries     AppealHistory[] @relation("HistoryChangedBy")

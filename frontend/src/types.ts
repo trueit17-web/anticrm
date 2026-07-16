@@ -33,6 +33,9 @@ export interface UserSummary {
   role: Role;
   active: boolean;
   createdAt: string;
+  avatarUrl: string | null;
+  telegram: string | null;
+  bio: string | null;
   branch: { id: number; name: string } | null;
   // Extra branches this user can switch into beyond their home branch.
   branchAccess: { id: number; name: string }[];
@@ -107,6 +110,15 @@ export interface LoginEvent {
   ip: string | null;
   userAgent: string | null;
   createdAt: string;
+}
+
+export interface UserCard {
+  id: number;
+  fullName: string;
+  avatarUrl: string | null;
+  telegram: string | null;
+  bio: string | null;
+  stats: { today: number; week: number; total: number };
 }
 
 export interface HistoryEntry {

@@ -4,12 +4,15 @@ import { requireAuth, requireRole } from "../../middleware/auth";
 import {
   createUserHandler,
   getUserBranchAccessHandler,
+  getUserCardHandler,
   getUserLoginEventsHandler,
   listUsersHandler,
   setUserBranchAccessHandler,
   updateUserHandler,
+  uploadAvatarHandler,
 } from "./users.controller";
 import { asyncHandler } from "../../utils/asyncHandler";
+import { avatarUpload } from "../../middleware/avatarUpload";
 
 export const usersRouter = Router();
 
@@ -18,9 +21,18 @@ usersRouter.use(requireAuth);
 // Manager/Admin need the user list to populate assignment dropdowns (Госы/ЦБ/ФСБ/Закрыв).
 usersRouter.get("/", requireRole(Role.MANAGER, Role.ADMIN, Role.SUPERADMIN), asyncHandler(listUsersHandler));
 
+// Any authenticated employee may open a colleague's popup card.
+usersRouter.get("/:id/card", asyncHandler(getUserCardHandler));
+
 // Only Admin manages accounts.
 usersRouter.post("/", requireRole(Role.ADMIN, Role.SUPERADMIN), asyncHandler(createUserHandler));
 usersRouter.patch("/:id", requireRole(Role.ADMIN, Role.SUPERADMIN), asyncHandler(updateUserHandler));
+usersRouter.post(
+  "/:id/avatar",
+  requireRole(Role.ADMIN, Role.SUPERADMIN),
+  avatarUpload.single("avatar"),
+  asyncHandler(uploadAvatarHandler)
+);
 
 // Only SUPERADMIN grants a user access to branches beyond their home one.
 usersRouter.get("/:id/branch-access", requireRole(Role.SUPERADMIN), asyncHandler(getUserBranchAccessHandler));

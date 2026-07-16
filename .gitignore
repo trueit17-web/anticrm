@@ -3,6 +3,9 @@ dist/
 .env
 *.log
 
+# Locally uploaded avatars — persisted via a Docker volume in prod, not committed.
+backend/uploads/
+
 # Claude Code local tooling (machine-specific paths, not part of the app)
 .claude/
 

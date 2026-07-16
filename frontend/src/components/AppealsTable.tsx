@@ -4,6 +4,7 @@ import { AuthUser } from "../types";
 import { canEditAppeal, canEditAssignments } from "../lib/permissions";
 import { detectMobileOperator } from "../lib/mobileOperator";
 import { IconEdit, IconTrash } from "./icons";
+import { EmployeeNameButton } from "./EmployeeCard";
 
 function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
@@ -253,7 +254,9 @@ export function AppealsTable({
               <tr key={appeal.id} style={rowColor ? { backgroundColor: rowColor } : undefined}>
                 <td className="muted col-num">{index + 1}</td>
                 <td className="col-center">
-                  {appeal.operator.fullName}, {formatTime(appeal.createdAt)}
+                  <EmployeeNameButton id={appeal.operator.id} fullName={appeal.operator.fullName} />
+                  {", "}
+                  {formatTime(appeal.createdAt)}
                   {appeal.reportedTime && (
                     <>
                       <br />
