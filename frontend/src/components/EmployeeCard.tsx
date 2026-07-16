@@ -24,6 +24,59 @@ function telegramHref(handle: string): string {
   return `https://t.me/${clean}`;
 }
 
+// One laurel branch as leaf placements along an arc (radius/angle in a unit
+// circle) — mirrored via an SVG transform for the other side, so there's no
+// hand-authored path data, just a formula repeated over a small leaf shape.
+function laurelBranch(radius: number, startDeg: number, endDeg: number, count: number) {
+  return Array.from({ length: count }, (_, i) => {
+    const t = count === 1 ? 0 : i / (count - 1);
+    const deg = startDeg + (endDeg - startDeg) * t;
+    const rad = (deg * Math.PI) / 180;
+    const scale = 0.68 + 0.4 * t;
+    return {
+      x: radius * Math.cos(rad),
+      y: radius * Math.sin(rad),
+      rotate: deg + 112,
+      scale,
+    };
+  });
+}
+
+// Bottom-heavy arc with a gap at the top, like a medal wreath — leaves run
+// from just past the sides down to meet at the bottom.
+const WREATH_LEAVES = laurelBranch(15, -58, 92, 6);
+
+function Wreath({ color }: { color: string }) {
+  return (
+    <svg className="week-leader-wreath" viewBox="-19 -19 38 38" aria-hidden="true">
+      <g fill={color}>
+        {WREATH_LEAVES.map((l, i) => (
+          <ellipse
+            key={i}
+            cx={0}
+            cy={0}
+            rx={2.6 * l.scale}
+            ry={1.15 * l.scale}
+            transform={`translate(${l.x} ${l.y}) rotate(${l.rotate})`}
+          />
+        ))}
+      </g>
+      <g fill={color} transform="scale(-1,1)">
+        {WREATH_LEAVES.map((l, i) => (
+          <ellipse
+            key={i}
+            cx={0}
+            cy={0}
+            rx={2.6 * l.scale}
+            ry={1.15 * l.scale}
+            transform={`translate(${l.x} ${l.y}) rotate(${l.rotate})`}
+          />
+        ))}
+      </g>
+    </svg>
+  );
+}
+
 function EmployeeAvatar({
   fullName,
   avatarUrl,
@@ -212,6 +265,7 @@ export function EmployeeAvatarButton({
       >
         <span className="week-leader-ring">
           <EmployeeAvatar className="week-leader-avatar" fullName={fullName} avatarUrl={avatarUrl} />
+          {rank <= 2 && <Wreath color={rank === 1 ? "#d9b154" : "#c0c7cf"} />}
           <span className="week-leader-rank">{rank}</span>
         </span>
       </button>
