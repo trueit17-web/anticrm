@@ -280,6 +280,23 @@ a {
   top: 0;
 }
 
+.appeals-table tbody tr td {
+  transition: background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.appeals-table tbody tr:nth-child(even) td {
+  background-color: rgba(15, 23, 42, 0.035);
+}
+
+.appeals-table tbody tr:hover td {
+  background-color: rgba(195, 154, 79, 0.18);
+}
+
+.appeals-table tbody tr:hover td:not(:last-child) {
+  box-shadow: 0 6px 14px -9px rgba(0, 0, 0, 0.55);
+  position: relative;
+}
+
 .link-button {
   background: transparent;
   color: var(--primary);
