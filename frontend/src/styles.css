@@ -297,7 +297,7 @@ a {
 }
 
 .appeals-table tbody tr:nth-child(even) td {
-  background-color: rgba(15, 23, 42, 0.035);
+  background-color: rgba(60, 100, 150, 0.06);
 }
 
 .appeals-table tbody tr:hover td {
