@@ -197,17 +197,16 @@ export interface RangeStats {
 export async function getStatsForRange(branchId: number, from: Date, to: Date): Promise<RangeStats> {
   const where = { branchId, date: { gte: from, lt: to } };
 
+  // Bucketed in JS off a typed Prisma query rather than raw SQL date_trunc:
+  // "date" is a timestamp-without-timezone column, and $queryRaw binds Date
+  // parameters through an implicit timestamptz cast that gets shifted by the
+  // server process's local timezone — silently matching/labelling the wrong
+  // calendar day. Prisma's typed query path doesn't have that problem.
   const [operatorGroups, govGroups, statusGroups, dateRows, total] = await Promise.all([
     prisma.appeal.groupBy({ by: ["operatorId"], where, _count: { _all: true } }),
     prisma.appeal.groupBy({ by: ["gov"], where, _count: { _all: true } }),
     prisma.appeal.groupBy({ by: ["status"], where, _count: { _all: true } }),
-    prisma.$queryRaw<{ day: string; count: bigint }[]>`
-      SELECT to_char(date_trunc('day', "date"), 'YYYY-MM-DD') AS day, count(*)::bigint AS count
-      FROM "Appeal"
-      WHERE "branchId" = ${branchId} AND "date" >= ${from} AND "date" < ${to}
-      GROUP BY day
-      ORDER BY day
-    `,
+    prisma.appeal.findMany({ where, select: { date: true } }),
     prisma.appeal.count({ where }),
   ]);
 
@@ -234,7 +233,14 @@ export async function getStatsForRange(branchId: number, from: Date, to: Date): 
     .map((g) => ({ value: g.status, count: g._count._all }))
     .sort((a, b) => b.count - a.count);
 
-  const byDate = dateRows.map((r) => ({ day: r.day, count: Number(r.count) }));
+  const dayCounts = new Map<string, number>();
+  for (const row of dateRows) {
+    const day = row.date.toISOString().slice(0, 10);
+    dayCounts.set(day, (dayCounts.get(day) ?? 0) + 1);
+  }
+  const byDate = [...dayCounts.entries()]
+    .map(([day, count]) => ({ day, count }))
+    .sort((a, b) => a.day.localeCompare(b.day));
 
   return { total, byOperator, byGov, byStatus, byDate };
 }

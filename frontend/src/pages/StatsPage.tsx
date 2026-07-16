@@ -246,6 +246,18 @@ export function StatsPage() {
       .finally(() => setDayLoading(false));
   }
 
+  // Picking a day directly (as opposed to clicking a bar already inside the
+  // current period) also switches Период to that single day — otherwise the
+  // summary/chart above stay tied to "Сегодня"/"Неделя" and can show "Нет
+  // данных" even though the day being looked up has appeals.
+  function pickDay(day: string) {
+    if (!day) return;
+    setPeriod("custom");
+    setCustomFrom(day);
+    setCustomTo(day);
+    loadDay(day);
+  }
+
   const periodLabel = period === "today" ? "сегодня" : period === "week" ? "7 дней" : "период";
 
   return (
@@ -285,7 +297,7 @@ export function StatsPage() {
         )}
         <label>
           За день
-          <input type="date" value={selectedDay} onChange={(e) => loadDay(e.target.value)} />
+          <input type="date" value={selectedDay} onChange={(e) => pickDay(e.target.value)} />
         </label>
       </div>
 
