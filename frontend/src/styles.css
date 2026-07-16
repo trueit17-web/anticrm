@@ -218,6 +218,16 @@ a {
   table-layout: fixed;
 }
 
+.appeals-table.table-auto {
+  width: auto;
+  table-layout: auto;
+}
+
+.appeals-table.table-auto th,
+.appeals-table.table-auto td {
+  white-space: nowrap;
+}
+
 .appeals-table th,
 .appeals-table td {
   padding: 5px 4px;
@@ -464,6 +474,29 @@ a {
 }
 
 .stats-section h2 {
+  font-size: 15px;
+  margin-bottom: 10px;
+}
+
+.fit-content {
+  width: fit-content;
+  max-width: 100%;
+}
+
+.admin-fields-grid {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 24px;
+}
+
+.admin-field-card {
+  flex: 0 1 auto;
+  min-width: 220px;
+  margin-bottom: 24px;
+}
+
+.admin-field-card h2 {
   font-size: 15px;
   margin-bottom: 10px;
 }

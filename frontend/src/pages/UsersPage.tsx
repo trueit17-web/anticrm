@@ -336,8 +336,8 @@ export function UsersPage() {
       {error && <p className="error-text">{error}</p>}
 
       {!loading && !error && (
-        <div className="table-scroll">
-        <table className="appeals-table">
+        <div className="table-scroll fit-content">
+        <table className="appeals-table table-auto">
           <thead>
             <tr>
               <th>Логин</th>

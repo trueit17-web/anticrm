@@ -70,7 +70,7 @@ function OptionFieldEditor({
   const showDefault = field === "STATUS";
 
   return (
-    <section className="stats-section">
+    <section className="admin-field-card">
       <h2>{OPTION_FIELD_LABELS[field]}</h2>
       {options.length === 0 ? (
         <p className="muted">Список пуст.</p>
@@ -162,7 +162,7 @@ function AppealsDeleteSection() {
   }
 
   return (
-    <section className="stats-section">
+    <section className="admin-field-card fit-content">
       <h2>Трубки за сегодня</h2>
       {loading && <p className="muted">Загрузка...</p>}
       {error && <p className="error-text">{error}</p>}
@@ -225,16 +225,18 @@ export function AdminPage() {
       {loading && <p>Загрузка...</p>}
       {error && <p className="error-text">{error}</p>}
 
-      {!loading &&
-        !error &&
-        FIELDS.map((field) => (
-          <OptionFieldEditor
-            key={field}
-            field={field}
-            options={options.filter((o) => o.field === field)}
-            onChange={load}
-          />
-        ))}
+      {!loading && !error && (
+        <div className="admin-fields-grid">
+          {FIELDS.map((field) => (
+            <OptionFieldEditor
+              key={field}
+              field={field}
+              options={options.filter((o) => o.field === field)}
+              onChange={load}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
