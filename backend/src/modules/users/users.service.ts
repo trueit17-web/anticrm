@@ -1,6 +1,10 @@
+import fs from "fs/promises";
+import path from "path";
 import { Role } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { hashPassword } from "../../utils/password";
+import { AVATARS_DIR } from "../../config/uploads";
+import { FetchedAvatar } from "../../utils/telegramAvatar";
 
 const publicUserSelect = {
   id: true,
@@ -148,4 +152,37 @@ export async function setUserAvatar(id: number, branchId: number | null, avatarU
 export async function getUserAvatarUrl(id: number): Promise<string | null> {
   const user = await prisma.user.findUnique({ where: { id }, select: { avatarUrl: true } });
   return user?.avatarUrl ?? null;
+}
+
+export async function getUserTelegram(id: number, branchId: number | null): Promise<string | null> {
+  const where = branchId === null ? { id } : { id, branchId };
+  const user = await prisma.user.findFirst({ where, select: { telegram: true } });
+  return user?.telegram ?? null;
+}
+
+// Writes a Telegram-fetched avatar to disk and swaps it in, same as a
+// manual upload — used when a Telegram handle is added/changed on a user.
+export async function applyFetchedAvatar(
+  id: number,
+  branchId: number | null,
+  avatar: FetchedAvatar
+): Promise<string | null> {
+  const previousAvatarUrl = await getUserAvatarUrl(id);
+
+  const filename = `${id}-${Date.now()}${avatar.ext}`;
+  const filePath = path.join(AVATARS_DIR, filename);
+  await fs.writeFile(filePath, avatar.buffer);
+
+  const avatarUrl = `/uploads/avatars/${filename}`;
+  const updated = await setUserAvatar(id, branchId, avatarUrl);
+  if (!updated) {
+    await fs.unlink(filePath).catch(() => {});
+    return null;
+  }
+
+  if (previousAvatarUrl && previousAvatarUrl.startsWith("/uploads/avatars/")) {
+    await fs.unlink(path.join(AVATARS_DIR, path.basename(previousAvatarUrl))).catch(() => {});
+  }
+
+  return avatarUrl;
 }

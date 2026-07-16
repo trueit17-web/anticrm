@@ -6,11 +6,14 @@ import fs from "fs";
 import { resolveBranchId } from "../../utils/branchScope";
 import { AVATARS_DIR } from "../../config/uploads";
 import { getUserBranchAccess, setUserBranchAccess } from "../branches/branches.service";
+import { fetchTelegramAvatar } from "../../utils/telegramAvatar";
 import {
+  applyFetchedAvatar,
   createUser,
   getUserAvatarUrl,
   getUserCard,
   getUserLoginEvents,
+  getUserTelegram,
   listUsers,
   setUserAvatar,
   updateUser,
@@ -79,10 +82,28 @@ export async function updateUserHandler(req: Request, res: Response) {
   }
 
   const branchId = await resolveBranchId(req);
+
+  // Captured before the update so we only auto-fetch a Telegram avatar when
+  // the handle is actually being added/changed, not on every unrelated save.
+  const previousTelegram = parsed.data.telegram !== undefined ? await getUserTelegram(id, branchId) : undefined;
+
   const user = await updateUser(id, branchId, parsed.data);
   if (!user) {
     return res.status(404).json({ error: "Пользователь не найден" });
   }
+
+  const newTelegram = parsed.data.telegram?.trim();
+  if (newTelegram && newTelegram !== previousTelegram) {
+    // Best-effort: Telegram has no API for this, we scrape the public t.me
+    // preview page's og:image. Silently does nothing if that fails (private
+    // account, no photo, network hiccup) — the manual upload still works.
+    const avatar = await fetchTelegramAvatar(newTelegram);
+    if (avatar) {
+      const avatarUrl = await applyFetchedAvatar(id, branchId, avatar);
+      if (avatarUrl) user.avatarUrl = avatarUrl;
+    }
+  }
+
   res.json({ user });
 }
 
