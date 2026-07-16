@@ -42,9 +42,9 @@ function laurelBranch(radius: number, startDeg: number, endDeg: number, count: n
   });
 }
 
-// Almost-closed ring with a small gap at the top (like a medal wreath) —
-// leaves sweep from just shy of 12 o'clock, around the side, to the bottom.
-const WREATH_LEAVES = laurelBranch(15, -75, 96, 9);
+// Two gaps left open — top (crown) and bottom (stars) — like a classic
+// medal wreath, rather than a fully closed ring.
+const WREATH_LEAVES = laurelBranch(15, -70, 68, 8);
 
 function WreathLeaf({
   x,
@@ -69,9 +69,44 @@ function WreathLeaf({
   );
 }
 
+// A small three-point crown sitting in the gap at the top of the wreath —
+// built from a zigzag polygon plus a band, not a traced illustration.
+function Crown({ base, highlight }: { base: string; highlight: string }) {
+  return (
+    <g transform="translate(0 -18.5)">
+      <polygon points="-6,3.4 -6,-1.6 -3,1.2 0,-3.6 3,1.2 6,-1.6 6,3.4" fill={base} />
+      <rect x={-6.3} y={3} width={12.6} height={2.2} rx={0.6} fill={base} />
+      <circle cx={-3} cy={-0.9} r={0.85} fill={highlight} />
+      <circle cx={0} cy={-2.9} r={0.95} fill={highlight} />
+      <circle cx={3} cy={-0.9} r={0.85} fill={highlight} />
+    </g>
+  );
+}
+
+// Five-point stars from a polar formula, not hand-traced coordinates.
+function starPoints(cx: number, cy: number, outerR: number, innerR: number): string {
+  const pts: string[] = [];
+  for (let i = 0; i < 10; i++) {
+    const r = i % 2 === 0 ? outerR : innerR;
+    const angle = (Math.PI / 5) * i - Math.PI / 2;
+    pts.push(`${cx + r * Math.cos(angle)},${cy + r * Math.sin(angle)}`);
+  }
+  return pts.join(" ");
+}
+
+function Stars({ color }: { color: string }) {
+  return (
+    <g fill={color}>
+      <polygon points={starPoints(-4.6, 16.4, 1.7, 0.72)} />
+      <polygon points={starPoints(0, 17.6, 2.05, 0.88)} />
+      <polygon points={starPoints(4.6, 16.4, 1.7, 0.72)} />
+    </g>
+  );
+}
+
 function Wreath({ base, highlight }: { base: string; highlight: string }) {
   return (
-    <svg className="week-leader-wreath" viewBox="-19 -19 38 38" aria-hidden="true">
+    <svg className="week-leader-wreath" viewBox="-20 -22 40 42" aria-hidden="true">
       <g>
         {WREATH_LEAVES.map((l, i) => (
           <WreathLeaf key={i} x={l.x} y={l.y} rotate={l.rotate} scale={l.scale} base={base} highlight={highlight} />
@@ -82,6 +117,8 @@ function Wreath({ base, highlight }: { base: string; highlight: string }) {
           <WreathLeaf key={i} x={l.x} y={l.y} rotate={l.rotate} scale={l.scale} base={base} highlight={highlight} />
         ))}
       </g>
+      <Crown base={base} highlight={highlight} />
+      <Stars color={base} />
     </svg>
   );
 }
@@ -248,6 +285,12 @@ export function EmployeeNameButton({ id, fullName }: { id: number; fullName: str
 // Avatar with a rank-colored ring — 1st place gold, 2nd silver, 3rd plain —
 // used by the "top of the week" header widget. Clicking it opens the same
 // employee card as the name links everywhere else.
+const WREATH_COLORS: Record<1 | 2 | 3, { base: string; highlight: string }> = {
+  1: { base: "#c8952f", highlight: "#f3d691" },
+  2: { base: "#9aa1a8", highlight: "#eef1f4" },
+  3: { base: "#b5776a", highlight: "#eecabb" },
+};
+
 export function EmployeeAvatarButton({
   id,
   fullName,
@@ -274,12 +317,7 @@ export function EmployeeAvatarButton({
       >
         <span className="week-leader-ring">
           <EmployeeAvatar className="week-leader-avatar" fullName={fullName} avatarUrl={avatarUrl} />
-          {rank <= 2 &&
-            (rank === 1 ? (
-              <Wreath base="#c8952f" highlight="#f3d691" />
-            ) : (
-              <Wreath base="#9aa1a8" highlight="#eef1f4" />
-            ))}
+          <Wreath base={WREATH_COLORS[rank].base} highlight={WREATH_COLORS[rank].highlight} />
           <span className="week-leader-rank">{rank}</span>
         </span>
       </button>

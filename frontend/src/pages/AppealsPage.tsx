@@ -71,16 +71,23 @@ function WeekLeaders() {
 
   if (leaders.length === 0) return null;
 
+  // Displayed 2nd–1st–3rd (podium order) rather than the ranking order —
+  // 1st stays centered as the visual focal point.
+  const ranked = leaders.map((l, i) => ({ ...l, rank: (i + 1) as 1 | 2 | 3 }));
+  const podiumOrder = [ranked[1], ranked[0], ranked[2]].filter(
+    (l): l is (typeof ranked)[number] => l !== undefined
+  );
+
   return (
     <div className="week-leaders" title="Лучшие по числу трубок за последние 7 дней">
-      {leaders.map((l, i) => (
+      {podiumOrder.map((l) => (
         <EmployeeAvatarButton
           key={l.operatorId}
           id={l.operatorId}
           fullName={l.fullName}
           avatarUrl={l.avatarUrl}
           count={l.count}
-          rank={(i + 1) as 1 | 2 | 3}
+          rank={l.rank}
         />
       ))}
     </div>
