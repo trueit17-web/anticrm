@@ -13,3 +13,8 @@ export function canEditAppeal(_user: AuthUser, _appeal: unknown): boolean {
 export function canEditAssignments(user: AuthUser): boolean {
   return isManagerOrAdmin(user);
 }
+
+// Matches the backend's requireRole gate on DELETE/:id and POST /:id/restore.
+export function canDeleteAppeal(user: AuthUser): boolean {
+  return user.role === "MANAGER" || user.role === "ADMIN" || user.role === "SUPERADMIN";
+}

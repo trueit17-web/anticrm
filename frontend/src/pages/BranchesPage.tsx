@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { api, ApiError } from "../api/client";
 import { Branch } from "../types";
 import { BranchSwitcher } from "../components/BranchSwitcher";
-import { IconBack } from "../components/icons";
+import { IconBack, IconEdit } from "../components/icons";
 
 function BranchRow({
   branch,
@@ -135,8 +135,13 @@ export function BranchesPage() {
             ) : (
               <li key={b.id}>
                 <span>{b.name}</span>
-                <button className="link-button" onClick={() => setEditingId(b.id)}>
-                  Редактировать
+                <button
+                  className="icon-btn"
+                  title="Редактировать"
+                  aria-label="Редактировать"
+                  onClick={() => setEditingId(b.id)}
+                >
+                  <IconEdit width={16} height={16} />
                 </button>
               </li>
             )

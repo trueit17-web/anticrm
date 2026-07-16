@@ -282,6 +282,25 @@ a {
   text-decoration: underline;
 }
 
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: var(--muted);
+  padding: 4px;
+  border-radius: 6px;
+}
+
+.icon-btn:hover {
+  background: rgba(195, 154, 79, 0.15);
+  color: var(--primary-dark);
+}
+
+.icon-btn svg {
+  display: block;
+}
+
 .status-pill {
   display: inline-block;
   padding: 3px 8px;
@@ -490,6 +509,9 @@ a {
 }
 
 .delete-x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: transparent;
   color: var(--danger);
   border: 1px solid var(--border);
@@ -500,6 +522,10 @@ a {
   line-height: 1;
   font-size: 15px;
   flex: none;
+}
+
+.delete-x svg {
+  display: block;
 }
 
 .delete-x:hover {

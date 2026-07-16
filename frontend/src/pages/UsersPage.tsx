@@ -4,7 +4,7 @@ import { api, ApiError } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import { Branch, LoginEvent, ROLE_LABELS, Role, UserSummary } from "../types";
 import { BranchSwitcher } from "../components/BranchSwitcher";
-import { IconBack } from "../components/icons";
+import { IconBack, IconEdit, IconKey } from "../components/icons";
 
 function formatEventTime(iso: string): string {
   return new Date(iso).toLocaleString("ru-RU", {
@@ -401,12 +401,22 @@ export function UsersPage() {
                     )}
                     <td>{u.active ? "Активен" : "Отключён"}</td>
                     <td>
-                      <button className="link-button" onClick={() => setEditingId(u.id)}>
-                        Редактировать
+                      <button
+                        className="icon-btn"
+                        title="Редактировать"
+                        aria-label="Редактировать"
+                        onClick={() => setEditingId(u.id)}
+                      >
+                        <IconEdit width={16} height={16} />
                       </button>{" "}
                       {isSuperadmin && (
-                        <button className="link-button" onClick={() => setAccessEditingId(u.id)}>
-                          Доступ
+                        <button
+                          className="icon-btn"
+                          title="Доступ к филиалам"
+                          aria-label="Доступ к филиалам"
+                          onClick={() => setAccessEditingId(u.id)}
+                        >
+                          <IconKey width={16} height={16} />
                         </button>
                       )}{" "}
                       <button

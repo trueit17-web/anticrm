@@ -157,10 +157,15 @@ model Appeal {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // Soft delete — kept in the DB so it can be restored from the trash view
+  // instead of a hard `DELETE`. Null means active/not deleted.
+  deletedAt DateTime?
+
   @@index([branchId])
   @@index([operatorId])
   @@index([status])
   @@index([date])
+  @@index([deletedAt])
 }
 
 model AppealHistory {

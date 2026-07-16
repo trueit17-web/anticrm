@@ -10,6 +10,8 @@ import {
   getAppealHistory,
   getStatsForRange,
   listAppealsByDate,
+  listDeletedAppealsByDate,
+  restoreAppeal,
   setSmsSent,
   updateAppealWithHistory,
 } from "./appeals.service";
@@ -29,6 +31,16 @@ export async function listAppealsHandler(req: Request, res: Response) {
   }
   const date = parseDateParam(req.query.date);
   const appeals = await listAppealsByDate(branchId, date);
+  res.json({ appeals });
+}
+
+export async function listDeletedAppealsHandler(req: Request, res: Response) {
+  const branchId = await resolveBranchId(req);
+  if (branchId === null) {
+    return res.json({ appeals: [] });
+  }
+  const date = parseDateParam(req.query.date);
+  const appeals = await listDeletedAppealsByDate(branchId, date);
   res.json({ appeals });
 }
 
@@ -135,6 +147,20 @@ export async function deleteAppealHandler(req: Request, res: Response) {
   const deleted = await deleteAppeal(id, branchId);
   if (!deleted) {
     return res.status(404).json({ error: "Трубка не найдена" });
+  }
+  res.status(204).send();
+}
+
+export async function restoreAppealHandler(req: Request, res: Response) {
+  const branchId = await resolveBranchId(req);
+  if (branchId === null) {
+    return res.status(400).json({ error: "Выберите филиал" });
+  }
+
+  const id = Number(req.params.id);
+  const restored = await restoreAppeal(id, branchId);
+  if (!restored) {
+    return res.status(404).json({ error: "Удалённая трубка не найдена" });
   }
   res.status(204).send();
 }

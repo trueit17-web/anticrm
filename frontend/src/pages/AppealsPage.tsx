@@ -5,7 +5,17 @@ import { Appeal, Branch, ROLE_LABELS, SelectOption } from "../types";
 import { AppealsTable, NewAppealValues } from "../components/AppealsTable";
 import { AppealFormModal, AppealFormValues } from "../components/AppealFormModal";
 import { BranchSwitcher } from "../components/BranchSwitcher";
-import { IconAdmin, IconLogout, IconStats, IconTorii, IconUsers } from "../components/icons";
+import {
+  IconAdmin,
+  IconBack,
+  IconLogout,
+  IconRestore,
+  IconStats,
+  IconTorii,
+  IconTrash,
+  IconUsers,
+} from "../components/icons";
+import { canDeleteAppeal } from "../lib/permissions";
 import { Link } from "react-router-dom";
 
 type TagField = "gov" | "cb" | "fsb" | "closer";
@@ -35,6 +45,91 @@ function formatRuDate(isoDate: string): string {
   return new Date(`${isoDate}T00:00:00`).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
+function formatTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+}
+
+function DeletedAppealsPanel({ date }: { date: string }) {
+  const [appeals, setAppeals] = useState<Appeal[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  function load() {
+    setLoading(true);
+    setError(null);
+    api
+      .get<{ appeals: Appeal[] }>(`/appeals/deleted?date=${date}`)
+      .then((res) => setAppeals(res.appeals))
+      .catch((err) => setError(err instanceof ApiError ? err.message : "Не удалось загрузить"))
+      .finally(() => setLoading(false));
+  }
+
+  useEffect(load, [date]);
+
+  async function handleRestore(id: number) {
+    setAppeals((prev) => prev.filter((a) => a.id !== id));
+    try {
+      await api.post(`/appeals/${id}/restore`);
+    } finally {
+      load();
+    }
+  }
+
+  return (
+    <section>
+      <h2>Удалённые трубки за {date === todayInputValue() ? "сегодня" : formatRuDate(date)}</h2>
+      {loading && <p>Загрузка...</p>}
+      {error && <p className="error-text">{error}</p>}
+      {!loading && !error && appeals.length === 0 && (
+        <p className="empty-state">Удалённых трубок нет.</p>
+      )}
+      {!loading && !error && appeals.length > 0 && (
+        <div className="table-scroll">
+          <table className="appeals-table">
+            <thead>
+              <tr>
+                <th>Дата</th>
+                <th>Телефон</th>
+                <th>Данные клиента</th>
+                <th>Статус</th>
+                <th>Удалено</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {appeals.map((a) => (
+                <tr key={a.id}>
+                  <td>
+                    {a.operator.fullName}, {formatTime(a.createdAt)}
+                  </td>
+                  <td>{a.phone}</td>
+                  <td className="wrap-cell" title={a.clientData ?? undefined}>
+                    {a.clientData || "—"}
+                  </td>
+                  <td>
+                    <span className="status-pill">{a.status}</span>
+                  </td>
+                  <td className="muted">{a.deletedAt ? formatTime(a.deletedAt) : "—"}</td>
+                  <td>
+                    <button
+                      className="icon-btn"
+                      title="Восстановить"
+                      aria-label="Восстановить"
+                      onClick={() => handleRestore(a.id)}
+                    >
+                      <IconRestore width={16} height={16} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
 export function AppealsPage() {
   const { user, logout } = useAuth();
   const [appeals, setAppeals] = useState<Appeal[]>([]);
@@ -47,6 +142,7 @@ export function AppealsPage() {
   // Only SUPERADMIN gets to pick a date other than today (see the date input
   // in the header) — everyone else always works off today's trubki.
   const [selectedDate, setSelectedDate] = useState(todayInputValue());
+  const [showTrash, setShowTrash] = useState(false);
 
   // `silent` is used for the background poll below: it refreshes the data
   // without flashing the loading state or an error banner over the table
@@ -215,6 +311,16 @@ export function AppealsPage() {
               <IconUsers />
             </Link>
           )}
+          {canDeleteAppeal(user) && (
+            <button
+              className="icon-link"
+              title={showTrash ? "К трубкам" : "Корзина"}
+              aria-label={showTrash ? "К трубкам" : "Корзина"}
+              onClick={() => setShowTrash((v) => !v)}
+            >
+              {showTrash ? <IconBack /> : <IconTrash />}
+            </button>
+          )}
           <button className="icon-link" title="Выйти" aria-label="Выйти" onClick={logout}>
             <IconLogout />
           </button>
@@ -227,7 +333,9 @@ export function AppealsPage() {
         <p className="muted">Выберите филиал переключателем сверху, чтобы увидеть трубки.</p>
       )}
 
-      {!loading && !error && !branchRequired && (
+      {!loading && !error && !branchRequired && showTrash && <DeletedAppealsPanel date={selectedDate} />}
+
+      {!loading && !error && !branchRequired && !showTrash && (
         <div className="table-with-fab">
           <button className="fab" title="Новая трубка" onClick={() => setCreating(true)}>
             +

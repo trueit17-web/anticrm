@@ -3,6 +3,7 @@ import { Appeal } from "../types";
 import { AuthUser } from "../types";
 import { canEditAppeal, canEditAssignments } from "../lib/permissions";
 import { detectMobileOperator } from "../lib/mobileOperator";
+import { IconEdit, IconTrash } from "./icons";
 
 function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
@@ -312,21 +313,19 @@ export function AppealsTable({
                 <td>{renderTagSelect(appeal, "closer", closerOptions)}</td>
                 <td>
                   {editable && (
-                    <button className="link-button" onClick={() => onEdit(appeal)}>
-                      Изменить
+                    <button className="icon-btn" title="Изменить" aria-label="Изменить" onClick={() => onEdit(appeal)}>
+                      <IconEdit width={16} height={16} />
                     </button>
                   )}
                   {onDelete && (
-                    <>
-                      {" "}
-                      <button
-                        className="delete-x"
-                        title="Удалить трубку"
-                        onClick={() => onDelete(appeal)}
-                      >
-                        ×
-                      </button>
-                    </>
+                    <button
+                      className="delete-x"
+                      title="Удалить трубку"
+                      aria-label="Удалить трубку"
+                      onClick={() => onDelete(appeal)}
+                    >
+                      <IconTrash width={13} height={13} />
+                    </button>
                   )}
                 </td>
               </tr>

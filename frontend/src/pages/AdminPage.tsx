@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { api, ApiError } from "../api/client";
 import { Appeal, OPTION_FIELD_LABELS, OptionField, SelectOption } from "../types";
 import { BranchSwitcher } from "../components/BranchSwitcher";
-import { IconBack } from "../components/icons";
+import { IconBack, IconTrash } from "../components/icons";
 
 const FIELDS: OptionField[] = ["GOV", "CB", "FSB", "CLOSER", "STATUS"];
 
@@ -104,8 +104,8 @@ function OptionFieldEditor({
                       Сделать по умолчанию
                     </button>
                   ))}
-                <button className="link-button" onClick={() => handleDelete(o.id)}>
-                  Удалить
+                <button className="icon-btn" title="Удалить" aria-label="Удалить" onClick={() => handleDelete(o.id)}>
+                  <IconTrash width={15} height={15} />
                 </button>
               </span>
             </li>
@@ -175,9 +175,10 @@ function AppealsDeleteSection() {
               <button
                 className="delete-x"
                 title="Удалить трубку"
+                aria-label="Удалить трубку"
                 onClick={() => handleDelete(a.id)}
               >
-                ×
+                <IconTrash width={13} height={13} />
               </button>
             </li>
           ))}

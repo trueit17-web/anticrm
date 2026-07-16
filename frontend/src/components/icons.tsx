@@ -72,3 +72,43 @@ export function IconBack(props: IconProps) {
     </svg>
   );
 }
+
+export function IconEdit(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M4 20h4L18.5 9.5a2.1 2.1 0 0 0-3-3L5 17v3z" />
+      <path d="M13.5 8 16 10.5" />
+    </svg>
+  );
+}
+
+export function IconKey(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <circle cx="8" cy="15" r="4" />
+      <path d="M11 12 19.5 3.5" />
+      <path d="M16 7l2.5 2.5M19 4l2 2" />
+    </svg>
+  );
+}
+
+export function IconTrash(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M4 7h16" />
+      <path d="M9 7V4.8c0-.4.4-.8.9-.8h4.2c.5 0 .9.4.9.8V7" />
+      <path d="M6 7l1 12.2c0 .95.8 1.8 1.8 1.8h6.4c1 0 1.8-.85 1.8-1.8L18 7" />
+      <path d="M10 11v6M14 11v6" />
+    </svg>
+  );
+}
+
+// A counter-clockwise arrow — "bring this back" for restoring a deleted row.
+export function IconRestore(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M4 12a8 8 0 1 0 3-6.2" />
+      <path d="M4 4v4.5h4.5" />
+    </svg>
+  );
+}

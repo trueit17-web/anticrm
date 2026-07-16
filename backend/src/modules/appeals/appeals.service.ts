@@ -17,14 +17,23 @@ function dayRange(date: Date) {
 export function listAppealsByDate(branchId: number, date: Date) {
   const { start, end } = dayRange(date);
   return prisma.appeal.findMany({
-    where: { branchId, date: { gte: start, lt: end } },
+    where: { branchId, date: { gte: start, lt: end }, deletedAt: null },
     include: appealInclude,
     orderBy: [{ date: "asc" }, { id: "asc" }],
   });
 }
 
+export function listDeletedAppealsByDate(branchId: number, date: Date) {
+  const { start, end } = dayRange(date);
+  return prisma.appeal.findMany({
+    where: { branchId, date: { gte: start, lt: end }, deletedAt: { not: null } },
+    include: appealInclude,
+    orderBy: [{ deletedAt: "desc" }],
+  });
+}
+
 export function getAppeal(id: number, branchId: number) {
-  return prisma.appeal.findFirst({ where: { id, branchId }, include: appealInclude });
+  return prisma.appeal.findFirst({ where: { id, branchId, deletedAt: null }, include: appealInclude });
 }
 
 export interface CreateAppealInput {
@@ -90,7 +99,7 @@ export async function updateAppealWithHistory(
   changes: UpdateAppealInput,
   changedById: number
 ) {
-  const before = await prisma.appeal.findFirst({ where: { id, branchId } });
+  const before = await prisma.appeal.findFirst({ where: { id, branchId, deletedAt: null } });
   if (!before) return null;
 
   const updated = await prisma.appeal.update({
@@ -128,12 +137,23 @@ export async function updateAppealWithHistory(
 }
 
 export async function deleteAppeal(id: number, branchId: number) {
-  const result = await prisma.appeal.deleteMany({ where: { id, branchId } });
+  const result = await prisma.appeal.updateMany({
+    where: { id, branchId, deletedAt: null },
+    data: { deletedAt: new Date() },
+  });
+  return result.count > 0;
+}
+
+export async function restoreAppeal(id: number, branchId: number) {
+  const result = await prisma.appeal.updateMany({
+    where: { id, branchId, deletedAt: { not: null } },
+    data: { deletedAt: null },
+  });
   return result.count > 0;
 }
 
 export async function setSmsSent(id: number, branchId: number, sent: boolean, userId: number) {
-  const before = await prisma.appeal.findFirst({ where: { id, branchId } });
+  const before = await prisma.appeal.findFirst({ where: { id, branchId, deletedAt: null } });
   if (!before) return null;
 
   const updated = await prisma.appeal.update({
@@ -195,7 +215,7 @@ export interface RangeStats {
 // `to` is exclusive — callers pass the start of the day *after* the last day
 // they want included, same convention as dayRange() above.
 export async function getStatsForRange(branchId: number, from: Date, to: Date): Promise<RangeStats> {
-  const where = { branchId, date: { gte: from, lt: to } };
+  const where = { branchId, date: { gte: from, lt: to }, deletedAt: null };
 
   // Bucketed in JS off a typed Prisma query rather than raw SQL date_trunc:
   // "date" is a timestamp-without-timezone column, and $queryRaw binds Date
