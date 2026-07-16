@@ -129,7 +129,7 @@ function DayAppealsTable({ appeals }: { appeals: Appeal[] }) {
             <th>🧾 Данные клиента</th>
             <th>💰 Деп.</th>
             <th className="col-center">💬 СМС</th>
-            <th className="col-center">📥 Прием</th>
+            <th className="col-center">Прием</th>
             <th className="col-center">🏛️ Госы</th>
             <th className="col-center">🚦 Статус</th>
             <th>📝 Описание</th>

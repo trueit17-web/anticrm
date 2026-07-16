@@ -221,13 +221,13 @@ export function AppealsTable({
         </colgroup>
         <thead>
           <tr>
-            <th className="col-num">🔢 №</th>
+            <th className="col-num">№</th>
             <th className="col-center">📅 Дата</th>
             <th>📞 Телефон</th>
             <th>🧾 Данные клиента</th>
             <th>💰 Деп.</th>
             <th className="col-center">💬 СМС</th>
-            <th className="col-center">📥 Прием</th>
+            <th className="col-center">Прием</th>
             <th className="col-center">🏛️ Госы</th>
             <th className="col-center">🚦 Статус</th>
             <th>📝 Описание</th>
