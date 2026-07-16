@@ -108,9 +108,9 @@ function DayAppealsTable({ appeals }: { appeals: Appeal[] }) {
       <table className="appeals-table">
         <colgroup>
           <col style={{ width: 110 }} />
-          <col style={{ width: 130 }} />
+          <col style={{ width: 112 }} />
           <col style={{ width: 90 }} />
-          <col style={{ width: 160 }} />
+          <col style={{ width: 178 }} />
           <col style={{ width: 90 }} />
           <col style={{ width: 90 }} />
           <col style={{ width: 60 }} />
