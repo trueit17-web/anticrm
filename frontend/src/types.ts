@@ -1,6 +1,6 @@
 export type Role = "USER" | "MANAGER" | "ADMIN" | "SUPERADMIN";
 
-export type OptionField = "GOV" | "CB" | "FSB" | "CLOSER" | "STATUS";
+export type OptionField = "GOV" | "CB" | "FSB" | "CLOSER" | "STATUS" | "TF";
 
 export const ROLE_LABELS: Record<Role, string> = {
   USER: "Пользователь",
@@ -15,6 +15,7 @@ export const OPTION_FIELD_LABELS: Record<OptionField, string> = {
   FSB: "ФСБ",
   CLOSER: "Закрыв",
   STATUS: "Статус",
+  TF: "ТФ",
 };
 
 export interface AuthUser {
@@ -60,6 +61,7 @@ export interface Appeal {
   cb: string | null;
   fsb: string | null;
   closer: string | null;
+  tf: string | null;
   status: string;
   description: string | null;
   smsSentBy: { id: number; fullName: string } | null;

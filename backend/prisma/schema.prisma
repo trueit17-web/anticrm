@@ -23,6 +23,7 @@ enum OptionField {
   FSB
   CLOSER
   STATUS
+  TF
 }
 
 model Branch {
@@ -150,6 +151,7 @@ model Appeal {
   cb     String?
   fsb    String?
   closer String?
+  tf     String?
 
   status      String  @default("Новое")
   description String?

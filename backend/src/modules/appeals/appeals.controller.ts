@@ -96,12 +96,13 @@ const updateSchema = z.object({
   cb: tagField,
   fsb: tagField,
   closer: tagField,
+  tf: tagField,
 });
 
-// Госы/ЦБ/ФСБ/Закрыв/Статус are classification fields — only manager/admin
+// Госы/ЦБ/ФСБ/Закрыв/ТФ/Статус are classification fields — only manager/admin
 // may set them, regardless of who owns the appeal. Прием (intake) and phone/
 // description/etc. stay open to any authenticated employee, same as СМС.
-const RESTRICTED_FIELDS = ["gov", "cb", "fsb", "closer", "status"] as const;
+const RESTRICTED_FIELDS = ["gov", "cb", "fsb", "closer", "tf", "status"] as const;
 
 export async function updateAppealHandler(req: Request, res: Response) {
   const branchId = await resolveBranchId(req);

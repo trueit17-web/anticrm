@@ -114,6 +114,7 @@ function DayAppealsTable({ appeals }: { appeals: Appeal[] }) {
           <col style={{ width: 110 }} />
           <col style={{ width: 112 }} />
           <col style={{ width: 90 }} />
+          <col style={{ width: 90 }} />
           <col style={{ width: 178 }} />
           <col style={{ width: 90 }} />
           <col style={{ width: 90 }} />
@@ -129,6 +130,7 @@ function DayAppealsTable({ appeals }: { appeals: Appeal[] }) {
           <tr>
             <th className="col-center">📅 Дата</th>
             <th>📞 Телефон</th>
+            <th className="col-center">📠 ТФ</th>
             <th className="col-center">📱 Опер. (моб.)</th>
             <th>🧾 Данные клиента</th>
             <th>💰 Деп.</th>
@@ -151,6 +153,7 @@ function DayAppealsTable({ appeals }: { appeals: Appeal[] }) {
                 {formatDateTime(a.date, a.createdAt)}
               </td>
               <td>{a.phone}</td>
+              <td className="col-center">{a.tf || "—"}</td>
               <td className="col-center">{detectMobileOperator(a.phone)}</td>
               <td className="wrap-cell" title={a.clientData ?? undefined}>
                 {a.clientData || "—"}

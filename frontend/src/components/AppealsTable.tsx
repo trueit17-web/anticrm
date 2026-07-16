@@ -10,7 +10,7 @@ function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
 }
 
-type TagField = "gov" | "cb" | "fsb" | "closer";
+type TagField = "gov" | "cb" | "fsb" | "closer" | "tf";
 
 export interface NewAppealValues {
   date: string;
@@ -84,6 +84,7 @@ function NewAppealRow({
             autoFocus
           />
         </td>
+        <td className="muted col-center">—</td>
         <td>
           <input
             placeholder="Данные клиента"
@@ -127,7 +128,7 @@ function NewAppealRow({
       </tr>
       {error && (
         <tr>
-          <td colSpan={14} className="error-text">
+          <td colSpan={15} className="error-text">
             {error}
           </td>
         </tr>
@@ -149,6 +150,7 @@ export function AppealsTable({
   cbOptions,
   fsbOptions,
   closerOptions,
+  tfOptions,
   statusOptions,
   statusColors,
   defaultStatus,
@@ -171,6 +173,7 @@ export function AppealsTable({
   cbOptions: string[];
   fsbOptions: string[];
   closerOptions: string[];
+  tfOptions: string[];
   statusOptions: string[];
   statusColors: Record<string, string>;
   defaultStatus: string;
@@ -208,6 +211,7 @@ export function AppealsTable({
           <col style={{ width: 36 }} />
           <col style={{ width: 110 }} />
           <col style={{ width: 112 }} />
+          <col style={{ width: 90 }} />
           <col style={{ width: 178 }} />
           <col style={{ width: 90 }} />
           <col style={{ width: 90 }} />
@@ -218,13 +222,14 @@ export function AppealsTable({
           <col style={{ width: 110 }} />
           <col style={{ width: 110 }} />
           <col style={{ width: 110 }} />
-          <col style={{ width: 150 }} />
+          <col style={{ width: 64 }} />
         </colgroup>
         <thead>
           <tr>
             <th className="col-num">№</th>
             <th className="col-center">📅 Дата</th>
             <th>📞 Телефон</th>
+            <th className="col-center">📠 ТФ</th>
             <th>🧾 Данные клиента</th>
             <th>💰 Деп.</th>
             <th className="col-center">💬 СМС</th>
@@ -241,7 +246,7 @@ export function AppealsTable({
         <tbody>
           {appeals.length === 0 && !creating && (
             <tr>
-              <td colSpan={14} className="empty-state">
+              <td colSpan={15} className="empty-state">
                 Трубок пока нет.
               </td>
             </tr>
@@ -269,6 +274,7 @@ export function AppealsTable({
                   <br />
                   <span className="muted">{detectMobileOperator(appeal.phone)}</span>
                 </td>
+                <td className="col-center">{renderTagSelect(appeal, "tf", tfOptions)}</td>
                 <td className="wrap-cell" title={appeal.clientData ?? undefined}>
                   {appeal.clientData || "—"}
                 </td>
@@ -320,10 +326,10 @@ export function AppealsTable({
                 <td className="col-center">{renderTagSelect(appeal, "cb", cbOptions)}</td>
                 <td className="col-center">{renderTagSelect(appeal, "fsb", fsbOptions)}</td>
                 <td className="col-center">{renderTagSelect(appeal, "closer", closerOptions)}</td>
-                <td className="col-center">
+                <td className="col-center row-actions">
                   {editable && (
                     <button className="icon-btn" title="Изменить" aria-label="Изменить" onClick={() => onEdit(appeal)}>
-                      <IconEdit width={16} height={16} />
+                      <IconEdit width={14} height={14} />
                     </button>
                   )}
                   {onDelete && (
@@ -333,7 +339,7 @@ export function AppealsTable({
                       aria-label="Удалить трубку"
                       onClick={() => onDelete(appeal)}
                     >
-                      <IconTrash width={13} height={13} />
+                      <IconTrash width={11} height={11} />
                     </button>
                   )}
                 </td>

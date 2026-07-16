@@ -19,7 +19,7 @@ import { canDeleteAppeal } from "../lib/permissions";
 import { EmployeeAvatarButton } from "../components/EmployeeCard";
 import { Link } from "react-router-dom";
 
-type TagField = "gov" | "cb" | "fsb" | "closer";
+type TagField = "gov" | "cb" | "fsb" | "closer" | "tf";
 
 function optionValues(options: SelectOption[], field: SelectOption["field"]): string[] {
   return options.filter((o) => o.field === field).map((o) => o.value);
@@ -399,6 +399,7 @@ export function AppealsPage() {
             cbOptions={optionValues(options, "CB")}
             fsbOptions={optionValues(options, "FSB")}
             closerOptions={optionValues(options, "CLOSER")}
+            tfOptions={optionValues(options, "TF")}
             statusOptions={optionValues(options, "STATUS")}
             statusColors={statusColorMap(options)}
             defaultStatus={defaultStatusValue(options)}

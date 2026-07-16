@@ -5,7 +5,7 @@ import { Appeal, OPTION_FIELD_LABELS, OptionField, SelectOption } from "../types
 import { BranchSwitcher } from "../components/BranchSwitcher";
 import { IconBack, IconTrash } from "../components/icons";
 
-const FIELDS: OptionField[] = ["GOV", "CB", "FSB", "CLOSER", "STATUS"];
+const FIELDS: OptionField[] = ["TF", "GOV", "CB", "FSB", "CLOSER", "STATUS"];
 
 // Preset row-highlight colors — soft enough to keep black text readable.
 const COLOR_PALETTE = [
@@ -210,7 +210,7 @@ export function AdminPage() {
       <header className="page-header">
         <div>
           <h1>Админка</h1>
-          <p className="muted">Справочники для полей Госы / ЦБ / ФСБ / Закрыв / Статус</p>
+          <p className="muted">Справочники для полей ТФ / Госы / ЦБ / ФСБ / Закрыв / Статус</p>
         </div>
         <div className="header-actions">
           <BranchSwitcher />

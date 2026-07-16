@@ -309,6 +309,24 @@ a {
   position: relative;
 }
 
+.appeals-table td.row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.appeals-table td.row-actions button {
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.appeals-table tbody tr:hover td.row-actions button,
+.appeals-table tbody tr:focus-within td.row-actions button,
+.appeals-table td.row-actions button:focus-visible {
+  opacity: 1;
+}
+
 .link-button {
   background: transparent;
   color: var(--primary);
@@ -795,6 +813,10 @@ a {
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
   column-gap: 16px;
+}
+
+.page-header-center > .header-actions {
+  justify-self: end;
 }
 
 .week-leaders {

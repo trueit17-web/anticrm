@@ -69,6 +69,7 @@ export interface UpdateAppealInput {
   cb?: string | null;
   fsb?: string | null;
   closer?: string | null;
+  tf?: string | null;
 }
 
 const FIELD_LABELS: Record<keyof UpdateAppealInput, string> = {
@@ -84,6 +85,7 @@ const FIELD_LABELS: Record<keyof UpdateAppealInput, string> = {
   cb: "ЦБ",
   fsb: "ФСБ",
   closer: "Закрыв",
+  tf: "ТФ",
 };
 
 function resolveDisplayValue(field: keyof UpdateAppealInput, value: unknown): string | null {
