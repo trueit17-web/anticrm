@@ -72,6 +72,7 @@ export interface Appeal {
 export interface OperatorStat {
   operatorId: number;
   fullName: string;
+  avatarUrl: string | null;
   count: number;
 }
 

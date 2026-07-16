@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../auth/AuthContext";
 import { api, ApiError, getActiveBranchId } from "../api/client";
-import { Appeal, Branch, ROLE_LABELS, SelectOption } from "../types";
+import { Appeal, Branch, OperatorStat, ROLE_LABELS, SelectOption } from "../types";
 import { AppealsTable, NewAppealValues } from "../components/AppealsTable";
 import { AppealFormModal, AppealFormValues } from "../components/AppealFormModal";
 import { BranchSwitcher } from "../components/BranchSwitcher";
@@ -16,6 +16,7 @@ import {
   IconUsers,
 } from "../components/icons";
 import { canDeleteAppeal } from "../lib/permissions";
+import { EmployeeAvatarButton } from "../components/EmployeeCard";
 import { Link } from "react-router-dom";
 
 type TagField = "gov" | "cb" | "fsb" | "closer";
@@ -47,6 +48,43 @@ function formatRuDate(isoDate: string): string {
 
 function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+}
+
+// Top 3 by trubki count over the last 7 days — shown centered in the header
+// as an avatar with a rank ring (gold/silver/plain).
+function WeekLeaders() {
+  const [leaders, setLeaders] = useState<OperatorStat[]>([]);
+
+  useEffect(() => {
+    const today = new Date();
+    const from = new Date(today);
+    from.setUTCDate(from.getUTCDate() - 6);
+    const to = new Date(today);
+    to.setUTCDate(to.getUTCDate() + 1);
+    api
+      .get<{ byOperator: OperatorStat[] }>(
+        `/appeals/stats?from=${from.toISOString().slice(0, 10)}&to=${to.toISOString().slice(0, 10)}`
+      )
+      .then((res) => setLeaders(res.byOperator.slice(0, 3)))
+      .catch(() => {});
+  }, []);
+
+  if (leaders.length === 0) return null;
+
+  return (
+    <div className="week-leaders" title="Лучшие по числу трубок за последние 7 дней">
+      {leaders.map((l, i) => (
+        <EmployeeAvatarButton
+          key={l.operatorId}
+          id={l.operatorId}
+          fullName={l.fullName}
+          avatarUrl={l.avatarUrl}
+          count={l.count}
+          rank={(i + 1) as 1 | 2 | 3}
+        />
+      ))}
+    </div>
+  );
 }
 
 function DeletedAppealsPanel({ date }: { date: string }) {
@@ -275,7 +313,7 @@ export function AppealsPage() {
 
   return (
     <div className="page">
-      <header className="page-header">
+      <header className="page-header page-header-center">
         <div>
           <h1>{branchName ?? "Трубки"}</h1>
           <p className="muted">
@@ -283,6 +321,7 @@ export function AppealsPage() {
             {selectedDate === todayInputValue() ? "за сегодня" : `за ${formatRuDate(selectedDate)}`}
           </p>
         </div>
+        <WeekLeaders />
         <div className="header-actions">
           {user.role === "SUPERADMIN" && (
             <input

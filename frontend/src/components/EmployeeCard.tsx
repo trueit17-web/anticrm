@@ -24,6 +24,60 @@ function telegramHref(handle: string): string {
   return `https://t.me/${clean}`;
 }
 
+function EmployeeAvatar({
+  fullName,
+  avatarUrl,
+  className,
+}: {
+  fullName: string;
+  avatarUrl: string | null | undefined;
+  className?: string;
+}) {
+  const src = fileUrl(avatarUrl);
+  if (src) {
+    return <img className={className} src={src} alt={fullName} />;
+  }
+  return (
+    <div className={className} style={{ background: colorFor(fullName) }}>
+      {initials(fullName)}
+    </div>
+  );
+}
+
+// Shared "click a trigger, fetch /users/:id/card, show a popover near it"
+// behavior — used both by the plain name link and the ranked avatar button.
+function useEmployeeCard(id: number) {
+  const [open, setOpen] = useState(false);
+  const [card, setCard] = useState<UserCard | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [pos, setPos] = useState({ x: 0, y: 0 });
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  function handleClick() {
+    if (open) {
+      setOpen(false);
+      return;
+    }
+    const rect = triggerRef.current?.getBoundingClientRect();
+    if (rect) {
+      const cardWidth = 280;
+      const x = Math.min(rect.left, window.innerWidth - cardWidth - 12);
+      setPos({ x: Math.max(8, x), y: rect.bottom + 6 });
+    }
+    setOpen(true);
+    setLoading(true);
+    setError(null);
+    api
+      .get<{ card: UserCard }>(`/users/${id}/card`)
+      .then((res) => setCard(res.card))
+      .catch((err) => setError(err instanceof ApiError ? err.message : "Не удалось загрузить"))
+      .finally(() => setLoading(false));
+  }
+
+  return { open, setOpen, card, loading, error, pos, triggerRef, handleClick };
+}
+
 function EmployeeCardPopover({
   card,
   loading,
@@ -61,8 +115,6 @@ function EmployeeCardPopover({
     };
   }, [onClose]);
 
-  const avatarSrc = card ? fileUrl(card.avatarUrl) : null;
-
   return createPortal(
     <div ref={ref} className="employee-card" style={{ left: x, top: y }}>
       {loading && <p className="muted">Загрузка...</p>}
@@ -70,13 +122,7 @@ function EmployeeCardPopover({
       {card && (
         <>
           <div className="employee-card-head">
-            {avatarSrc ? (
-              <img className="employee-card-avatar" src={avatarSrc} alt={card.fullName} />
-            ) : (
-              <div className="employee-card-avatar employee-card-avatar-placeholder" style={{ background: colorFor(card.fullName) }}>
-                {initials(card.fullName)}
-              </div>
-            )}
+            <EmployeeAvatar className="employee-card-avatar" fullName={card.fullName} avatarUrl={card.avatarUrl} />
             <div>
               <div className="employee-card-name">{card.fullName}</div>
               {card.telegram && (
@@ -116,38 +162,58 @@ function EmployeeCardPopover({
 }
 
 export function EmployeeNameButton({ id, fullName }: { id: number; fullName: string }) {
-  const [open, setOpen] = useState(false);
-  const [card, setCard] = useState<UserCard | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [pos, setPos] = useState({ x: 0, y: 0 });
-  const buttonRef = useRef<HTMLButtonElement>(null);
-
-  function handleClick() {
-    if (open) {
-      setOpen(false);
-      return;
-    }
-    const rect = buttonRef.current?.getBoundingClientRect();
-    if (rect) {
-      const cardWidth = 280;
-      const x = Math.min(rect.left, window.innerWidth - cardWidth - 12);
-      setPos({ x: Math.max(8, x), y: rect.bottom + 6 });
-    }
-    setOpen(true);
-    setLoading(true);
-    setError(null);
-    api
-      .get<{ card: UserCard }>(`/users/${id}/card`)
-      .then((res) => setCard(res.card))
-      .catch((err) => setError(err instanceof ApiError ? err.message : "Не удалось загрузить"))
-      .finally(() => setLoading(false));
-  }
+  const { open, setOpen, card, loading, error, pos, triggerRef, handleClick } = useEmployeeCard(id);
 
   return (
     <>
-      <button type="button" className="employee-name-link" ref={buttonRef} onClick={handleClick}>
+      <button type="button" className="employee-name-link" ref={triggerRef} onClick={handleClick}>
         {fullName}
+      </button>
+      {open && (
+        <EmployeeCardPopover
+          card={card}
+          loading={loading}
+          error={error}
+          x={pos.x}
+          y={pos.y}
+          onClose={() => setOpen(false)}
+        />
+      )}
+    </>
+  );
+}
+
+// Avatar with a rank-colored ring — 1st place gold, 2nd silver, 3rd plain —
+// used by the "top of the week" header widget. Clicking it opens the same
+// employee card as the name links everywhere else.
+export function EmployeeAvatarButton({
+  id,
+  fullName,
+  avatarUrl,
+  count,
+  rank,
+}: {
+  id: number;
+  fullName: string;
+  avatarUrl: string | null;
+  count: number;
+  rank: 1 | 2 | 3;
+}) {
+  const { open, setOpen, card, loading, error, pos, triggerRef, handleClick } = useEmployeeCard(id);
+
+  return (
+    <>
+      <button
+        type="button"
+        className={`week-leader rank-${rank}`}
+        ref={triggerRef}
+        onClick={handleClick}
+        title={`${fullName} — ${count} ${count === 1 ? "трубка" : "трубок"} за неделю`}
+      >
+        <span className="week-leader-ring">
+          <EmployeeAvatar className="week-leader-avatar" fullName={fullName} avatarUrl={avatarUrl} />
+          <span className="week-leader-rank">{rank}</span>
+        </span>
       </button>
       {open && (
         <EmployeeCardPopover

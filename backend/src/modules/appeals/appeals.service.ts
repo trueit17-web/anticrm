@@ -191,6 +191,7 @@ export async function getAppealHistory(appealId: number, branchId: number) {
 export interface OperatorStat {
   operatorId: number;
   fullName: string;
+  avatarUrl: string | null;
   count: number;
 }
 
@@ -233,14 +234,15 @@ export async function getStatsForRange(branchId: number, from: Date, to: Date): 
   const operatorIds = operatorGroups.map((g) => g.operatorId);
   const users = await prisma.user.findMany({
     where: { id: { in: operatorIds } },
-    select: { id: true, fullName: true },
+    select: { id: true, fullName: true, avatarUrl: true },
   });
-  const nameById = new Map(users.map((u) => [u.id, u.fullName]));
+  const userById = new Map(users.map((u) => [u.id, u]));
 
   const byOperator = operatorGroups
     .map((g) => ({
       operatorId: g.operatorId,
-      fullName: nameById.get(g.operatorId) ?? "—",
+      fullName: userById.get(g.operatorId)?.fullName ?? "—",
+      avatarUrl: userById.get(g.operatorId)?.avatarUrl ?? null,
       count: g._count._all,
     }))
     .sort((a, b) => b.count - a.count);
