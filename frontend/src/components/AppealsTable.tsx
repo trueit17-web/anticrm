@@ -273,16 +273,22 @@ export function AppealsTable({
                   {appeal.dep || "—"}
                 </td>
                 <td>
-                  <label className="sms-cell">
+                  {smsSent ? (
+                    <button
+                      type="button"
+                      className="sms-time"
+                      title="СМС отправлено — нажмите, чтобы снять отметку"
+                      onClick={() => onToggleSms(appeal, false)}
+                    >
+                      {formatTime(appeal.smsSentAt!)}
+                    </button>
+                  ) : (
                     <input
                       type="checkbox"
-                      checked={smsSent}
+                      checked={false}
                       onChange={(e) => onToggleSms(appeal, e.target.checked)}
                     />
-                    {appeal.smsSentBy && (
-                      <span className="muted">{formatTime(appeal.smsSentAt!)}</span>
-                    )}
-                  </label>
+                  )}
                 </td>
                 <td className={appeal.intake ? "cell-intake-active" : undefined}>
                   <input
