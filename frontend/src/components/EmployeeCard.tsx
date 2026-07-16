@@ -32,45 +32,54 @@ function laurelBranch(radius: number, startDeg: number, endDeg: number, count: n
     const t = count === 1 ? 0 : i / (count - 1);
     const deg = startDeg + (endDeg - startDeg) * t;
     const rad = (deg * Math.PI) / 180;
-    const scale = 0.68 + 0.4 * t;
+    const scale = 0.62 + 0.5 * t;
     return {
       x: radius * Math.cos(rad),
       y: radius * Math.sin(rad),
-      rotate: deg + 112,
+      rotate: deg + 108,
       scale,
     };
   });
 }
 
-// Bottom-heavy arc with a gap at the top, like a medal wreath — leaves run
-// from just past the sides down to meet at the bottom.
-const WREATH_LEAVES = laurelBranch(15, -58, 92, 6);
+// Almost-closed ring with a small gap at the top (like a medal wreath) —
+// leaves sweep from just shy of 12 o'clock, around the side, to the bottom.
+const WREATH_LEAVES = laurelBranch(15, -75, 96, 9);
 
-function Wreath({ color }: { color: string }) {
+function WreathLeaf({
+  x,
+  y,
+  rotate,
+  scale,
+  base,
+  highlight,
+}: {
+  x: number;
+  y: number;
+  rotate: number;
+  scale: number;
+  base: string;
+  highlight: string;
+}) {
+  return (
+    <g transform={`translate(${x} ${y}) rotate(${rotate})`}>
+      <ellipse cx={0} cy={0} rx={2.5 * scale} ry={1.05 * scale} fill={base} />
+      <ellipse cx={0.5 * scale} cy={-0.15 * scale} rx={1.3 * scale} ry={0.45 * scale} fill={highlight} />
+    </g>
+  );
+}
+
+function Wreath({ base, highlight }: { base: string; highlight: string }) {
   return (
     <svg className="week-leader-wreath" viewBox="-19 -19 38 38" aria-hidden="true">
-      <g fill={color}>
+      <g>
         {WREATH_LEAVES.map((l, i) => (
-          <ellipse
-            key={i}
-            cx={0}
-            cy={0}
-            rx={2.6 * l.scale}
-            ry={1.15 * l.scale}
-            transform={`translate(${l.x} ${l.y}) rotate(${l.rotate})`}
-          />
+          <WreathLeaf key={i} x={l.x} y={l.y} rotate={l.rotate} scale={l.scale} base={base} highlight={highlight} />
         ))}
       </g>
-      <g fill={color} transform="scale(-1,1)">
+      <g transform="scale(-1,1)">
         {WREATH_LEAVES.map((l, i) => (
-          <ellipse
-            key={i}
-            cx={0}
-            cy={0}
-            rx={2.6 * l.scale}
-            ry={1.15 * l.scale}
-            transform={`translate(${l.x} ${l.y}) rotate(${l.rotate})`}
-          />
+          <WreathLeaf key={i} x={l.x} y={l.y} rotate={l.rotate} scale={l.scale} base={base} highlight={highlight} />
         ))}
       </g>
     </svg>
@@ -265,7 +274,12 @@ export function EmployeeAvatarButton({
       >
         <span className="week-leader-ring">
           <EmployeeAvatar className="week-leader-avatar" fullName={fullName} avatarUrl={avatarUrl} />
-          {rank <= 2 && <Wreath color={rank === 1 ? "#d9b154" : "#c0c7cf"} />}
+          {rank <= 2 &&
+            (rank === 1 ? (
+              <Wreath base="#c8952f" highlight="#f3d691" />
+            ) : (
+              <Wreath base="#9aa1a8" highlight="#eef1f4" />
+            ))}
           <span className="week-leader-rank">{rank}</span>
         </span>
       </button>
