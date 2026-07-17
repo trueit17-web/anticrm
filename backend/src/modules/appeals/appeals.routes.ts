@@ -6,6 +6,7 @@ import {
   deleteAppealHandler,
   getHistoryHandler,
   getStatsHandler,
+  getSummaryHandler,
   listAppealsHandler,
   listDeletedAppealsHandler,
   restoreAppealHandler,
@@ -22,8 +23,9 @@ appealsRouter.use(requireAuth);
 // (defaults to today; ?date=YYYY-MM-DD for the stats page's history view).
 appealsRouter.get("/", asyncHandler(listAppealsHandler));
 
-// Must come before "/:id" or Express would treat "stats"/"deleted" as an :id value.
+// Must come before "/:id" or Express would treat "stats"/"summary"/"deleted" as an :id value.
 appealsRouter.get("/stats", asyncHandler(getStatsHandler));
+appealsRouter.get("/summary", asyncHandler(getSummaryHandler));
 
 // Trash view — same role gate as delete, since restoring is the undo for it.
 appealsRouter.get(

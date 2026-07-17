@@ -307,3 +307,39 @@ export async function getStatsForRange(branchId: number, from: Date, to: Date): 
 
   return { total, byOperator, byGov, byStatus, byDate, byTf };
 }
+
+export interface SummaryStats {
+  today: number;
+  week: number;
+  total: number;
+}
+
+// Monday of the week containing date — weeks here always run Пн–Сб.
+function mondayOfWeek(date: Date): Date {
+  const d = new Date(date);
+  d.setUTCHours(0, 0, 0, 0);
+  const day = d.getUTCDay(); // 0=Sun..6=Sat
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  d.setUTCDate(d.getUTCDate() + diffToMonday);
+  return d;
+}
+
+// Always-visible KPIs shown alongside the period filter, independent of
+// whatever period the chart/breakdowns below are currently scoped to.
+export async function getSummaryStats(branchId: number): Promise<SummaryStats> {
+  const todayStart = new Date();
+  todayStart.setUTCHours(0, 0, 0, 0);
+  const tomorrow = new Date(todayStart);
+  tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+  const weekStart = mondayOfWeek(todayStart);
+  const weekEnd = new Date(weekStart);
+  weekEnd.setUTCDate(weekEnd.getUTCDate() + 6);
+
+  const [today, week, total] = await Promise.all([
+    prisma.appeal.count({ where: { branchId, deletedAt: null, date: { gte: todayStart, lt: tomorrow } } }),
+    prisma.appeal.count({ where: { branchId, deletedAt: null, date: { gte: weekStart, lt: weekEnd } } }),
+    prisma.appeal.count({ where: { branchId, deletedAt: null } }),
+  ]);
+
+  return { today, week, total };
+}

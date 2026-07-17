@@ -96,6 +96,12 @@ export interface TfTimeBucket {
   IV: number;
 }
 
+export interface SummaryStats {
+  today: number;
+  week: number;
+  total: number;
+}
+
 export interface RangeStats {
   total: number;
   byOperator: OperatorStat[];

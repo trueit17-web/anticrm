@@ -9,6 +9,7 @@ import {
   getAppeal,
   getAppealHistory,
   getStatsForRange,
+  getSummaryStats,
   listAppealsByDate,
   listDeletedAppealsByDate,
   restoreAppeal,
@@ -229,4 +230,13 @@ export async function getStatsHandler(req: Request, res: Response) {
   const { from, to } = parseRangeParams(req);
   const stats = await getStatsForRange(branchId, from, to);
   res.json(stats);
+}
+
+export async function getSummaryHandler(req: Request, res: Response) {
+  const branchId = await resolveBranchId(req);
+  if (branchId === null) {
+    return res.json({ today: 0, week: 0, total: 0 });
+  }
+  const summary = await getSummaryStats(branchId);
+  res.json(summary);
 }

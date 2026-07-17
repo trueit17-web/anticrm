@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, ApiError } from "../api/client";
-import { Appeal, DailyStat, OperatorStat, RangeStats, StatBucket, TfTimeBucket } from "../types";
+import { Appeal, DailyStat, OperatorStat, RangeStats, StatBucket, SummaryStats, TfTimeBucket } from "../types";
 import { detectMobileOperator } from "../lib/mobileOperator";
 import { BranchSwitcher } from "../components/BranchSwitcher";
 import { IconBack } from "../components/icons";
@@ -238,6 +238,48 @@ function SortableBreakdown({ title, rows }: { title: string; rows: LabeledCount[
   );
 }
 
+// Operators with the same trubki count share one row, names comma-separated
+// — otherwise a tied leaderboard turns into a long wall of near-duplicate rows.
+function OperatorBreakdown({ rows }: { rows: OperatorStat[] }) {
+  const sorted = [...rows].sort((a, b) => b.count - a.count);
+  const groups: { count: number; operators: OperatorStat[] }[] = [];
+  for (const r of sorted) {
+    const last = groups[groups.length - 1];
+    if (last && last.count === r.count) {
+      last.operators.push(r);
+    } else {
+      groups.push({ count: r.count, operators: [r] });
+    }
+  }
+
+  return (
+    <div className="stats-subtable">
+      <h3>По трубкам</h3>
+      {rows.length === 0 ? (
+        <p className="empty-state">Нет данных.</p>
+      ) : (
+        <table className="appeals-table">
+          <tbody>
+            {groups.map((g) => (
+              <tr key={g.count}>
+                <td>
+                  {g.operators.map((o, i) => (
+                    <span key={o.operatorId}>
+                      {i > 0 && ", "}
+                      <EmployeeNameButton id={o.operatorId} fullName={o.fullName} />
+                    </span>
+                  ))}
+                </td>
+                <td className="col-num">{g.count}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
 function TfTimeBreakdown({ rows }: { rows: TfTimeBucket[] }) {
   const sorted = [...rows].sort((a, b) => b.I + b.II + b.III + b.IV - (a.I + a.II + a.III + a.IV));
 
@@ -282,7 +324,7 @@ export function StatsPage() {
   const [customFrom, setCustomFrom] = useState(todayInputValue());
   const [customTo, setCustomTo] = useState(todayInputValue());
 
-  const [total, setTotal] = useState(0);
+  const [summary, setSummary] = useState<SummaryStats>({ today: 0, week: 0, total: 0 });
   const [byOperator, setByOperator] = useState<OperatorStat[]>([]);
   const [byGov, setByGov] = useState<StatBucket[]>([]);
   const [byStatus, setByStatus] = useState<StatBucket[]>([]);
@@ -309,7 +351,6 @@ export function StatsPage() {
     api
       .get<RangeStats>(`/appeals/stats?from=${from}&to=${to}`)
       .then((res) => {
-        setTotal(res.total);
         setByOperator(res.byOperator);
         setByGov(res.byGov);
         setByStatus(res.byStatus);
@@ -319,6 +360,15 @@ export function StatsPage() {
       .catch((err) => setError(err instanceof ApiError ? err.message : "Не удалось загрузить статистику"))
       .finally(() => setLoading(false));
   }, [period, customFrom, customTo]);
+
+  // Always-visible today/week/all-time counts — independent of whatever
+  // period the chart/breakdowns below are scoped to.
+  useEffect(() => {
+    api
+      .get<SummaryStats>("/appeals/summary")
+      .then(setSummary)
+      .catch(() => {});
+  }, []);
 
   function loadDay(day: string) {
     setSelectedDay(day);
@@ -341,8 +391,6 @@ export function StatsPage() {
     loadDay(day);
   }
 
-  const periodLabel = period === "today" ? "сегодня" : period === "week" ? "неделя, Пн–Сб" : "период";
-
   return (
     <div className="page">
       <header className="page-header">
@@ -357,31 +405,48 @@ export function StatsPage() {
         </div>
       </header>
 
-      <div className="inline-form">
-        <label>
-          Период
-          <select value={period} onChange={(e) => setPeriod(e.target.value as Period)}>
-            <option value="today">Сегодня</option>
-            <option value="week">Неделя</option>
-            <option value="custom">Период</option>
-          </select>
-        </label>
-        {period === "custom" && (
-          <>
-            <label>
-              С
-              <input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} />
-            </label>
-            <label>
-              По
-              <input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} />
-            </label>
-          </>
-        )}
-        <label>
-          За день
-          <input type="date" value={selectedDay} onChange={(e) => pickDay(e.target.value)} />
-        </label>
+      <div className="stats-toolbar">
+        <div className="inline-form">
+          <label>
+            Период
+            <select value={period} onChange={(e) => setPeriod(e.target.value as Period)}>
+              <option value="today">Сегодня</option>
+              <option value="week">Неделя</option>
+              <option value="custom">Период</option>
+            </select>
+          </label>
+          {period === "custom" && (
+            <>
+              <label>
+                С
+                <input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} />
+              </label>
+              <label>
+                По
+                <input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} />
+              </label>
+            </>
+          )}
+          <label>
+            За день
+            <input type="date" value={selectedDay} onChange={(e) => pickDay(e.target.value)} />
+          </label>
+        </div>
+
+        <div className="stats-summary">
+          <div className="stats-card">
+            <span className="stats-card-value">{summary.today}</span>
+            <span className="muted">Всего трубок (сегодня)</span>
+          </div>
+          <div className="stats-card">
+            <span className="stats-card-value">{summary.week}</span>
+            <span className="muted">Всего трубок (неделя, Пн–Сб)</span>
+          </div>
+          <div className="stats-card">
+            <span className="stats-card-value">{summary.total}</span>
+            <span className="muted">Всего трубок (за всё время)</span>
+          </div>
+        </div>
       </div>
 
       {loading && <p>Загрузка...</p>}
@@ -389,13 +454,6 @@ export function StatsPage() {
 
       {!loading && !error && (
         <>
-          <div className="stats-summary">
-            <div className="stats-card">
-              <span className="stats-card-value">{total}</span>
-              <span className="muted">Всего трубок ({periodLabel})</span>
-            </div>
-          </div>
-
           <section className="stats-section">
             <h2>Трубки по дням — нажмите на столбец, чтобы посмотреть список</h2>
             <div className="table-scroll stats-chart-wrap">
@@ -413,10 +471,7 @@ export function StatsPage() {
           <section className="stats-section">
             <div className="stats-panels">
               <div className="stats-panel">
-                <SortableBreakdown
-                  title="По трубкам"
-                  rows={byOperator.map((o) => ({ label: o.fullName, count: o.count, operatorId: o.operatorId }))}
-                />
+                <OperatorBreakdown rows={byOperator} />
               </div>
               <div className="stats-panel-column">
                 <div className="stats-panel">
