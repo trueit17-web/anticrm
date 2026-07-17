@@ -73,6 +73,10 @@ function DailyChart({ data, onPick }: { data: DailyStat[]; onPick: (day: string)
         const barHeight = (d.count / max) * (height - padding * 2);
         const x = padding + i * (barWidth + barGap);
         const y = height - padding - barHeight;
+        // Count label sits centered in the bar when there's room for it;
+        // for short bars it moves just above so it's never squeezed.
+        const fitsInsideBar = barHeight >= 18;
+        const labelY = fitsInsideBar ? y + barHeight / 2 : y - 6;
         return (
           <g key={d.day} onClick={() => onPick(d.day)} style={{ cursor: "pointer" }}>
             <rect
@@ -87,6 +91,20 @@ function DailyChart({ data, onPick }: { data: DailyStat[]; onPick: (day: string)
                 {formatDay(d.day)}: {d.count} (нажмите, чтобы посмотреть список)
               </title>
             </rect>
+            {barWidth >= 14 && (
+              <text
+                x={x + barWidth / 2}
+                y={labelY}
+                fontSize="11"
+                fontWeight="700"
+                textAnchor="middle"
+                dominantBaseline={fitsInsideBar ? "central" : "auto"}
+                fill={fitsInsideBar ? "#ffffff" : "var(--primary-dark)"}
+                style={{ pointerEvents: "none" }}
+              >
+                {d.count}
+              </text>
+            )}
             {(i % Math.ceil(data.length / 10 || 1) === 0 || i === data.length - 1) && (
               <text
                 x={x + barWidth / 2}
