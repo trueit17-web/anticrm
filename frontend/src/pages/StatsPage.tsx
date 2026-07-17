@@ -225,18 +225,17 @@ function TfTimeBreakdown({ rows }: { rows: TfTimeBucket[] }) {
 
   return (
     <div className="stats-subtable">
-      <h3>По ТФ — по времени приёма (I 8:00–10:14, II 10:15–12:59, III 13:00–15:14, IV 15:15–20:00)</h3>
       {rows.length === 0 ? (
         <p className="empty-state">Нет данных.</p>
       ) : (
-        <table className="appeals-table table-auto">
+        <table className="appeals-table">
           <thead>
             <tr>
               <th>ТФ</th>
-              <th className="col-num">I</th>
-              <th className="col-num">II</th>
-              <th className="col-num">III</th>
-              <th className="col-num">IV</th>
+              <th className="col-num" title="8:00–10:14">I</th>
+              <th className="col-num" title="10:15–12:59">II</th>
+              <th className="col-num" title="13:00–15:14">III</th>
+              <th className="col-num" title="15:15–20:00">IV</th>
               <th className="col-num">Итого</th>
             </tr>
           </thead>
@@ -404,6 +403,7 @@ export function StatsPage() {
                   title="По Госам"
                   rows={byGov.map((g) => ({ label: g.value, count: g.count }))}
                 />
+                <TfTimeBreakdown rows={byTf} />
               </div>
               <div className="stats-panel">
                 <SortableBreakdown
@@ -412,10 +412,6 @@ export function StatsPage() {
                 />
               </div>
             </div>
-          </section>
-
-          <section className="stats-section">
-            <TfTimeBreakdown rows={byTf} />
           </section>
         </>
       )}
