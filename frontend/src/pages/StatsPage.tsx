@@ -436,15 +436,15 @@ export function StatsPage() {
         <div className="stats-summary">
           <div className="stats-card">
             <span className="stats-card-value">{summary.today}</span>
-            <span className="muted">Всего трубок (сегодня)</span>
+            <span className="muted">трубок сегодня</span>
           </div>
           <div className="stats-card">
             <span className="stats-card-value">{summary.week}</span>
-            <span className="muted">Всего трубок (неделя, Пн–Сб)</span>
+            <span className="muted">трубок на этой неделе</span>
           </div>
           <div className="stats-card">
             <span className="stats-card-value">{summary.total}</span>
-            <span className="muted">Всего трубок (за всё время)</span>
+            <span className="muted">трубок за всё время</span>
           </div>
         </div>
       </div>
