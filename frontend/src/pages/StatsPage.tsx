@@ -242,7 +242,9 @@ function TfTimeBreakdown({ rows }: { rows: TfTimeBucket[] }) {
           <tbody>
             {sorted.map((r) => (
               <tr key={r.value}>
-                <td>{r.value}</td>
+                <td className="wrap-cell" title={r.value}>
+                  {r.value}
+                </td>
                 <td className="col-num">{r.I}</td>
                 <td className="col-num">{r.II}</td>
                 <td className="col-num">{r.III}</td>
