@@ -50,21 +50,26 @@ function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
 }
 
-// Top 3 by trubki count over the last 7 days — shown centered in the header
-// as an avatar with a rank ring (gold/silver/plain).
+// Monday of the week containing isoDate — weeks here always run Пн–Сб.
+function mondayOfWeek(isoDate: string): string {
+  const d = new Date(`${isoDate}T00:00:00Z`);
+  const day = d.getUTCDay(); // 0=Sun..6=Sat
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  d.setUTCDate(d.getUTCDate() + diffToMonday);
+  return d.toISOString().slice(0, 10);
+}
+
+// Top 3 by trubki count for the current week (Пн–Сб) — shown centered in the
+// header as an avatar with a rank ring (gold/silver/plain).
 function WeekLeaders() {
   const [leaders, setLeaders] = useState<OperatorStat[]>([]);
 
   useEffect(() => {
-    const today = new Date();
-    const from = new Date(today);
-    from.setUTCDate(from.getUTCDate() - 6);
-    const to = new Date(today);
-    to.setUTCDate(to.getUTCDate() + 1);
+    const monday = mondayOfWeek(todayInputValue());
+    const to = new Date(`${monday}T00:00:00Z`);
+    to.setUTCDate(to.getUTCDate() + 6);
     api
-      .get<{ byOperator: OperatorStat[] }>(
-        `/appeals/stats?from=${from.toISOString().slice(0, 10)}&to=${to.toISOString().slice(0, 10)}`
-      )
+      .get<{ byOperator: OperatorStat[] }>(`/appeals/stats?from=${monday}&to=${to.toISOString().slice(0, 10)}`)
       .then((res) => setLeaders(res.byOperator.slice(0, 3)))
       .catch(() => {});
   }, []);
@@ -79,7 +84,7 @@ function WeekLeaders() {
   );
 
   return (
-    <div className="week-leaders" title="Лучшие по числу трубок за последние 7 дней">
+    <div className="week-leaders" title="Лучшие по числу трубок за текущую неделю (Пн–Сб)">
       {podiumOrder.map((l) => (
         <EmployeeAvatarButton
           key={l.operatorId}

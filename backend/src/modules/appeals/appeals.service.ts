@@ -207,12 +207,38 @@ export interface DailyStat {
   count: number;
 }
 
+export interface TfTimeBucket {
+  value: string;
+  I: number;
+  II: number;
+  III: number;
+  IV: number;
+}
+
 export interface RangeStats {
   total: number;
   byOperator: OperatorStat[];
   byGov: StatBucket[];
   byStatus: StatBucket[];
   byDate: DailyStat[];
+  byTf: TfTimeBucket[];
+}
+
+// Shift window boundaries (Moscow local time, minutes since midnight) used to
+// bucket ТФ by time of creation. createdAt is stored as a bare UTC clock
+// value (see the date-bucketing note below) — Moscow has no DST, so a fixed
+// +180min offset recovers the wall-clock time operators actually see.
+const MOSCOW_OFFSET_MINUTES = 180;
+const TF_TIME_WINDOWS: { key: "I" | "II" | "III" | "IV"; start: number; end: number }[] = [
+  { key: "I", start: 8 * 60, end: 10 * 60 + 14 },
+  { key: "II", start: 10 * 60 + 15, end: 12 * 60 + 59 },
+  { key: "III", start: 13 * 60, end: 15 * 60 + 14 },
+  { key: "IV", start: 15 * 60 + 15, end: 20 * 60 },
+];
+
+function tfTimeWindow(createdAt: Date): "I" | "II" | "III" | "IV" | null {
+  const minutes = (createdAt.getUTCHours() * 60 + createdAt.getUTCMinutes() + MOSCOW_OFFSET_MINUTES) % (24 * 60);
+  return TF_TIME_WINDOWS.find((w) => minutes >= w.start && minutes <= w.end)?.key ?? null;
 }
 
 // `to` is exclusive — callers pass the start of the day *after* the last day
@@ -229,7 +255,7 @@ export async function getStatsForRange(branchId: number, from: Date, to: Date): 
     prisma.appeal.groupBy({ by: ["operatorId"], where, _count: { _all: true } }),
     prisma.appeal.groupBy({ by: ["gov"], where, _count: { _all: true } }),
     prisma.appeal.groupBy({ by: ["status"], where, _count: { _all: true } }),
-    prisma.appeal.findMany({ where, select: { date: true } }),
+    prisma.appeal.findMany({ where, select: { date: true, tf: true, createdAt: true } }),
     prisma.appeal.count({ where }),
   ]);
 
@@ -266,5 +292,18 @@ export async function getStatsForRange(branchId: number, from: Date, to: Date): 
     .map(([day, count]) => ({ day, count }))
     .sort((a, b) => a.day.localeCompare(b.day));
 
-  return { total, byOperator, byGov, byStatus, byDate };
+  const tfCounts = new Map<string, { I: number; II: number; III: number; IV: number }>();
+  for (const row of dateRows) {
+    const window = tfTimeWindow(row.createdAt);
+    if (!window) continue;
+    const key = row.tf ?? "—";
+    const counts = tfCounts.get(key) ?? { I: 0, II: 0, III: 0, IV: 0 };
+    counts[window] += 1;
+    tfCounts.set(key, counts);
+  }
+  const byTf = [...tfCounts.entries()]
+    .map(([value, counts]) => ({ value, ...counts }))
+    .sort((a, b) => b.I + b.II + b.III + b.IV - (a.I + a.II + a.III + a.IV));
+
+  return { total, byOperator, byGov, byStatus, byDate, byTf };
 }

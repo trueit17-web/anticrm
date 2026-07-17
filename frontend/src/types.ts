@@ -88,12 +88,21 @@ export interface StatBucket {
   count: number;
 }
 
+export interface TfTimeBucket {
+  value: string;
+  I: number;
+  II: number;
+  III: number;
+  IV: number;
+}
+
 export interface RangeStats {
   total: number;
   byOperator: OperatorStat[];
   byGov: StatBucket[];
   byStatus: StatBucket[];
   byDate: DailyStat[];
+  byTf: TfTimeBucket[];
 }
 
 export interface SelectOption {

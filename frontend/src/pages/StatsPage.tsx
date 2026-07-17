@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, ApiError } from "../api/client";
-import { Appeal, DailyStat, OperatorStat, RangeStats, StatBucket } from "../types";
+import { Appeal, DailyStat, OperatorStat, RangeStats, StatBucket, TfTimeBucket } from "../types";
 import { detectMobileOperator } from "../lib/mobileOperator";
 import { BranchSwitcher } from "../components/BranchSwitcher";
 import { IconBack } from "../components/icons";
@@ -24,6 +24,15 @@ function todayInputValue(): string {
 function addDays(isoDate: string, delta: number): string {
   const d = new Date(`${isoDate}T00:00:00Z`);
   d.setUTCDate(d.getUTCDate() + delta);
+  return d.toISOString().slice(0, 10);
+}
+
+// Monday of the week containing isoDate — weeks here always run Пн–Сб.
+function mondayOfWeek(isoDate: string): string {
+  const d = new Date(`${isoDate}T00:00:00Z`);
+  const day = d.getUTCDay(); // 0=Sun..6=Sat
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  d.setUTCDate(d.getUTCDate() + diffToMonday);
   return d.toISOString().slice(0, 10);
 }
 
@@ -211,6 +220,44 @@ function SortableBreakdown({ title, rows }: { title: string; rows: LabeledCount[
   );
 }
 
+function TfTimeBreakdown({ rows }: { rows: TfTimeBucket[] }) {
+  const sorted = [...rows].sort((a, b) => b.I + b.II + b.III + b.IV - (a.I + a.II + a.III + a.IV));
+
+  return (
+    <div className="stats-subtable">
+      <h3>По ТФ — по времени приёма (I 8:00–10:14, II 10:15–12:59, III 13:00–15:14, IV 15:15–20:00)</h3>
+      {rows.length === 0 ? (
+        <p className="empty-state">Нет данных.</p>
+      ) : (
+        <table className="appeals-table table-auto">
+          <thead>
+            <tr>
+              <th>ТФ</th>
+              <th className="col-num">I</th>
+              <th className="col-num">II</th>
+              <th className="col-num">III</th>
+              <th className="col-num">IV</th>
+              <th className="col-num">Итого</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((r) => (
+              <tr key={r.value}>
+                <td>{r.value}</td>
+                <td className="col-num">{r.I}</td>
+                <td className="col-num">{r.II}</td>
+                <td className="col-num">{r.III}</td>
+                <td className="col-num">{r.IV}</td>
+                <td className="col-num">{r.I + r.II + r.III + r.IV}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
 export function StatsPage() {
   const [period, setPeriod] = useState<Period>("today");
   const [customFrom, setCustomFrom] = useState(todayInputValue());
@@ -221,6 +268,7 @@ export function StatsPage() {
   const [byGov, setByGov] = useState<StatBucket[]>([]);
   const [byStatus, setByStatus] = useState<StatBucket[]>([]);
   const [byDate, setByDate] = useState<DailyStat[]>([]);
+  const [byTf, setByTf] = useState<TfTimeBucket[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -232,8 +280,10 @@ export function StatsPage() {
     if (period === "custom" && (!customFrom || !customTo || customFrom > customTo)) {
       return;
     }
-    const from = period === "today" ? todayInputValue() : period === "week" ? addDays(todayInputValue(), -6) : customFrom;
-    const to = period === "custom" ? addDays(customTo, 1) : addDays(todayInputValue(), 1);
+    const weekMonday = mondayOfWeek(todayInputValue());
+    const from = period === "today" ? todayInputValue() : period === "week" ? weekMonday : customFrom;
+    const to =
+      period === "custom" ? addDays(customTo, 1) : period === "week" ? addDays(weekMonday, 6) : addDays(todayInputValue(), 1);
 
     setLoading(true);
     setError(null);
@@ -245,6 +295,7 @@ export function StatsPage() {
         setByGov(res.byGov);
         setByStatus(res.byStatus);
         setByDate(res.byDate);
+        setByTf(res.byTf);
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : "Не удалось загрузить статистику"))
       .finally(() => setLoading(false));
@@ -271,7 +322,7 @@ export function StatsPage() {
     loadDay(day);
   }
 
-  const periodLabel = period === "today" ? "сегодня" : period === "week" ? "7 дней" : "период";
+  const periodLabel = period === "today" ? "сегодня" : period === "week" ? "неделя, Пн–Сб" : "период";
 
   return (
     <div className="page">
@@ -361,6 +412,10 @@ export function StatsPage() {
                 />
               </div>
             </div>
+          </section>
+
+          <section className="stats-section">
+            <TfTimeBreakdown rows={byTf} />
           </section>
         </>
       )}

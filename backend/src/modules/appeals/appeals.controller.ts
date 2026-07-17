@@ -224,7 +224,7 @@ function parseRangeParams(req: Request): { from: Date; to: Date } {
 export async function getStatsHandler(req: Request, res: Response) {
   const branchId = await resolveBranchId(req);
   if (branchId === null) {
-    return res.json({ total: 0, byOperator: [], byGov: [], byStatus: [], byDate: [] });
+    return res.json({ total: 0, byOperator: [], byGov: [], byStatus: [], byDate: [], byTf: [] });
   }
   const { from, to } = parseRangeParams(req);
   const stats = await getStatsForRange(branchId, from, to);

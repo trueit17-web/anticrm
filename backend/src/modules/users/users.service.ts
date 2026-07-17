@@ -106,13 +106,25 @@ function dayStart(date: Date): Date {
   return d;
 }
 
+// Monday of the week containing date — weeks here always run Пн–Сб.
+function mondayOfWeek(date: Date): Date {
+  const d = dayStart(date);
+  const day = d.getUTCDay(); // 0=Sun..6=Sat
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  d.setUTCDate(d.getUTCDate() + diffToMonday);
+  return d;
+}
+
 // Popup employee card shown when clicking a name in a table — profile
-// fields plus a quick trubki count (today / last 7 days / all time).
+// fields plus a quick trubki count (today / this week, Пн–Сб / all time).
 // branchId === null (SUPERADMIN, no branch selected) sees anyone and their
-// all-branch totals; everyone else is confined to their own branch's
-// accounts and that branch's counts, same access rule as the rest of /users.
+// all-branch totals; everyone else is confined to colleagues visible in the
+// branch they're currently viewing — either the colleague's home branch or
+// one they've been granted extra access to (e.g. a manager working cases
+// across offices) — and the stats are counted for that same branch.
 export async function getUserCard(id: number, branchId: number | null) {
-  const where = branchId === null ? { id } : { id, branchId };
+  const where =
+    branchId === null ? { id } : { id, OR: [{ branchId }, { branchAccess: { some: { branchId } } }] };
   const user = await prisma.user.findFirst({
     where,
     select: { id: true, fullName: true, avatarUrl: true, telegram: true, bio: true, branchId: true },
@@ -122,14 +134,15 @@ export async function getUserCard(id: number, branchId: number | null) {
   const today = dayStart(new Date());
   const tomorrow = new Date(today);
   tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
-  const weekAgo = new Date(today);
-  weekAgo.setUTCDate(weekAgo.getUTCDate() - 6);
+  const weekStart = mondayOfWeek(today);
+  const weekEnd = new Date(weekStart);
+  weekEnd.setUTCDate(weekEnd.getUTCDate() + 6);
 
   const appealWhere = { operatorId: id, branchId: branchId ?? user.branchId ?? undefined, deletedAt: null };
 
   const [todayCount, weekCount, totalCount] = await Promise.all([
     prisma.appeal.count({ where: { ...appealWhere, date: { gte: today, lt: tomorrow } } }),
-    prisma.appeal.count({ where: { ...appealWhere, date: { gte: weekAgo, lt: tomorrow } } }),
+    prisma.appeal.count({ where: { ...appealWhere, date: { gte: weekStart, lt: weekEnd } } }),
     prisma.appeal.count({ where: appealWhere }),
   ]);
 
