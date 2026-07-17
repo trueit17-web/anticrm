@@ -398,12 +398,16 @@ export function StatsPage() {
                   rows={byOperator.map((o) => ({ label: o.fullName, count: o.count, operatorId: o.operatorId }))}
                 />
               </div>
-              <div className="stats-panel">
-                <SortableBreakdown
-                  title="По Госам"
-                  rows={byGov.map((g) => ({ label: g.value, count: g.count }))}
-                />
-                <TfTimeBreakdown rows={byTf} />
+              <div className="stats-panel-column">
+                <div className="stats-panel">
+                  <SortableBreakdown
+                    title="По Госам"
+                    rows={byGov.map((g) => ({ label: g.value, count: g.count }))}
+                  />
+                </div>
+                <div className="stats-panel">
+                  <TfTimeBreakdown rows={byTf} />
+                </div>
               </div>
               <div className="stats-panel">
                 <SortableBreakdown

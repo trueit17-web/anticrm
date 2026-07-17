@@ -574,13 +574,21 @@ a {
   min-width: 0;
 }
 
+.stats-panel-column {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  flex: 1;
+  min-width: 0;
+}
+
+.stats-panel-column .stats-panel {
+  flex: none;
+}
+
 .stats-subtable h3 {
   font-size: 14px;
   margin: 0 0 8px;
-}
-
-.stats-subtable + .stats-subtable {
-  margin-top: 16px;
 }
 
 .admin-option-list {
