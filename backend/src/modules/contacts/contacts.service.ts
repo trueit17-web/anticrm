@@ -1,4 +1,4 @@
-import { ContactStatus, OptionField, Prisma } from "@prisma/client";
+import { ContactStatus, OptionField, Prisma, Role } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { createAppeal } from "../appeals/appeals.service";
 import { getDefaultOptionValue } from "../select-options/select-options.service";
@@ -65,9 +65,23 @@ export async function deleteBatch(id: number, branchId: number) {
   return result.count > 0;
 }
 
-export function listQueue(branchId: number) {
+// A batch uploaded by an admin/superadmin is shared — any manager can pull
+// from it. A batch a manager uploaded themselves stays private to them; no
+// one else sees it in the queue (admins still see it in Загруженные базы).
+function visibleQueueWhere(branchId: number, userId: number): Prisma.ContactWhereInput {
+  return {
+    branchId,
+    status: ContactStatus.NEW,
+    OR: [
+      { batch: { uploadedBy: { role: { in: [Role.ADMIN, Role.SUPERADMIN] } } } },
+      { batch: { uploadedById: userId } },
+    ],
+  };
+}
+
+export function listQueue(branchId: number, userId: number) {
   return prisma.contact.findMany({
-    where: { branchId, status: ContactStatus.NEW },
+    where: visibleQueueWhere(branchId, userId),
     include: contactInclude,
     orderBy: { createdAt: "asc" },
     take: 200,
@@ -102,7 +116,7 @@ export async function claimContact(id: number, branchId: number, userId: number)
 export async function claimNext(branchId: number, userId: number) {
   for (let attempt = 0; attempt < 5; attempt++) {
     const next = await prisma.contact.findFirst({
-      where: { branchId, status: ContactStatus.NEW },
+      where: visibleQueueWhere(branchId, userId),
       orderBy: { createdAt: "asc" },
     });
     if (!next) return null;

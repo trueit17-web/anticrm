@@ -197,6 +197,9 @@ export function AppealsPage() {
   const [selectedDate, setSelectedDate] = useState(todayInputValue());
   const [showTrash, setShowTrash] = useState(false);
   const [showCallCard, setShowCallCard] = useState(false);
+  // Defaults to enabled so the nav doesn't flicker while /branches/mine
+  // loads — the backend enforces the flag regardless of this.
+  const [contactsModuleEnabled, setContactsModuleEnabled] = useState(true);
 
   // `silent` is used for the background poll below: it refreshes the data
   // without flashing the loading state or an error banner over the table
@@ -230,8 +233,13 @@ export function AppealsPage() {
       .then((res) => {
         const activeId = getActiveBranchId();
         const active = activeId ? res.branches.find((b) => b.id === activeId) : null;
-        if (active) setBranchName(active.name);
-        else if (res.branches.length === 1) setBranchName(res.branches[0].name);
+        if (active) {
+          setBranchName(active.name);
+          setContactsModuleEnabled(active.contactsEnabled);
+        } else if (res.branches.length === 1) {
+          setBranchName(res.branches[0].name);
+          setContactsModuleEnabled(res.branches[0].contactsEnabled);
+        }
       })
       .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -357,12 +365,12 @@ export function AppealsPage() {
             <Link to="/stats" className="icon-link" title="Статистика" aria-label="Статистика">
               <IconStats />
             </Link>
-            {user.role === "MANAGER" && (
+            {contactsModuleEnabled && user.role === "MANAGER" && (
               <Link to="/contacts" className="icon-link" title="Прозвон" aria-label="Прозвон">
                 <IconPhone />
               </Link>
             )}
-            {(user.role === "ADMIN" || user.role === "SUPERADMIN") && (
+            {contactsModuleEnabled && (user.role === "ADMIN" || user.role === "SUPERADMIN") && (
               <Link to="/contacts" className="icon-link" title="Базы" aria-label="Базы">
                 <IconDatabase />
               </Link>
@@ -391,7 +399,7 @@ export function AppealsPage() {
               <IconLogout />
             </button>
           </div>
-          {(user.role === "MANAGER" || user.role === "ADMIN" || user.role === "SUPERADMIN") && (
+          {contactsModuleEnabled && (user.role === "MANAGER" || user.role === "ADMIN" || user.role === "SUPERADMIN") && (
             <button className="btn-call" onClick={() => setShowCallCard(true)}>
               Звонить!
             </button>

@@ -46,6 +46,7 @@ export interface Branch {
   id: number;
   name: string;
   createdAt: string;
+  contactsEnabled: boolean;
 }
 
 export interface Appeal {

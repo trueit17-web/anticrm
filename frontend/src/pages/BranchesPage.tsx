@@ -70,6 +70,18 @@ export function BranchesPage() {
 
   useEffect(load, []);
 
+  async function handleToggleContacts(branch: Branch) {
+    setBranches((prev) =>
+      prev.map((b) => (b.id === branch.id ? { ...b, contactsEnabled: !b.contactsEnabled } : b))
+    );
+    try {
+      await api.patch(`/branches/${branch.id}`, { contactsEnabled: !branch.contactsEnabled });
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Не удалось сохранить");
+      load();
+    }
+  }
+
   async function handleCreate(e: FormEvent) {
     e.preventDefault();
     setFormError(null);
@@ -135,14 +147,24 @@ export function BranchesPage() {
             ) : (
               <li key={b.id}>
                 <span>{b.name}</span>
-                <button
-                  className="icon-btn"
-                  title="Редактировать"
-                  aria-label="Редактировать"
-                  onClick={() => setEditingId(b.id)}
-                >
-                  <IconEdit width={16} height={16} />
-                </button>
+                <span className="admin-option-actions">
+                  <label className="toggle-inline" title="Загрузка баз и очередь звонков для этого филиала">
+                    <input
+                      type="checkbox"
+                      checked={b.contactsEnabled}
+                      onChange={() => handleToggleContacts(b)}
+                    />
+                    Прозвон
+                  </label>
+                  <button
+                    className="icon-btn"
+                    title="Редактировать"
+                    aria-label="Редактировать"
+                    onClick={() => setEditingId(b.id)}
+                  >
+                    <IconEdit width={16} height={16} />
+                  </button>
+                </span>
               </li>
             )
           )}

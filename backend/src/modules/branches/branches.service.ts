@@ -9,10 +9,17 @@ export function createBranch(name: string) {
   return prisma.branch.create({ data: { name } });
 }
 
-export async function updateBranch(id: number, name: string) {
-  const result = await prisma.branch.updateMany({ where: { id }, data: { name } });
+export async function updateBranch(id: number, data: { name?: string; contactsEnabled?: boolean }) {
+  const result = await prisma.branch.updateMany({ where: { id }, data });
   if (result.count === 0) return null;
   return prisma.branch.findUnique({ where: { id } });
+}
+
+// Gate checked by every /contacts route — a branch with the module off
+// 403s the whole thing, not just a hidden nav icon.
+export async function isContactsEnabled(branchId: number): Promise<boolean> {
+  const branch = await prisma.branch.findUnique({ where: { id: branchId }, select: { contactsEnabled: true } });
+  return branch?.contactsEnabled ?? false;
 }
 
 // Branches the given user may switch into: every branch for SUPERADMIN,

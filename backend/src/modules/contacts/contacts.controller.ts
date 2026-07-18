@@ -75,7 +75,7 @@ export async function listQueueHandler(req: Request, res: Response) {
   if (branchId === null) {
     return res.json({ contacts: [] });
   }
-  const contacts = await listQueue(branchId);
+  const contacts = await listQueue(branchId, req.user!.id);
   res.json({ contacts });
 }
 

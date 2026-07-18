@@ -26,13 +26,18 @@ export async function createBranchHandler(req: Request, res: Response) {
   res.status(201).json({ branch });
 }
 
+const updateSchema = z.object({
+  name: z.string().min(1).optional(),
+  contactsEnabled: z.boolean().optional(),
+});
+
 export async function updateBranchHandler(req: Request, res: Response) {
   const id = Number(req.params.id);
-  const parsed = nameSchema.safeParse(req.body);
+  const parsed = updateSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ error: "Проверьте поля формы", details: parsed.error.flatten() });
   }
-  const branch = await updateBranch(id, parsed.data.name);
+  const branch = await updateBranch(id, parsed.data);
   if (!branch) {
     return res.status(404).json({ error: "Филиал не найден" });
   }

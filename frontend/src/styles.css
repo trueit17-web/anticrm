@@ -699,6 +699,18 @@ a {
   gap: 10px;
 }
 
+.toggle-inline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.toggle-inline input {
+  width: auto;
+}
+
 .color-palette {
   display: flex;
   gap: 5px;

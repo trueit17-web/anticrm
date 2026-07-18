@@ -1,8 +1,8 @@
 import { ChangeEvent, FormEvent, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
-import { api, ApiError } from "../api/client";
-import { CONTACT_STATUS_LABELS, Contact, ContactBatch, ContactStatus } from "../types";
+import { api, ApiError, getActiveBranchId } from "../api/client";
+import { Branch, CONTACT_STATUS_LABELS, Contact, ContactBatch, ContactStatus } from "../types";
 import { BranchSwitcher } from "../components/BranchSwitcher";
 import { IconBack, IconTrash } from "../components/icons";
 import { EmployeeNameButton } from "../components/EmployeeCard";
@@ -288,6 +288,12 @@ function MineSection({ mine, loading, error, onChanged }: {
 export function ContactsPage() {
   const { user } = useAuth();
   const isAdmin = user?.role === "ADMIN" || user?.role === "SUPERADMIN";
+  const isManager = user?.role === "MANAGER";
+  const canUpload = isAdmin || isManager;
+
+  // Defaults to enabled so the page doesn't flash a "disabled" message while
+  // /branches/mine is still loading — the backend enforces the flag anyway.
+  const [moduleEnabled, setModuleEnabled] = useState(true);
 
   const [batches, setBatches] = useState<ContactBatch[]>([]);
   const [batchesLoading, setBatchesLoading] = useState(isAdmin);
@@ -336,6 +342,18 @@ export function ContactsPage() {
     loadBatches();
     loadQueue();
     loadMine();
+    api
+      .get<{ branches: Branch[] }>("/branches/mine")
+      .then((res) => {
+        const activeId = getActiveBranchId();
+        const active = activeId
+          ? res.branches.find((b) => b.id === activeId)
+          : res.branches.length === 1
+            ? res.branches[0]
+            : null;
+        if (active) setModuleEnabled(active.contactsEnabled);
+      })
+      .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -362,20 +380,30 @@ export function ContactsPage() {
         </div>
       </header>
 
-      {isAdmin && (
-        <div className="admin-fields-grid">
-          <UploadSection onUploaded={loadBatches} />
-          <BatchesSection
-            batches={batches}
-            loading={batchesLoading}
-            error={batchesError}
-            onDeleted={handleClaimedOrChanged}
-          />
-        </div>
-      )}
+      {!moduleEnabled ? (
+        <p className="empty-state">
+          Модуль «Прозвон» отключён для этого филиала — обратитесь к суперадминистратору.
+        </p>
+      ) : (
+        <>
+          {(canUpload || isAdmin) && (
+            <div className="admin-fields-grid">
+              {canUpload && <UploadSection onUploaded={handleClaimedOrChanged} />}
+              {isAdmin && (
+                <BatchesSection
+                  batches={batches}
+                  loading={batchesLoading}
+                  error={batchesError}
+                  onDeleted={handleClaimedOrChanged}
+                />
+              )}
+            </div>
+          )}
 
-      <QueueSection queue={queue} loading={queueLoading} error={queueError} onClaimed={handleClaimedOrChanged} />
-      <MineSection mine={mine} loading={mineLoading} error={mineError} onChanged={handleClaimedOrChanged} />
+          <QueueSection queue={queue} loading={queueLoading} error={queueError} onClaimed={handleClaimedOrChanged} />
+          <MineSection mine={mine} loading={mineLoading} error={mineError} onChanged={handleClaimedOrChanged} />
+        </>
+      )}
     </div>
   );
 }
