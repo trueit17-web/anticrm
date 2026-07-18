@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api, ApiError } from "../api/client";
 import { Contact } from "../types";
 import { detectMobileOperator } from "../lib/mobileOperator";
+import { parseExtraInfo } from "../lib/contactExtraInfo";
 import { IconPhone } from "./icons";
 
 // "Звонить!" — grabs the next contact off the shared queue and shows it as
@@ -56,12 +57,13 @@ export function CallCardModal({ onClose }: { onClose: () => void }) {
     }
   }
 
-  const extraInfo = [contact?.fullName, contact?.extraInfo].filter(Boolean).join("\n");
+  const { birthDate, extraPhones, rest } = parseExtraInfo(contact?.extraInfo);
 
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-card call-card" onClick={(e) => e.stopPropagation()}>
-        <h2>Звонок</h2>
+        <h2>{contact ? contact.fullName || "Без имени" : "Звонок"}</h2>
+        {contact && birthDate && <p className="muted call-card-birthdate">Дата рождения: {birthDate}</p>}
 
         {loading && <p className="muted">Ищем контакт...</p>}
         {!loading && error && !contact && <p className="error-text">{error}</p>}
@@ -75,12 +77,21 @@ export function CallCardModal({ onClose }: { onClose: () => void }) {
                 <IconPhone />
               </a>
             </div>
+            {extraPhones.length > 0 && (
+              <div className="call-card-extra-phones">
+                {extraPhones.map((p) => (
+                  <a key={p} href={`tel:${p}`}>
+                    {p}
+                  </a>
+                ))}
+              </div>
+            )}
             <p className="muted call-card-operator">{detectMobileOperator(contact.phone)}</p>
 
             <div className="form-grid">
               <label className="span-2">
                 Доп. инфа
-                <textarea readOnly value={extraInfo || "—"} rows={3} />
+                <textarea readOnly value={rest || "—"} rows={3} />
               </label>
 
               <label className="span-2">

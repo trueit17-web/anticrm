@@ -497,6 +497,26 @@ a {
   background: rgba(37, 99, 235, 0.22);
 }
 
+.call-card-birthdate {
+  margin: 2px 0 0;
+}
+
+.call-card-extra-phones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin-top: 2px;
+}
+
+.call-card-extra-phones a {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.call-card-extra-phones a:hover {
+  color: #2563eb;
+}
+
 .call-card-operator {
   margin: 2px 0 18px;
 }
