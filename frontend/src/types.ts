@@ -148,3 +148,35 @@ export interface HistoryEntry {
   changedAt: string;
   changedBy: { id: number; fullName: string };
 }
+
+export type ContactStatus = "NEW" | "IN_PROGRESS" | "REACHED" | "NOT_REACHED" | "DECLINED" | "CALLBACK";
+
+export const CONTACT_STATUS_LABELS: Record<ContactStatus, string> = {
+  NEW: "Новый",
+  IN_PROGRESS: "В работе",
+  REACHED: "Дозвон",
+  NOT_REACHED: "Недозвон",
+  DECLINED: "Отказ",
+  CALLBACK: "Перезвонить",
+};
+
+export interface Contact {
+  id: number;
+  phone: string;
+  fullName: string | null;
+  status: ContactStatus;
+  resultNote: string | null;
+  claimedBy: { id: number; fullName: string } | null;
+  claimedAt: string | null;
+  appealId: number | null;
+  createdAt: string;
+}
+
+export interface ContactBatch {
+  id: number;
+  fileName: string;
+  totalCount: number;
+  uploadedBy: { id: number; fullName: string };
+  createdAt: string;
+  counts: Partial<Record<ContactStatus, number>>;
+}

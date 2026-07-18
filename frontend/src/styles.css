@@ -565,6 +565,19 @@ a {
   padding: 12px;
 }
 
+.contact-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.contact-actions button {
+  white-space: nowrap;
+  font-size: 12px;
+  padding: 5px 10px;
+}
+
 .stats-chart {
   width: 100%;
   height: 220px;

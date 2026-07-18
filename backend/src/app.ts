@@ -8,6 +8,7 @@ import { usersRouter } from "./modules/users/users.routes";
 import { appealsRouter } from "./modules/appeals/appeals.routes";
 import { selectOptionsRouter } from "./modules/select-options/select-options.routes";
 import { branchesRouter } from "./modules/branches/branches.routes";
+import { contactsRouter } from "./modules/contacts/contacts.routes";
 
 export const app = express();
 
@@ -30,6 +31,7 @@ app.use("/api/users", usersRouter);
 app.use("/api/appeals", appealsRouter);
 app.use("/api/select-options", selectOptionsRouter);
 app.use("/api/branches", branchesRouter);
+app.use("/api/contacts", contactsRouter);
 
 app.use((req: Request, res: Response) => {
   res.status(404).json({ error: "Не найдено" });
@@ -38,7 +40,7 @@ app.use((req: Request, res: Response) => {
 // Centralized error handler keeps stack traces out of API responses.
 app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
   if (err instanceof multer.MulterError) {
-    const message = err.code === "LIMIT_FILE_SIZE" ? "Файл слишком большой (максимум 3 МБ)" : err.message;
+    const message = err.code === "LIMIT_FILE_SIZE" ? "Файл слишком большой" : err.message;
     return res.status(400).json({ error: message });
   }
   // The avatar upload's fileFilter rejects with a plain Error carrying a

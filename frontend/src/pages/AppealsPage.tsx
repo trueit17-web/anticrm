@@ -9,6 +9,7 @@ import {
   IconAdmin,
   IconBack,
   IconLogout,
+  IconPhone,
   IconRestore,
   IconStats,
   IconTorii,
@@ -352,6 +353,11 @@ export function AppealsPage() {
           <Link to="/stats" className="icon-link" title="Статистика" aria-label="Статистика">
             <IconStats />
           </Link>
+          {(user.role === "MANAGER" || user.role === "ADMIN" || user.role === "SUPERADMIN") && (
+            <Link to="/contacts" className="icon-link" title="Прозвон" aria-label="Прозвон">
+              <IconPhone />
+            </Link>
+          )}
           {(user.role === "ADMIN" || user.role === "SUPERADMIN") && (
             <Link to="/admin" className="icon-link" title="Админка" aria-label="Админка">
               <IconAdmin />

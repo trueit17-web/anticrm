@@ -112,3 +112,12 @@ export function IconRestore(props: IconProps) {
     </svg>
   );
 }
+
+// A handset — the "Прозвон" (cold-call queue) nav link.
+export function IconPhone(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M5 4.5h3.2l1.3 4-2 1.4a10.5 10.5 0 0 0 5.6 5.6l1.4-2 4 1.3V18a1.5 1.5 0 0 1-1.6 1.5A15.5 15.5 0 0 1 3.5 6.1 1.5 1.5 0 0 1 5 4.5z" />
+    </svg>
+  );
+}

@@ -26,6 +26,16 @@ enum OptionField {
   TF
 }
 
+// Workflow state of one Contact through the cold-call queue.
+enum ContactStatus {
+  NEW // Новый — sitting in the shared queue, unclaimed
+  IN_PROGRESS // В работе — claimed by a manager, not yet actioned
+  REACHED // Дозвон — converted into an Appeal
+  NOT_REACHED // Недозвон
+  DECLINED // Отказ
+  CALLBACK // Перезвонить — stays with the same manager, doesn't return to the queue
+}
+
 model Branch {
   id        Int      @id @default(autoincrement())
   name      String
@@ -35,6 +45,8 @@ model Branch {
   appeals       Appeal[]
   selectOptions SelectOption[]
   userAccess    UserBranchAccess[]
+  contactBatches ContactBatch[]
+  contacts       Contact[]
 }
 
 // Extra branches a user can switch into beyond their home branch (User.branchId).
@@ -106,6 +118,8 @@ model User {
   historyEntries     AppealHistory[] @relation("HistoryChangedBy")
   branchAccess       UserBranchAccess[]
   loginEvents        LoginEvent[]
+  uploadedContactBatches ContactBatch[] @relation("ContactBatchUploader")
+  claimedContacts        Contact[]      @relation("ContactClaimedBy")
 
   @@index([branchId])
 }
@@ -169,6 +183,10 @@ model Appeal {
   // instead of a hard `DELETE`. Null means active/not deleted.
   deletedAt DateTime?
 
+  // Set when this appeal was created by converting a cold-call Contact
+  // (see Contact.appealId below) rather than logged directly.
+  contact Contact?
+
   @@index([branchId])
   @@index([operatorId])
   @@index([status])
@@ -192,4 +210,54 @@ model AppealHistory {
   changedAt DateTime @default(now())
 
   @@index([appealId])
+}
+
+// One uploaded client-base file — a batch of Contacts to cold-call through.
+model ContactBatch {
+  id           Int      @id @default(autoincrement())
+  branchId     Int
+  branch       Branch   @relation(fields: [branchId], references: [id])
+  fileName     String
+  totalCount   Int
+  uploadedById Int
+  uploadedBy   User     @relation("ContactBatchUploader", fields: [uploadedById], references: [id])
+  createdAt    DateTime @default(now())
+
+  contacts Contact[]
+
+  @@index([branchId])
+}
+
+// One phone number from an uploaded batch, worked through the shared
+// cold-call queue by managers until it either becomes an Appeal (REACHED)
+// or is marked NOT_REACHED/DECLINED. CALLBACK stays claimed by the same
+// manager instead of returning to the queue.
+model Contact {
+  id       Int    @id @default(autoincrement())
+  branchId Int
+  branch   Branch @relation(fields: [branchId], references: [id])
+
+  batchId Int
+  batch   ContactBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  phone    String
+  fullName String?
+
+  status ContactStatus @default(NEW)
+
+  claimedById Int?
+  claimedBy   User?     @relation("ContactClaimedBy", fields: [claimedById], references: [id])
+  claimedAt   DateTime?
+
+  resultNote String?
+
+  appealId Int?    @unique
+  appeal   Appeal? @relation(fields: [appealId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([branchId, status])
+  @@index([batchId])
+  @@index([claimedById])
 }

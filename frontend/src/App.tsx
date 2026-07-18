@@ -7,6 +7,7 @@ import { UsersPage } from "./pages/UsersPage";
 import { StatsPage } from "./pages/StatsPage";
 import { AdminPage } from "./pages/AdminPage";
 import { BranchesPage } from "./pages/BranchesPage";
+import { ContactsPage } from "./pages/ContactsPage";
 
 export function App() {
   return (
@@ -50,6 +51,14 @@ export function App() {
           element={
             <ProtectedRoute roles={["SUPERADMIN"]}>
               <BranchesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/contacts"
+          element={
+            <ProtectedRoute roles={["MANAGER", "ADMIN", "SUPERADMIN"]}>
+              <ContactsPage />
             </ProtectedRoute>
           }
         />
