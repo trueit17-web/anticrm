@@ -164,6 +164,7 @@ export interface Contact {
   id: number;
   phone: string;
   fullName: string | null;
+  extraInfo: string | null;
   status: ContactStatus;
   resultNote: string | null;
   claimedBy: { id: number; fullName: string } | null;

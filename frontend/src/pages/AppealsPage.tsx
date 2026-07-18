@@ -4,10 +4,12 @@ import { api, ApiError, getActiveBranchId } from "../api/client";
 import { Appeal, Branch, OperatorStat, ROLE_LABELS, SelectOption } from "../types";
 import { AppealsTable, NewAppealValues } from "../components/AppealsTable";
 import { AppealFormModal, AppealFormValues } from "../components/AppealFormModal";
+import { CallCardModal } from "../components/CallCardModal";
 import { BranchSwitcher } from "../components/BranchSwitcher";
 import {
   IconAdmin,
   IconBack,
+  IconDatabase,
   IconLogout,
   IconPhone,
   IconRestore,
@@ -194,6 +196,7 @@ export function AppealsPage() {
   // in the header) — everyone else always works off today's trubki.
   const [selectedDate, setSelectedDate] = useState(todayInputValue());
   const [showTrash, setShowTrash] = useState(false);
+  const [showCallCard, setShowCallCard] = useState(false);
 
   // `silent` is used for the background poll below: it refreshes the data
   // without flashing the loading state or an error banner over the table
@@ -335,54 +338,68 @@ export function AppealsPage() {
           </p>
         </div>
         <WeekLeaders />
-        <div className="header-actions">
-          {user.role === "SUPERADMIN" && (
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              title="Показать трубки за дату"
-            />
-          )}
-          <BranchSwitcher />
-          {user.role === "SUPERADMIN" && (
-            <Link to="/branches" className="icon-link" title="Филиалы" aria-label="Филиалы">
-              <IconTorii />
+        <div className="header-actions-col">
+          <div className="header-actions">
+            {user.role === "SUPERADMIN" && (
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                title="Показать трубки за дату"
+              />
+            )}
+            <BranchSwitcher />
+            {user.role === "SUPERADMIN" && (
+              <Link to="/branches" className="icon-link" title="Филиалы" aria-label="Филиалы">
+                <IconTorii />
+              </Link>
+            )}
+            <Link to="/stats" className="icon-link" title="Статистика" aria-label="Статистика">
+              <IconStats />
             </Link>
-          )}
-          <Link to="/stats" className="icon-link" title="Статистика" aria-label="Статистика">
-            <IconStats />
-          </Link>
+            {user.role === "MANAGER" && (
+              <Link to="/contacts" className="icon-link" title="Прозвон" aria-label="Прозвон">
+                <IconPhone />
+              </Link>
+            )}
+            {(user.role === "ADMIN" || user.role === "SUPERADMIN") && (
+              <Link to="/contacts" className="icon-link" title="Базы" aria-label="Базы">
+                <IconDatabase />
+              </Link>
+            )}
+            {(user.role === "ADMIN" || user.role === "SUPERADMIN") && (
+              <Link to="/admin" className="icon-link" title="Админка" aria-label="Админка">
+                <IconAdmin />
+              </Link>
+            )}
+            {(user.role === "ADMIN" || user.role === "SUPERADMIN") && (
+              <Link to="/users" className="icon-link" title="Пользователи" aria-label="Пользователи">
+                <IconUsers />
+              </Link>
+            )}
+            {canDeleteAppeal(user) && (
+              <button
+                className="icon-link"
+                title={showTrash ? "К трубкам" : "Корзина"}
+                aria-label={showTrash ? "К трубкам" : "Корзина"}
+                onClick={() => setShowTrash((v) => !v)}
+              >
+                {showTrash ? <IconBack /> : <IconTrash />}
+              </button>
+            )}
+            <button className="icon-link" title="Выйти" aria-label="Выйти" onClick={logout}>
+              <IconLogout />
+            </button>
+          </div>
           {(user.role === "MANAGER" || user.role === "ADMIN" || user.role === "SUPERADMIN") && (
-            <Link to="/contacts" className="icon-link" title="Прозвон" aria-label="Прозвон">
-              <IconPhone />
-            </Link>
-          )}
-          {(user.role === "ADMIN" || user.role === "SUPERADMIN") && (
-            <Link to="/admin" className="icon-link" title="Админка" aria-label="Админка">
-              <IconAdmin />
-            </Link>
-          )}
-          {(user.role === "ADMIN" || user.role === "SUPERADMIN") && (
-            <Link to="/users" className="icon-link" title="Пользователи" aria-label="Пользователи">
-              <IconUsers />
-            </Link>
-          )}
-          {canDeleteAppeal(user) && (
-            <button
-              className="icon-link"
-              title={showTrash ? "К трубкам" : "Корзина"}
-              aria-label={showTrash ? "К трубкам" : "Корзина"}
-              onClick={() => setShowTrash((v) => !v)}
-            >
-              {showTrash ? <IconBack /> : <IconTrash />}
+            <button className="btn-call" onClick={() => setShowCallCard(true)}>
+              Звонить!
             </button>
           )}
-          <button className="icon-link" title="Выйти" aria-label="Выйти" onClick={logout}>
-            <IconLogout />
-          </button>
         </div>
       </header>
+
+      {showCallCard && <CallCardModal onClose={() => setShowCallCard(false)} />}
 
       {loading && <p>Загрузка...</p>}
       {error && <p className="error-text">{error}</p>}

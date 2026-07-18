@@ -242,6 +242,10 @@ model Contact {
 
   phone    String
   fullName String?
+  // Any other columns from the uploaded file besides phone/name, flattened
+  // into a single "Label: value; Label: value" string — shown to the
+  // manager as "Доп. инфа" on the call card.
+  extraInfo String?
 
   status ContactStatus @default(NEW)
 

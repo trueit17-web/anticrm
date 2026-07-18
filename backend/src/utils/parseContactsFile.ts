@@ -5,6 +5,9 @@ import { parse as parseCsv } from "csv-parse/sync";
 export interface ParsedContact {
   phone: string;
   fullName?: string;
+  // Any other non-empty columns, flattened to "Header: value; Header: value"
+  // (or just "value; value" when the file has no header row).
+  extraInfo?: string;
 }
 
 const PHONE_HEADERS = ["телефон", "phone", "номер", "номер телефона"];
@@ -25,13 +28,27 @@ function rowsToContacts(rows: string[][]): ParsedContact[] {
   const phoneIdx = header?.phoneIdx ?? 0;
   const nameIdx = header?.nameIdx ?? 1;
   const dataRows = header ? rows.slice(1) : rows;
+  const headerRow = header ? rows[0] : null;
 
   const contacts: ParsedContact[] = [];
   for (const row of dataRows) {
     const phone = (row[phoneIdx] ?? "").toString().trim();
     if (!phone) continue;
     const fullNameRaw = nameIdx >= 0 ? (row[nameIdx] ?? "").toString().trim() : "";
-    contacts.push(fullNameRaw ? { phone, fullName: fullNameRaw } : { phone });
+
+    const extraParts: string[] = [];
+    for (let i = 0; i < row.length; i++) {
+      if (i === phoneIdx || i === nameIdx) continue;
+      const value = (row[i] ?? "").toString().trim();
+      if (!value) continue;
+      const label = headerRow?.[i]?.toString().trim();
+      extraParts.push(label ? `${label}: ${value}` : value);
+    }
+
+    const contact: ParsedContact = { phone };
+    if (fullNameRaw) contact.fullName = fullNameRaw;
+    if (extraParts.length > 0) contact.extraInfo = extraParts.join("; ");
+    contacts.push(contact);
   }
   return contacts;
 }
@@ -59,10 +76,11 @@ function parseCsvBuffer(buffer: Buffer): string[][] {
   }) as string[][];
 }
 
-// Reads a small phone (+ optional name) list out of a CSV or XLSX file. Looks
-// for a recognizable header row first ("Телефон"/"Имя" and a few English/
-// alternate spellings); falls back to treating column 1 as phone and column
-// 2 as name if no header is found. Rows with an empty phone are dropped.
+// Reads a phone (+ optional name, + any other columns) list out of a CSV or
+// XLSX file. Looks for a recognizable header row first ("Телефон"/"Имя" and
+// a few English/alternate spellings); falls back to treating column 1 as
+// phone and column 2 as name if no header is found. Any remaining non-empty
+// columns are kept as extraInfo. Rows with an empty phone are dropped.
 export async function parseContactsFile(buffer: Buffer, originalName: string): Promise<ParsedContact[]> {
   const ext = path.extname(originalName).toLowerCase();
   const rows = ext === ".xlsx" ? await parseXlsx(buffer) : parseCsvBuffer(buffer);

@@ -121,3 +121,14 @@ export function IconPhone(props: IconProps) {
     </svg>
   );
 }
+
+// A stack of discs — the "Базы" (uploaded client bases) nav link.
+export function IconDatabase(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <ellipse cx="12" cy="5.5" rx="7" ry="2.5" />
+      <path d="M5 5.5V12c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5V5.5" />
+      <path d="M5 12v6.5c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5V12" />
+    </svg>
+  );
+}

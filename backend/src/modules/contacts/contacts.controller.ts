@@ -5,6 +5,7 @@ import { resolveBranchId } from "../../utils/branchScope";
 import { parseContactsFile } from "../../utils/parseContactsFile";
 import {
   claimContact,
+  claimNext,
   convertToAppeal,
   createBatch,
   deleteBatch,
@@ -92,6 +93,17 @@ export async function claimContactHandler(req: Request, res: Response) {
   res.json({ contact });
 }
 
+// Powers the "Звонить!" button — claims the oldest queued contact instead
+// of the manager picking one from a list.
+export async function claimNextHandler(req: Request, res: Response) {
+  const branchId = await resolveBranchId(req);
+  if (branchId === null) {
+    return res.status(400).json({ error: "Выберите филиал" });
+  }
+  const contact = await claimNext(branchId, req.user!.id);
+  res.json({ contact });
+}
+
 const outcomeSchema = z.object({
   status: z.enum(["NOT_REACHED", "DECLINED", "CALLBACK"]),
   resultNote: z.string().nullable().optional(),
@@ -123,13 +135,26 @@ export async function setOutcomeHandler(req: Request, res: Response) {
   res.json({ contact: result.contact });
 }
 
+const convertSchema = z.object({ dep: z.string().optional() });
+
 export async function convertToAppealHandler(req: Request, res: Response) {
   const branchId = await resolveBranchId(req);
   if (branchId === null) {
     return res.status(400).json({ error: "Выберите филиал" });
   }
+  const parsed = convertSchema.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    return res.status(400).json({ error: "Проверьте поля формы", details: parsed.error.flatten() });
+  }
+
   const id = Number(req.params.id);
-  const result = await convertToAppeal(id, branchId, req.user!.id, canActOnAnyContact(req.user!.role));
+  const result = await convertToAppeal(
+    id,
+    branchId,
+    req.user!.id,
+    canActOnAnyContact(req.user!.role),
+    parsed.data.dep
+  );
   if ("error" in result) {
     if (result.error === "not_found") return res.status(404).json({ error: "Контакт не найден" });
     return res.status(409).json({ error: "Контакт уже обработан" });

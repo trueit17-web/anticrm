@@ -29,6 +29,7 @@ export async function createBatch(
         batchId: batch.id,
         phone: r.phone,
         fullName: r.fullName ?? null,
+        extraInfo: r.extraInfo ?? null,
       })),
     });
   }
@@ -94,6 +95,30 @@ export async function claimContact(id: number, branchId: number, userId: number)
   return prisma.contact.findUnique({ where: { id }, include: contactInclude });
 }
 
+// Powers the "Звонить!" button — grabs the oldest unclaimed contact instead
+// of making the manager pick one from a list. A handful of retries absorbs
+// the race where two managers hit the button at the same instant; each
+// retry just moves on to the next-oldest still-NEW contact.
+export async function claimNext(branchId: number, userId: number) {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const next = await prisma.contact.findFirst({
+      where: { branchId, status: ContactStatus.NEW },
+      orderBy: { createdAt: "asc" },
+    });
+    if (!next) return null;
+
+    const result = await prisma.contact.updateMany({
+      where: { id: next.id, branchId, status: ContactStatus.NEW },
+      data: { status: ContactStatus.IN_PROGRESS, claimedById: userId, claimedAt: new Date() },
+    });
+    if (result.count > 0) {
+      return prisma.contact.findUnique({ where: { id: next.id }, include: contactInclude });
+    }
+    // Someone else claimed `next` between the read and the write — retry.
+  }
+  return null;
+}
+
 const OUTCOME_STATUSES: ContactStatus[] = [ContactStatus.NOT_REACHED, ContactStatus.DECLINED, ContactStatus.CALLBACK];
 
 export async function setOutcome(
@@ -127,7 +152,8 @@ export async function convertToAppeal(
   id: number,
   branchId: number,
   userId: number,
-  canActOnAnyContact: boolean
+  canActOnAnyContact: boolean,
+  dep?: string
 ) {
   const where: Prisma.ContactWhereInput = canActOnAnyContact
     ? { id, branchId }
@@ -139,11 +165,13 @@ export async function convertToAppeal(
   }
 
   const status = await getDefaultOptionValue(branchId, OptionField.STATUS);
+  const clientData = [contact.fullName, contact.extraInfo].filter(Boolean).join(" — ") || undefined;
   const appeal = await createAppeal({
     branchId,
     operatorId: userId,
     phone: contact.phone,
-    clientData: contact.fullName ?? undefined,
+    clientData,
+    dep: dep || undefined,
     status,
   });
 

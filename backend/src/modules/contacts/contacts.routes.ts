@@ -5,6 +5,7 @@ import { asyncHandler } from "../../utils/asyncHandler";
 import { contactsUpload } from "../../middleware/contactsUpload";
 import {
   claimContactHandler,
+  claimNextHandler,
   convertToAppealHandler,
   deleteBatchHandler,
   listBatchesHandler,
@@ -42,6 +43,11 @@ contactsRouter.get(
   "/mine",
   requireRole(Role.MANAGER, Role.ADMIN, Role.SUPERADMIN),
   asyncHandler(listMineHandler)
+);
+contactsRouter.post(
+  "/claim-next",
+  requireRole(Role.MANAGER, Role.ADMIN, Role.SUPERADMIN),
+  asyncHandler(claimNextHandler)
 );
 contactsRouter.post(
   "/:id/claim",
