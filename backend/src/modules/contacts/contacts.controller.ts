@@ -21,6 +21,13 @@ function canActOnAnyContact(role: Role): boolean {
   return role === Role.ADMIN || role === Role.SUPERADMIN;
 }
 
+// multer/busboy decode multipart filenames as latin1, which turns any
+// non-ASCII name (e.g. Cyrillic) into mojibake — re-interpreting those bytes
+// as UTF-8 recovers the original text. A no-op for plain ASCII filenames.
+function fixFilenameEncoding(name: string): string {
+  return Buffer.from(name, "latin1").toString("utf8");
+}
+
 export async function uploadBatchHandler(req: Request, res: Response) {
   const branchId = await resolveBranchId(req);
   if (branchId === null) {
@@ -30,13 +37,14 @@ export async function uploadBatchHandler(req: Request, res: Response) {
   if (!file) {
     return res.status(400).json({ error: "Файл не передан" });
   }
+  const fileName = fixFilenameEncoding(file.originalname);
 
-  const rows = await parseContactsFile(file.buffer, file.originalname);
+  const rows = await parseContactsFile(file.buffer, fileName);
   if (rows.length === 0) {
     return res.status(400).json({ error: "В файле не найдено ни одного номера телефона" });
   }
 
-  const batch = await createBatch(branchId, req.user!.id, file.originalname, rows);
+  const batch = await createBatch(branchId, req.user!.id, fileName, rows);
   res.status(201).json({ batch });
 }
 
