@@ -34,15 +34,13 @@ async function seedAdmin(branchId: number) {
   console.log(`Created admin user "${username}". Change the password after first login.`);
 }
 
-// Optional: only runs when SEED_SUPERADMIN_USERNAME is set. This is the only
-// supported way to bootstrap a SUPERADMIN account (branch-scoped admins
-// can't create one), since it's meant to be a one-time deploy step, not a
-// user manageable through the normal Users page.
+// This is the only supported way to bootstrap a SUPERADMIN account
+// (branch-scoped admins can't create one) — a one-time deploy step, not a
+// user manageable through the normal Users page. Defaults to
+// superadmin/superadmin; override via SEED_SUPERADMIN_* env vars.
 async function seedSuperadmin() {
-  const username = process.env.SEED_SUPERADMIN_USERNAME;
-  if (!username) return;
-
-  const password = process.env.SEED_SUPERADMIN_PASSWORD ?? "ChangeMe123!";
+  const username = process.env.SEED_SUPERADMIN_USERNAME ?? "superadmin";
+  const password = process.env.SEED_SUPERADMIN_PASSWORD ?? "superadmin";
   const fullName = process.env.SEED_SUPERADMIN_FULLNAME ?? "Super Admin";
 
   const existing = await prisma.user.findUnique({ where: { username } });
