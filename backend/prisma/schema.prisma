@@ -42,9 +42,10 @@ model Branch {
   createdAt DateTime @default(now())
 
   // SUPERADMIN-controlled toggle (Филиалы page) for the "Прозвон" module —
-  // base upload + cold-call queue. Off means every /contacts endpoint 403s
-  // for this branch, not just a hidden nav icon.
-  contactsEnabled Boolean @default(true)
+  // base upload + cold-call queue. Off by default for new branches — a
+  // SUPERADMIN opts each branch in. Off means every /contacts endpoint
+  // 403s for this branch, not just a hidden nav icon.
+  contactsEnabled Boolean @default(false)
 
   users         User[]
   appeals       Appeal[]

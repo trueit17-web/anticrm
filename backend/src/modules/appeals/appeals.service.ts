@@ -259,19 +259,31 @@ export async function getStatsForRange(branchId: number, from: Date, to: Date): 
     prisma.appeal.count({ where }),
   ]);
 
-  const operatorIds = operatorGroups.map((g) => g.operatorId);
-  const users = await prisma.user.findMany({
-    where: { id: { in: operatorIds } },
+  // По трубкам lists every active user of the branch — including ones with
+  // zero appeals this period — plus anyone else who logged an appeal here
+  // (e.g. a SUPERADMIN or a manager with extra access, whose home branch
+  // differs) so an existing contributor never drops off the list.
+  const countByOperator = new Map(operatorGroups.map((g) => [g.operatorId, g._count._all]));
+  const branchUsers = await prisma.user.findMany({
+    where: { branchId, active: true },
     select: { id: true, fullName: true, avatarUrl: true },
   });
-  const userById = new Map(users.map((u) => [u.id, u]));
+  const outsideOperatorIds = operatorGroups
+    .map((g) => g.operatorId)
+    .filter((id) => !branchUsers.some((u) => u.id === id));
+  const outsideUsers = outsideOperatorIds.length
+    ? await prisma.user.findMany({
+        where: { id: { in: outsideOperatorIds } },
+        select: { id: true, fullName: true, avatarUrl: true },
+      })
+    : [];
 
-  const byOperator = operatorGroups
-    .map((g) => ({
-      operatorId: g.operatorId,
-      fullName: userById.get(g.operatorId)?.fullName ?? "—",
-      avatarUrl: userById.get(g.operatorId)?.avatarUrl ?? null,
-      count: g._count._all,
+  const byOperator = [...branchUsers, ...outsideUsers]
+    .map((u) => ({
+      operatorId: u.id,
+      fullName: u.fullName,
+      avatarUrl: u.avatarUrl,
+      count: countByOperator.get(u.id) ?? 0,
     }))
     .sort((a, b) => b.count - a.count);
 
