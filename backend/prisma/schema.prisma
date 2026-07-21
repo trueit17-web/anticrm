@@ -46,6 +46,10 @@ model Branch {
   // SUPERADMIN opts each branch in. Off means every /contacts endpoint
   // 403s for this branch, not just a hidden nav icon.
   contactsEnabled Boolean @default(false)
+  // Per-branch override for the DaData API key used by the "ИНН ЮЛ →
+  // название организации" lookup on the call card. Falls back to the
+  // DADATA_API_KEY env var when unset.
+  dadataApiKey    String?
 
   users         User[]
   appeals       Appeal[]

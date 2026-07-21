@@ -29,6 +29,7 @@ export async function createBranchHandler(req: Request, res: Response) {
 const updateSchema = z.object({
   name: z.string().min(1).optional(),
   contactsEnabled: z.boolean().optional(),
+  dadataApiKey: z.string().nullable().optional(),
 });
 
 export async function updateBranchHandler(req: Request, res: Response) {
@@ -37,7 +38,13 @@ export async function updateBranchHandler(req: Request, res: Response) {
   if (!parsed.success) {
     return res.status(400).json({ error: "Проверьте поля формы", details: parsed.error.flatten() });
   }
-  const branch = await updateBranch(id, parsed.data);
+  const data = { ...parsed.data };
+  // An empty string from the form means "clear the override", not "set it
+  // to an empty string".
+  if (typeof data.dadataApiKey === "string") {
+    data.dadataApiKey = data.dadataApiKey.trim() || null;
+  }
+  const branch = await updateBranch(id, data);
   if (!branch) {
     return res.status(404).json({ error: "Филиал не найден" });
   }

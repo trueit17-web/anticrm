@@ -15,6 +15,7 @@ function BranchRow({
   onSaved: () => void;
 }) {
   const [name, setName] = useState(branch.name);
+  const [dadataApiKey, setDadataApiKey] = useState(branch.dadataApiKey ?? "");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -23,7 +24,7 @@ function BranchRow({
     setError(null);
     setSaving(true);
     try {
-      await api.patch(`/branches/${branch.id}`, { name });
+      await api.patch(`/branches/${branch.id}`, { name, dadataApiKey: dadataApiKey.trim() || null });
       onSaved();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Не удалось сохранить");
@@ -36,6 +37,11 @@ function BranchRow({
     <li>
       <form className="inline-form" onSubmit={handleSave}>
         <input value={name} onChange={(e) => setName(e.target.value)} required />
+        <input
+          value={dadataApiKey}
+          onChange={(e) => setDadataApiKey(e.target.value)}
+          placeholder="DaData API-ключ (необязательно)"
+        />
         <button type="submit" disabled={saving}>
           {saving ? "Сохранение..." : "Сохранить"}
         </button>
@@ -43,6 +49,13 @@ function BranchRow({
           Отмена
         </button>
       </form>
+      <p className="muted">
+        Ключ для поиска организации по «ИНН ЮЛ» в карточке звонка. Бесплатный ключ —{" "}
+        <a href="https://dadata.ru/api/find-party/" target="_blank" rel="noreferrer">
+          dadata.ru/api/find-party
+        </a>
+        . Пусто — используется общий ключ сервера, если он задан.
+      </p>
       {error && <p className="error-text">{error}</p>}
     </li>
   );

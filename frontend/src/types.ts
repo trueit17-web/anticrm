@@ -47,6 +47,7 @@ export interface Branch {
   name: string;
   createdAt: string;
   contactsEnabled: boolean;
+  dadataApiKey: string | null;
 }
 
 export interface Appeal {

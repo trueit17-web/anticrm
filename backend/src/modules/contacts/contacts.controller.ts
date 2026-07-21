@@ -4,6 +4,7 @@ import { z } from "zod";
 import { resolveBranchId } from "../../utils/branchScope";
 import { parseContactsFile } from "../../utils/parseContactsFile";
 import { lookupOrganizationByInn } from "../../utils/dadataLookup";
+import { getDadataApiKey } from "../branches/branches.service";
 import {
   claimContact,
   claimNext,
@@ -189,6 +190,8 @@ export async function lookupOrgHandler(req: Request, res: Response) {
   if (!parsed.success) {
     return res.status(400).json({ error: "Укажите ИНН" });
   }
-  const name = await lookupOrganizationByInn(parsed.data.inn.trim());
+  const branchId = await resolveBranchId(req);
+  const apiKey = branchId !== null ? await getDadataApiKey(branchId) : process.env.DADATA_API_KEY || null;
+  const name = await lookupOrganizationByInn(parsed.data.inn.trim(), apiKey);
   res.json({ name });
 }

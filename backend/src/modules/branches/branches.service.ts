@@ -9,7 +9,10 @@ export function createBranch(name: string) {
   return prisma.branch.create({ data: { name } });
 }
 
-export async function updateBranch(id: number, data: { name?: string; contactsEnabled?: boolean }) {
+export async function updateBranch(
+  id: number,
+  data: { name?: string; contactsEnabled?: boolean; dadataApiKey?: string | null }
+) {
   const result = await prisma.branch.updateMany({ where: { id }, data });
   if (result.count === 0) return null;
   return prisma.branch.findUnique({ where: { id } });
@@ -20,6 +23,14 @@ export async function updateBranch(id: number, data: { name?: string; contactsEn
 export async function isContactsEnabled(branchId: number): Promise<boolean> {
   const branch = await prisma.branch.findUnique({ where: { id: branchId }, select: { contactsEnabled: true } });
   return branch?.contactsEnabled ?? false;
+}
+
+// The "ИНН ЮЛ → название организации" lookup's key — a branch may set its
+// own via the Филиалы page; falls back to the global DADATA_API_KEY env var
+// (e.g. for single-branch deployments) when the branch hasn't set one.
+export async function getDadataApiKey(branchId: number): Promise<string | null> {
+  const branch = await prisma.branch.findUnique({ where: { id: branchId }, select: { dadataApiKey: true } });
+  return branch?.dadataApiKey?.trim() || process.env.DADATA_API_KEY || null;
 }
 
 // Branches the given user may switch into: every branch for SUPERADMIN,

@@ -1,9 +1,10 @@
 // Looks up a legal entity's short name by ИНН via DaData's free "suggestions"
-// API (https://dadata.ru/api/find-party/). Requires DADATA_API_KEY; when
-// it's not configured, or the lookup fails for any reason, callers get null
-// rather than a thrown error so the rest of the call card still renders.
-export async function lookupOrganizationByInn(inn: string): Promise<string | null> {
-  const apiKey = process.env.DADATA_API_KEY;
+// API (https://dadata.ru/api/find-party/). `apiKey` comes from the calling
+// branch's override (falling back to the DADATA_API_KEY env var — see
+// branches.service.ts's getDadataApiKey). When there's no key configured
+// anywhere, or the lookup fails for any reason, callers get null rather
+// than a thrown error so the rest of the call card still renders.
+export async function lookupOrganizationByInn(inn: string, apiKey: string | null): Promise<string | null> {
   if (!apiKey) return null;
 
   try {
