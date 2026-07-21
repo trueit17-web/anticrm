@@ -249,6 +249,10 @@ a {
   text-align: center;
 }
 
+.appeals-table .date-cell {
+  line-height: 1.15;
+}
+
 .appeals-table td input,
 .appeals-table td select {
   width: 100%;
@@ -1284,7 +1288,7 @@ textarea:hover {
 .status-pill {
   padding: 4px 9px;
   border: 1px solid rgba(71, 79, 67, 0.09);
-  font-weight: 650;
+  font-weight: 400;
   line-height: 1.2;
 }
 

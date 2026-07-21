@@ -262,7 +262,7 @@ export function AppealsTable({
                 style={rowColor ? { "--status-row-color": rowColor } as React.CSSProperties : undefined}
               >
                 <td className="muted col-num">{index + 1}</td>
-                <td className="col-center">
+                <td className="col-center date-cell">
                   <EmployeeNameButton id={appeal.operator.id} fullName={appeal.operator.fullName} />
                   {", "}
                   {formatTime(appeal.createdAt)}
