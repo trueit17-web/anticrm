@@ -16,6 +16,10 @@ const EXTRA_PHONE_LABELS = [
 ];
 const INN_LABELS = ["инн юл", "инн (юл)", "инн юр.лица", "инн юридического лица", "инн организации"];
 const ADDRESS_LABELS = ["адрес", "адрес клиента", "address"];
+// Not pulled out of `rest` (still shown generically like any other field)
+// — just also captured separately so the СФР lookup can fall back to the
+// region's capital office when the address's city isn't in that table.
+const REGION_LABELS = ["регион", "область", "region"];
 
 export interface ExtraInfoField {
   label: string | null;
@@ -27,16 +31,18 @@ export interface ParsedExtraInfo {
   extraPhones: string[];
   inn: string | null;
   address: string | null;
+  region: string | null;
   rest: ExtraInfoField[];
 }
 
 export function parseExtraInfo(extraInfo: string | null | undefined): ParsedExtraInfo {
-  if (!extraInfo) return { birthDate: null, extraPhones: [], inn: null, address: null, rest: [] };
+  if (!extraInfo) return { birthDate: null, extraPhones: [], inn: null, address: null, region: null, rest: [] };
 
   let birthDate: string | null = null;
   let extraPhones: string[] = [];
   let inn: string | null = null;
   let address: string | null = null;
+  let region: string | null = null;
   const rest: ExtraInfoField[] = [];
 
   for (const part of extraInfo.split(";").map((p) => p.trim())) {
@@ -49,6 +55,8 @@ export function parseExtraInfo(extraInfo: string | null | undefined): ParsedExtr
     const label = part.slice(0, sep).trim();
     const value = part.slice(sep + 1).trim();
     const labelLower = label.toLowerCase();
+    if (REGION_LABELS.includes(labelLower)) region = value;
+
     if (BIRTH_DATE_LABELS.includes(labelLower)) {
       birthDate = value;
     } else if (EXTRA_PHONE_LABELS.includes(labelLower)) {
@@ -65,7 +73,7 @@ export function parseExtraInfo(extraInfo: string | null | undefined): ParsedExtr
     }
   }
 
-  return { birthDate, extraPhones, inn, address, rest };
+  return { birthDate, extraPhones, inn, address, region, rest };
 }
 
 // True if `fullName` already visibly contains the birth date (real-world

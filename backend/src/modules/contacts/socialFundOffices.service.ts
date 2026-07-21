@@ -1,5 +1,6 @@
 import { prisma } from "../../lib/prisma";
 import { extractCity } from "../../utils/extractCity";
+import { findCapitalForRegion } from "../../utils/regionCapitals";
 
 // The DB's @unique on `city` is case-sensitive, so "Москва" and "москва"
 // would otherwise both insert fine — but lookupSocialFundAddress matches
@@ -56,16 +57,34 @@ export async function exportSocialFundOfficesCsv(): Promise<string> {
   return "﻿" + lines.join("\r\n");
 }
 
+async function findOfficeByCity(city: string) {
+  return prisma.socialFundOffice.findFirst({ where: { city: { equals: city, mode: "insensitive" } } });
+}
+
 // `city` is null when no city could be parsed out of the address at all;
-// `address` is null either way if nothing in the admin-curated list matches
-// — the frontend renders the same "не найден" state for both.
+// `address` is null if nothing in the admin-curated (regional-capital-only)
+// list matches that city either — the frontend renders the same "не
+// найден" state for both. Only capitals are kept in the table, so a client
+// in a smaller town/district falls back to their region's capital office
+// (via the separate "Регион" field, when the caller has it) instead of
+// coming back empty.
 export async function lookupSocialFundAddress(
-  rawAddress: string
+  rawAddress: string,
+  regionHint?: string
 ): Promise<{ city: string | null; address: string | null }> {
   const city = extractCity(rawAddress);
-  if (!city) return { city: null, address: null };
-  const office = await prisma.socialFundOffice.findFirst({
-    where: { city: { equals: city, mode: "insensitive" } },
-  });
-  return { city, address: office?.address ?? null };
+  if (city) {
+    const office = await findOfficeByCity(city);
+    if (office) return { city, address: office.address };
+  }
+
+  if (regionHint) {
+    const capital = findCapitalForRegion(regionHint);
+    if (capital) {
+      const office = await findOfficeByCity(capital);
+      if (office) return { city: capital, address: office.address };
+    }
+  }
+
+  return { city, address: null };
 }

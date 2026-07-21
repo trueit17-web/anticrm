@@ -78,13 +78,15 @@ export async function deleteSocialFundOfficeHandler(req: Request, res: Response)
   res.status(204).send();
 }
 
-const lookupSchema = z.object({ address: z.string().min(1) });
+// `address` may be empty when the contact only has a "Регион" field —
+// lookupSocialFundAddress falls back to the region hint in that case.
+const lookupSchema = z.object({ address: z.string().optional(), region: z.string().optional() });
 
 export async function lookupSocialFundOfficeHandler(req: Request, res: Response) {
   const parsed = lookupSchema.safeParse(req.query);
   if (!parsed.success) {
-    return res.status(400).json({ error: "Укажите адрес" });
+    return res.status(400).json({ error: "Укажите адрес или регион" });
   }
-  const result = await lookupSocialFundAddress(parsed.data.address);
+  const result = await lookupSocialFundAddress(parsed.data.address ?? "", parsed.data.region);
   res.json(result);
 }

@@ -49,10 +49,11 @@ export function CallCardModal({ onClose }: { onClose: () => void }) {
       .finally(() => setOrgLoading(false));
   }
 
-  function lookupSfr(address: string) {
+  function lookupSfr(address: string, region: string | null) {
     setSfrLoading(true);
+    const regionParam = region ? `&region=${encodeURIComponent(region)}` : "";
     api
-      .get<{ address: string | null }>(`/social-fund-offices/lookup?address=${encodeURIComponent(address)}`)
+      .get<{ address: string | null }>(`/social-fund-offices/lookup?address=${encodeURIComponent(address)}${regionParam}`)
       .then((res) => setSfrAddress(res.address))
       .catch(() => setSfrAddress(null))
       .finally(() => setSfrLoading(false));
@@ -74,9 +75,9 @@ export function CallCardModal({ onClose }: { onClose: () => void }) {
         setContact(res.contact);
         setCalledPhone(res.contact?.phone ?? null);
         if (res.contact) {
-          const { inn, address } = parseExtraInfo(res.contact.extraInfo);
+          const { inn, address, region } = parseExtraInfo(res.contact.extraInfo);
           if (inn) lookupOrg(inn);
-          if (address) lookupSfr(address);
+          if (address || region) lookupSfr(address ?? "", region);
         }
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : "Не удалось получить контакт"))
