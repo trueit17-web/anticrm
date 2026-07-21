@@ -4,6 +4,10 @@ import { prisma } from "../../lib/prisma";
 export const appealInclude = {
   operator: { select: { id: true, fullName: true } },
   smsSentBy: { select: { id: true, fullName: true } },
+  // Present only when this appeal was created by converting a Прозвон
+  // contact — carries the full original extraInfo so the edit drawer can
+  // show it in full, not just the trimmed ФИО/ДР that went into clientData.
+  contact: { select: { id: true, extraInfo: true } },
 } satisfies Prisma.AppealInclude;
 
 function dayRange(date: Date) {

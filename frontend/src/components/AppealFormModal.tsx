@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Appeal, HistoryEntry } from "../types";
 import { api, ApiError } from "../api/client";
+import { parseExtraInfo } from "../lib/contactExtraInfo";
 
 export interface AppealFormValues {
   date: string;
@@ -59,6 +60,53 @@ function HistoryList({ appealId }: { appealId: number }) {
         </ul>
       )}
     </div>
+  );
+}
+
+// Shown read-only when this appeal came from "В трубки" on a Прозвон call
+// card — clientData only ever got the trimmed ФИО/ДР, so this is the only
+// place the rest of the originally uploaded data (region, доп. номера,
+// ИНН, address, etc.) is still visible once the contact record's own
+// queue entry is done.
+function ContactExtraInfo({ extraInfo }: { extraInfo: string }) {
+  const { birthDate, extraPhones, inn, address, rest } = parseExtraInfo(extraInfo);
+
+  return (
+    <label className="span-2">
+      Доп. инфа из базы прозвона
+      <div className="call-card-extra-info">
+        {birthDate && (
+          <div>
+            <strong>Дата рождения: </strong>
+            {birthDate}
+          </div>
+        )}
+        {extraPhones.length > 0 && (
+          <div>
+            <strong>Доп. номера: </strong>
+            {extraPhones.join(", ")}
+          </div>
+        )}
+        {address && (
+          <div>
+            <strong>Адрес: </strong>
+            {address}
+          </div>
+        )}
+        {inn && (
+          <div>
+            <strong>ИНН ЮЛ: </strong>
+            {inn}
+          </div>
+        )}
+        {rest.map((f, i) => (
+          <div key={i}>
+            {f.label && <strong>{f.label}: </strong>}
+            {f.value}
+          </div>
+        ))}
+      </div>
+    </label>
   );
 }
 
@@ -156,6 +204,8 @@ export function AppealFormModal({
                 rows={3}
               />
             </label>
+
+            {appeal?.contact?.extraInfo && <ContactExtraInfo extraInfo={appeal.contact.extraInfo} />}
           </div>
 
           {error && <p className="error-text">{error}</p>}

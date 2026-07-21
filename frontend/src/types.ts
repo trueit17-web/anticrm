@@ -71,6 +71,9 @@ export interface Appeal {
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
+  // Set only when this appeal was created via "В трубки" on a Прозвон call
+  // card — carries the original uploaded contact's full extraInfo.
+  contact: { id: number; extraInfo: string | null } | null;
 }
 
 export interface OperatorStat {
