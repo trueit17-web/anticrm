@@ -300,6 +300,10 @@ a {
   background-color: rgba(60, 100, 150, 0.06);
 }
 
+.contacts-table tbody tr:nth-child(even) td {
+  background-color: transparent;
+}
+
 .appeals-table tbody tr:hover td {
   background-color: rgba(195, 154, 79, 0.18);
 }

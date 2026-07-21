@@ -157,7 +157,7 @@ function QueueSection({ queue, loading, error, onClaimed }: {
       {!loading && !error && queue.length === 0 && <p className="empty-state">Очередь пуста.</p>}
       {!loading && !error && queue.length > 0 && (
         <div className="table-scroll">
-          <table className="appeals-table table-auto">
+          <table className="appeals-table table-auto contacts-table">
             <thead>
               <tr>
                 <th>Телефон</th>
@@ -264,7 +264,7 @@ function MineSection({ mine, loading, error, onChanged }: {
       )}
       {!loading && !error && mine.length > 0 && (
         <div className="table-scroll">
-          <table className="appeals-table table-auto">
+          <table className="appeals-table table-auto contacts-table">
             <thead>
               <tr>
                 <th>Телефон</th>

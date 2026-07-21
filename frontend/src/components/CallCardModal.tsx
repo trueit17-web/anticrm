@@ -21,6 +21,9 @@ export function CallCardModal({ onClose }: { onClose: () => void }) {
   const [dep, setDep] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [minimized, setMinimized] = useState(false);
+  // Which tel: link was actually tapped — defaults to the main number, but
+  // switches if the manager calls one of the "Доп. номера" links instead.
+  const [calledPhone, setCalledPhone] = useState<string | null>(null);
 
   function loadNext() {
     setLoading(true);
@@ -28,7 +31,10 @@ export function CallCardModal({ onClose }: { onClose: () => void }) {
     setDep("");
     api
       .post<{ contact: Contact | null }>("/contacts/claim-next")
-      .then((res) => setContact(res.contact))
+      .then((res) => {
+        setContact(res.contact);
+        setCalledPhone(res.contact?.phone ?? null);
+      })
       .catch((err) => setError(err instanceof ApiError ? err.message : "Не удалось получить контакт"))
       .finally(() => setLoading(false));
   }
@@ -40,7 +46,10 @@ export function CallCardModal({ onClose }: { onClose: () => void }) {
     setSubmitting(true);
     setError(null);
     try {
-      await api.post(`/contacts/${contact.id}/convert`, { dep: dep.trim() || undefined });
+      await api.post(`/contacts/${contact.id}/convert`, {
+        dep: dep.trim() || undefined,
+        phone: calledPhone || contact.phone,
+      });
       loadNext();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Не удалось создать трубку");
@@ -91,14 +100,20 @@ export function CallCardModal({ onClose }: { onClose: () => void }) {
           <>
             <div className="call-card-phone">
               <span className="call-card-phone-value">{contact.phone}</span>
-              <a className="call-icon" href={`tel:${contact.phone}`} title="Позвонить" aria-label="Позвонить">
+              <a
+                className="call-icon"
+                href={`tel:${contact.phone}`}
+                title="Позвонить"
+                aria-label="Позвонить"
+                onClick={() => setCalledPhone(contact.phone)}
+              >
                 <IconPhone />
               </a>
             </div>
             {extraPhones.length > 0 && (
               <div className="call-card-extra-phones">
                 {extraPhones.map((p) => (
-                  <a key={p} href={`tel:${p}`}>
+                  <a key={p} href={`tel:${p}`} onClick={() => setCalledPhone(p)}>
                     {p}
                   </a>
                 ))}

@@ -133,6 +133,24 @@ export async function claimNext(branchId: number, userId: number) {
   return null;
 }
 
+// Mirrors the frontend's frontend/src/lib/contactExtraInfo.ts label list —
+// pulls just the birth date back out of the flattened extraInfo string so
+// "В трубки" can save "ФИО, ДР" without the rest of the uploaded columns.
+const BIRTH_DATE_LABELS = ["дата рождения", "день рождения", "др", "birth date", "birthday"];
+
+function extractBirthDate(extraInfo: string | null): string | null {
+  if (!extraInfo) return null;
+  for (const part of extraInfo.split(";")) {
+    const sep = part.indexOf(":");
+    if (sep === -1) continue;
+    const label = part.slice(0, sep).trim().toLowerCase();
+    if (BIRTH_DATE_LABELS.includes(label)) {
+      return part.slice(sep + 1).trim();
+    }
+  }
+  return null;
+}
+
 const OUTCOME_STATUSES: ContactStatus[] = [ContactStatus.NOT_REACHED, ContactStatus.DECLINED, ContactStatus.CALLBACK];
 
 export async function setOutcome(
@@ -167,7 +185,8 @@ export async function convertToAppeal(
   branchId: number,
   userId: number,
   canActOnAnyContact: boolean,
-  dep?: string
+  dep?: string,
+  phone?: string
 ) {
   const where: Prisma.ContactWhereInput = canActOnAnyContact
     ? { id, branchId }
@@ -179,11 +198,16 @@ export async function convertToAppeal(
   }
 
   const status = await getDefaultOptionValue(branchId, OptionField.STATUS);
-  const clientData = [contact.fullName, contact.extraInfo].filter(Boolean).join(" — ") || undefined;
+  const birthDate = extractBirthDate(contact.extraInfo);
+  const includesBirthDate = !!(birthDate && contact.fullName?.includes(birthDate));
+  const clientData = [contact.fullName, includesBirthDate ? null : birthDate].filter(Boolean).join(", ") || undefined;
+  // The manager may have tapped one of the extra "Доп. номера" tel: links
+  // instead of the main number — that's the phone that actually got called,
+  // so it's what the trubka should carry, not necessarily contact.phone.
   const appeal = await createAppeal({
     branchId,
     operatorId: userId,
-    phone: contact.phone,
+    phone: phone?.trim() || contact.phone,
     clientData,
     dep: dep || undefined,
     status,
