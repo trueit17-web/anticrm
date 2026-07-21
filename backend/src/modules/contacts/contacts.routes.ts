@@ -18,8 +18,10 @@ import {
   uploadBatchHandler,
 } from "./contacts.controller";
 import {
+  countSocialFundOfficesHandler,
   createSocialFundOfficeHandler,
   deleteSocialFundOfficeHandler,
+  exportSocialFundOfficesHandler,
   listSocialFundOfficesHandler,
   lookupSocialFundOfficeHandler,
   updateSocialFundOfficeHandler,
@@ -103,6 +105,16 @@ contactsRouter.get(
   "/social-fund-offices",
   requireRole(Role.ADMIN, Role.SUPERADMIN),
   asyncHandler(listSocialFundOfficesHandler)
+);
+contactsRouter.get(
+  "/social-fund-offices/count",
+  requireRole(Role.ADMIN, Role.SUPERADMIN),
+  asyncHandler(countSocialFundOfficesHandler)
+);
+contactsRouter.get(
+  "/social-fund-offices/export",
+  requireRole(Role.ADMIN, Role.SUPERADMIN),
+  asyncHandler(exportSocialFundOfficesHandler)
 );
 contactsRouter.post(
   "/social-fund-offices",

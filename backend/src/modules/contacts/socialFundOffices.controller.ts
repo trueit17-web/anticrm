@@ -1,9 +1,11 @@
 import { Request, Response } from "express";
 import { z } from "zod";
 import {
+  countSocialFundOffices,
   createSocialFundOffice,
   deleteSocialFundOffice,
   DuplicateCityError,
+  exportSocialFundOfficesCsv,
   listSocialFundOffices,
   lookupSocialFundAddress,
   updateSocialFundOffice,
@@ -12,6 +14,20 @@ import {
 export async function listSocialFundOfficesHandler(_req: Request, res: Response) {
   const offices = await listSocialFundOffices();
   res.json({ offices });
+}
+
+// The admin page only shows a count + download link — the list itself can
+// be thousands of rows, too many to usefully render.
+export async function countSocialFundOfficesHandler(_req: Request, res: Response) {
+  const count = await countSocialFundOffices();
+  res.json({ count });
+}
+
+export async function exportSocialFundOfficesHandler(_req: Request, res: Response) {
+  const csv = await exportSocialFundOfficesCsv();
+  res.setHeader("Content-Type", "text/csv; charset=utf-8");
+  res.setHeader("Content-Disposition", 'attachment; filename="sfr_offices.csv"');
+  res.send(csv);
 }
 
 const createSchema = z.object({ city: z.string().min(1), address: z.string().min(1) });

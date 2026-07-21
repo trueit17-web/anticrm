@@ -2,7 +2,7 @@ import { ChangeEvent, FormEvent, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { api, ApiError, getActiveBranchId } from "../api/client";
-import { Branch, CONTACT_STATUS_LABELS, Contact, ContactBatch, ContactStatus, SocialFundOffice } from "../types";
+import { Branch, CONTACT_STATUS_LABELS, Contact, ContactBatch, ContactStatus } from "../types";
 import { BranchSwitcher } from "../components/BranchSwitcher";
 import { IconBack, IconTrash } from "../components/icons";
 import { EmployeeNameButton } from "../components/EmployeeCard";
@@ -129,8 +129,8 @@ function BatchesSection({ batches, loading, error, onDeleted }: {
   );
 }
 
-function SocialFundOfficesSection({ offices, loading, error, onChanged }: {
-  offices: SocialFundOffice[];
+function SocialFundOfficesSection({ count, loading, error, onChanged }: {
+  count: number | null;
   loading: boolean;
   error: string | null;
   onChanged: () => void;
@@ -139,6 +139,8 @@ function SocialFundOfficesSection({ offices, loading, error, onChanged }: {
   const [address, setAddress] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
   async function handleAdd(e: FormEvent) {
     e.preventDefault();
@@ -157,9 +159,16 @@ function SocialFundOfficesSection({ offices, loading, error, onChanged }: {
     }
   }
 
-  async function handleDelete(id: number) {
-    await api.delete(`/contacts/social-fund-offices/${id}`);
-    onChanged();
+  async function handleDownload() {
+    setDownloading(true);
+    setDownloadError(null);
+    try {
+      await api.download("/contacts/social-fund-offices/export", "sfr_offices.csv");
+    } catch (err) {
+      setDownloadError(err instanceof ApiError ? err.message : "Не удалось скачать");
+    } finally {
+      setDownloading(false);
+    }
   }
 
   return (
@@ -171,26 +180,15 @@ function SocialFundOfficesSection({ offices, loading, error, onChanged }: {
       </p>
       {loading && <p className="muted">Загрузка...</p>}
       {error && <p className="error-text">{error}</p>}
-      {!loading && !error && offices.length === 0 && <p className="muted">Список пуст.</p>}
-      {!loading && !error && offices.length > 0 && (
-        <ul className="admin-option-list">
-          {offices.map((o) => (
-            <li key={o.id}>
-              <span>
-                {o.city} — {o.address}
-              </span>
-              <button
-                className="delete-x"
-                title="Удалить"
-                aria-label="Удалить"
-                onClick={() => handleDelete(o.id)}
-              >
-                <IconTrash width={13} height={13} />
-              </button>
-            </li>
-          ))}
-        </ul>
+      {!loading && !error && (
+        <p className="muted">
+          Всего в справочнике: {count ?? 0}.{" "}
+          <button type="button" className="link-button" onClick={handleDownload} disabled={downloading}>
+            {downloading ? "Скачивание..." : "Скачать таблицу (CSV)"}
+          </button>
+        </p>
       )}
+      {downloadError && <p className="error-text">{downloadError}</p>}
       <form className="inline-form" onSubmit={handleAdd}>
         <input placeholder="Город" value={city} onChange={(e) => setCity(e.target.value)} />
         <input placeholder="Адрес СФР" value={address} onChange={(e) => setAddress(e.target.value)} />
@@ -384,7 +382,7 @@ export function ContactsPage() {
   const [mineLoading, setMineLoading] = useState(true);
   const [mineError, setMineError] = useState<string | null>(null);
 
-  const [offices, setOffices] = useState<SocialFundOffice[]>([]);
+  const [officesCount, setOfficesCount] = useState<number | null>(null);
   const [officesLoading, setOfficesLoading] = useState(isAdmin);
   const [officesError, setOfficesError] = useState<string | null>(null);
 
@@ -424,8 +422,8 @@ export function ContactsPage() {
     setOfficesLoading(true);
     setOfficesError(null);
     api
-      .get<{ offices: SocialFundOffice[] }>("/contacts/social-fund-offices")
-      .then((res) => setOffices(res.offices))
+      .get<{ count: number }>("/contacts/social-fund-offices/count")
+      .then((res) => setOfficesCount(res.count))
       .catch((err) => setOfficesError(err instanceof ApiError ? err.message : "Не удалось загрузить"))
       .finally(() => setOfficesLoading(false));
   }
@@ -492,7 +490,7 @@ export function ContactsPage() {
               )}
               {isAdmin && (
                 <SocialFundOfficesSection
-                  offices={offices}
+                  count={officesCount}
                   loading={officesLoading}
                   error={officesError}
                   onChanged={loadOffices}

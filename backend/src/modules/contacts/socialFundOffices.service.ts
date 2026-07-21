@@ -17,6 +17,13 @@ export function listSocialFundOffices() {
   return prisma.socialFundOffice.findMany({ orderBy: { city: "asc" } });
 }
 
+// Powers the admin page's count display — the full list can be thousands
+// of rows, too many to render, so the page only shows how many there are
+// plus a download link (see exportSocialFundOfficesCsv below).
+export function countSocialFundOffices() {
+  return prisma.socialFundOffice.count();
+}
+
 export async function createSocialFundOffice(city: string, address: string) {
   if (await findByCityInsensitive(city)) throw new DuplicateCityError();
   return prisma.socialFundOffice.create({ data: { city, address } });
@@ -35,6 +42,18 @@ export async function updateSocialFundOffice(
 export async function deleteSocialFundOffice(id: number) {
   const result = await prisma.socialFundOffice.deleteMany({ where: { id } });
   return result.count > 0;
+}
+
+function csvField(value: string): string {
+  return /[",\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+}
+
+// Builds the downloadable CSV for the admin page. Prefixed with a UTF-8 BOM
+// (﻿) so Excel opens Cyrillic text correctly instead of mangling it.
+export async function exportSocialFundOfficesCsv(): Promise<string> {
+  const offices = await listSocialFundOffices();
+  const lines = ["Город,Адрес", ...offices.map((o) => `${csvField(o.city)},${csvField(o.address)}`)];
+  return "﻿" + lines.join("\r\n");
 }
 
 // `city` is null when no city could be parsed out of the address at all;
