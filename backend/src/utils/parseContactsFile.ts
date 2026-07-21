@@ -54,8 +54,9 @@ function rowsToContacts(rows: string[][]): ParsedContact[] {
 }
 
 // "Пробив"-style text export: one field per line as "Метка: значение",
-// records concatenated one after another (with or without a blank line
-// between them) and a new "ИМЯ:" line marks the start of the next record.
+// records separated by a "-----" divider line. Older exports that omit the
+// divider are still handled by falling back to a repeated "Имя:" line as
+// the start of the next record.
 const TXT_NAME_LABELS = ["имя"];
 const TXT_BIRTH_DATE_LABELS = ["дата рождения"];
 const TXT_MAIN_PHONE_LABELS = ["основной номер"];
@@ -66,27 +67,46 @@ interface TxtField {
   value: string;
 }
 
+function isDashSeparator(line: string): boolean {
+  return /^-{3,}$/.test(line);
+}
+
+function lineToField(line: string): TxtField {
+  const sep = line.indexOf(":");
+  if (sep === -1) return { label: null, value: line };
+  return { label: line.slice(0, sep).trim(), value: line.slice(sep + 1).trim() };
+}
+
 function splitTxtRecords(text: string): TxtField[][] {
+  const lines = text
+    .split(/\r\n|\r|\n/)
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0);
+
+  if (lines.some(isDashSeparator)) {
+    const records: TxtField[][] = [];
+    let current: TxtField[] = [];
+    for (const line of lines) {
+      if (isDashSeparator(line)) {
+        if (current.length > 0) records.push(current);
+        current = [];
+        continue;
+      }
+      current.push(lineToField(line));
+    }
+    if (current.length > 0) records.push(current);
+    return records;
+  }
+
   const records: TxtField[][] = [];
   let current: TxtField[] = [];
-
-  for (const rawLine of text.split(/\r\n|\r|\n/)) {
-    const line = rawLine.trim();
-    if (!line) continue;
-
-    const sep = line.indexOf(":");
-    if (sep === -1) {
-      if (current.length > 0) current.push({ label: null, value: line });
-      continue;
-    }
-
-    const label = line.slice(0, sep).trim();
-    const value = line.slice(sep + 1).trim();
-    if (TXT_NAME_LABELS.includes(label.toLowerCase()) && current.length > 0) {
+  for (const line of lines) {
+    const field = lineToField(line);
+    if (field.label && TXT_NAME_LABELS.includes(field.label.toLowerCase()) && current.length > 0) {
       records.push(current);
       current = [];
     }
-    current.push({ label, value });
+    current.push(field);
   }
   if (current.length > 0) records.push(current);
   return records;
