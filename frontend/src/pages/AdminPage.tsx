@@ -7,20 +7,33 @@ import { IconBack, IconTrash } from "../components/icons";
 
 const FIELDS: OptionField[] = ["TF", "GOV", "CB", "FSB", "CLOSER", "STATUS"];
 
-// Preset row-highlight colors — soft enough to keep black text readable.
+// Saturated row-highlight colors that still keep dark table text readable.
 const COLOR_PALETTE = [
   "#ffffff",
-  "#fee2e2",
-  "#ffedd5",
-  "#fef9c3",
-  "#dcfce7",
-  "#ccfbf1",
-  "#dbeafe",
-  "#e0e7ff",
-  "#ede9fe",
-  "#fce7f3",
-  "#e5e7eb",
+  "#fecaca",
+  "#fed7aa",
+  "#fef08a",
+  "#bbf7d0",
+  "#99f6e4",
+  "#bfdbfe",
+  "#c7d2fe",
+  "#ddd6fe",
+  "#fbcfe8",
+  "#d1d5db",
 ];
+
+const LEGACY_COLORS: Record<string, string> = {
+  "#fee2e2": "#fecaca",
+  "#ffedd5": "#fed7aa",
+  "#fef9c3": "#fef08a",
+  "#dcfce7": "#bbf7d0",
+  "#ccfbf1": "#99f6e4",
+  "#dbeafe": "#bfdbfe",
+  "#e0e7ff": "#c7d2fe",
+  "#ede9fe": "#ddd6fe",
+  "#fce7f3": "#fbcfe8",
+  "#e5e7eb": "#d1d5db",
+};
 
 function OptionFieldEditor({
   field,
@@ -86,7 +99,7 @@ function OptionFieldEditor({
                       <button
                         key={c}
                         type="button"
-                        className={`color-swatch${(o.color ?? "#ffffff") === c ? " color-swatch-active" : ""}`}
+                        className={`color-swatch${(LEGACY_COLORS[o.color ?? ""] ?? o.color ?? "#ffffff") === c ? " color-swatch-active" : ""}`}
                         style={{ backgroundColor: c }}
                         title={c}
                         onClick={() => handleColorChange(o.id, c)}

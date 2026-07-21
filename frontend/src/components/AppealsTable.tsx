@@ -256,7 +256,11 @@ export function AppealsTable({
             const smsSent = !!appeal.smsSentBy;
             const rowColor = statusColors[appeal.status];
             return (
-              <tr key={appeal.id} style={rowColor ? { backgroundColor: rowColor } : undefined}>
+              <tr
+                key={appeal.id}
+                className={rowColor ? "status-colored-row" : undefined}
+                style={rowColor ? { "--status-row-color": rowColor } as React.CSSProperties : undefined}
+              >
                 <td className="muted col-num">{index + 1}</td>
                 <td className="col-center">
                   <EmployeeNameButton id={appeal.operator.id} fullName={appeal.operator.fullName} />

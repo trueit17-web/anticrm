@@ -29,9 +29,21 @@ function optionValues(options: SelectOption[], field: SelectOption["field"]): st
 }
 
 function statusColorMap(options: SelectOption[]): Record<string, string> {
+  const saturatedColors: Record<string, string> = {
+    "#fee2e2": "#fecaca",
+    "#ffedd5": "#fed7aa",
+    "#fef9c3": "#fef08a",
+    "#dcfce7": "#bbf7d0",
+    "#ccfbf1": "#99f6e4",
+    "#dbeafe": "#bfdbfe",
+    "#e0e7ff": "#c7d2fe",
+    "#ede9fe": "#ddd6fe",
+    "#fce7f3": "#fbcfe8",
+    "#e5e7eb": "#d1d5db",
+  };
   const map: Record<string, string> = {};
   for (const o of options) {
-    if (o.field === "STATUS" && o.color) map[o.value] = o.color;
+    if (o.field === "STATUS" && o.color) map[o.value] = saturatedColors[o.color] ?? o.color;
   }
   return map;
 }
