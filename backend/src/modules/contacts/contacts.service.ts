@@ -186,7 +186,8 @@ export async function convertToAppeal(
   userId: number,
   canActOnAnyContact: boolean,
   dep?: string,
-  phone?: string
+  phone?: string,
+  description?: string
 ) {
   const where: Prisma.ContactWhereInput = canActOnAnyContact
     ? { id, branchId }
@@ -210,6 +211,7 @@ export async function convertToAppeal(
     phone: phone?.trim() || contact.phone,
     clientData,
     dep: dep || undefined,
+    description: description?.trim() || undefined,
     status,
   });
 

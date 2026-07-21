@@ -19,6 +19,7 @@ export function CallCardModal({ onClose }: { onClose: () => void }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dep, setDep] = useState("");
+  const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [minimized, setMinimized] = useState(false);
   // Which tel: link was actually tapped — defaults to the main number, but
@@ -29,6 +30,7 @@ export function CallCardModal({ onClose }: { onClose: () => void }) {
     setLoading(true);
     setError(null);
     setDep("");
+    setDescription("");
     api
       .post<{ contact: Contact | null }>("/contacts/claim-next")
       .then((res) => {
@@ -49,6 +51,7 @@ export function CallCardModal({ onClose }: { onClose: () => void }) {
       await api.post(`/contacts/${contact.id}/convert`, {
         dep: dep.trim() || undefined,
         phone: calledPhone || contact.phone,
+        description: description.trim() || undefined,
       });
       loadNext();
     } catch (err) {
@@ -145,6 +148,17 @@ export function CallCardModal({ onClose }: { onClose: () => void }) {
                   onChange={(e) => setDep(e.target.value)}
                   placeholder="Деп."
                   disabled={submitting}
+                />
+              </label>
+
+              <label className="span-2">
+                Описание
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Описание"
+                  disabled={submitting}
+                  rows={3}
                 />
               </label>
             </div>

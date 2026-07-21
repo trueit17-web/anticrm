@@ -143,7 +143,11 @@ export async function setOutcomeHandler(req: Request, res: Response) {
   res.json({ contact: result.contact });
 }
 
-const convertSchema = z.object({ dep: z.string().optional(), phone: z.string().optional() });
+const convertSchema = z.object({
+  dep: z.string().optional(),
+  phone: z.string().optional(),
+  description: z.string().optional(),
+});
 
 export async function convertToAppealHandler(req: Request, res: Response) {
   const branchId = await resolveBranchId(req);
@@ -162,7 +166,8 @@ export async function convertToAppealHandler(req: Request, res: Response) {
     req.user!.id,
     canActOnAnyContact(req.user!.role),
     parsed.data.dep,
-    parsed.data.phone
+    parsed.data.phone,
+    parsed.data.description
   );
   if ("error" in result) {
     if (result.error === "not_found") return res.status(404).json({ error: "Контакт не найден" });
