@@ -497,8 +497,39 @@ a {
   background: rgba(37, 99, 235, 0.22);
 }
 
-.call-card-birthdate {
-  margin: 2px 0 0;
+.call-card-extra-info {
+  max-height: 110px;
+  overflow-y: auto;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 1.5;
+  background: white;
+}
+
+.call-card-extra-info div {
+  overflow-wrap: break-word;
+}
+
+.call-card-tab {
+  position: fixed;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px 10px 16px;
+  border-radius: 10px 0 0 10px;
+  background: var(--primary);
+  color: white;
+  box-shadow: -4px 0 14px rgba(0, 0, 0, 0.25);
+}
+
+.call-card-tab:hover {
+  background: var(--primary-dark);
 }
 
 .call-card-extra-phones {
