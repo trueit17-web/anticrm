@@ -53,6 +53,125 @@ function rowsToContacts(rows: string[][]): ParsedContact[] {
   return contacts;
 }
 
+// "Пробив"-style text export: one field per line as "Метка: значение",
+// records concatenated one after another (with or without a blank line
+// between them) and a new "ИМЯ:" line marks the start of the next record.
+const TXT_NAME_LABELS = ["имя"];
+const TXT_BIRTH_DATE_LABELS = ["дата рождения"];
+const TXT_MAIN_PHONE_LABELS = ["основной номер"];
+const TXT_EXTRA_PHONE_LABELS = ["номер телефона"];
+
+interface TxtField {
+  label: string | null;
+  value: string;
+}
+
+function splitTxtRecords(text: string): TxtField[][] {
+  const records: TxtField[][] = [];
+  let current: TxtField[] = [];
+
+  for (const rawLine of text.split(/\r\n|\r|\n/)) {
+    const line = rawLine.trim();
+    if (!line) continue;
+
+    const sep = line.indexOf(":");
+    if (sep === -1) {
+      if (current.length > 0) current.push({ label: null, value: line });
+      continue;
+    }
+
+    const label = line.slice(0, sep).trim();
+    const value = line.slice(sep + 1).trim();
+    if (TXT_NAME_LABELS.includes(label.toLowerCase()) && current.length > 0) {
+      records.push(current);
+      current = [];
+    }
+    current.push({ label, value });
+  }
+  if (current.length > 0) records.push(current);
+  return records;
+}
+
+// Source files sometimes tag a phone with an occurrence count in
+// parentheses, e.g. "79261234567 (3)" — that annotation isn't part of the
+// number and is dropped.
+function stripPhoneAnnotation(raw: string): string {
+  return raw.replace(/\(\s*\d+\s*\)/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function digitsOnly(s: string): string {
+  return s.replace(/\D/g, "");
+}
+
+function txtRecordToContact(fields: TxtField[]): ParsedContact | null {
+  let fullName: string | undefined;
+  const extraParts: string[] = [];
+  const phoneEntries: { value: string; isMain: boolean }[] = [];
+
+  for (const f of fields) {
+    if (f.label === null || !f.value) continue;
+    const labelLower = f.label.trim().toLowerCase().replace(/\.$/, "");
+
+    if (TXT_NAME_LABELS.includes(labelLower)) {
+      fullName = f.value;
+    } else if (TXT_BIRTH_DATE_LABELS.includes(labelLower)) {
+      extraParts.push(`Дата рождения: ${f.value}`);
+    } else if (TXT_MAIN_PHONE_LABELS.includes(labelLower)) {
+      const phone = stripPhoneAnnotation(f.value);
+      if (phone) phoneEntries.push({ value: phone, isMain: true });
+    } else if (TXT_EXTRA_PHONE_LABELS.includes(labelLower)) {
+      const phone = stripPhoneAnnotation(f.value);
+      if (phone) phoneEntries.push({ value: phone, isMain: false });
+    } else {
+      extraParts.push(`${f.label.trim()}: ${f.value}`);
+    }
+  }
+
+  // Duplicate phone numbers (same digits, whether repeated "Номер телефона"
+  // lines or one that just repeats "Основной номер") are kept only once.
+  const seenDigits = new Set<string>();
+  let mainPhone: string | undefined;
+  for (const entry of phoneEntries) {
+    const digits = digitsOnly(entry.value);
+    if (digits && !seenDigits.has(digits) && entry.isMain) {
+      mainPhone = entry.value;
+      seenDigits.add(digits);
+      break;
+    }
+  }
+  if (!mainPhone) {
+    for (const entry of phoneEntries) {
+      const digits = digitsOnly(entry.value);
+      if (digits) {
+        mainPhone = entry.value;
+        seenDigits.add(digits);
+        break;
+      }
+    }
+  }
+  if (!mainPhone) return null;
+
+  const extraPhones: string[] = [];
+  for (const entry of phoneEntries) {
+    const digits = digitsOnly(entry.value);
+    if (!digits || seenDigits.has(digits)) continue;
+    seenDigits.add(digits);
+    extraPhones.push(entry.value);
+  }
+  if (extraPhones.length > 0) extraParts.push(`Доп номера: ${extraPhones.join(", ")}`);
+
+  const contact: ParsedContact = { phone: mainPhone };
+  if (fullName) contact.fullName = fullName;
+  if (extraParts.length > 0) contact.extraInfo = extraParts.join("; ");
+  return contact;
+}
+
+function parseTxt(text: string): ParsedContact[] {
+  return splitTxtRecords(text)
+    .map(txtRecordToContact)
+    .filter((c): c is ParsedContact => c !== null);
+}
+
 async function parseXlsx(buffer: Buffer): Promise<string[][]> {
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(buffer as unknown as ArrayBuffer);
@@ -76,13 +195,16 @@ function parseCsvBuffer(buffer: Buffer): string[][] {
   }) as string[][];
 }
 
-// Reads a phone (+ optional name, + any other columns) list out of a CSV or
-// XLSX file. Looks for a recognizable header row first ("Телефон"/"Имя" and
-// a few English/alternate spellings); falls back to treating column 1 as
-// phone and column 2 as name if no header is found. Any remaining non-empty
-// columns are kept as extraInfo. Rows with an empty phone are dropped.
+// Reads a phone (+ optional name, + any other columns) list out of a CSV,
+// XLSX, or TXT file. CSV/XLSX: looks for a recognizable header row first
+// ("Телефон"/"Имя" and a few English/alternate spellings); falls back to
+// treating column 1 as phone and column 2 as name if no header is found.
+// TXT: "пробив"-style "Метка: значение" records (see parseTxt above). Any
+// remaining non-empty fields are kept as extraInfo. Contacts with no usable
+// phone are dropped.
 export async function parseContactsFile(buffer: Buffer, originalName: string): Promise<ParsedContact[]> {
   const ext = path.extname(originalName).toLowerCase();
+  if (ext === ".txt") return parseTxt(buffer.toString("utf8"));
   const rows = ext === ".xlsx" ? await parseXlsx(buffer) : parseCsvBuffer(buffer);
   return rowsToContacts(rows);
 }

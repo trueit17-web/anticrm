@@ -53,11 +53,13 @@ function UploadSection({ onUploaded }: { onUploaded: () => void }) {
     <section className="admin-field-card fit-content">
       <h2>Загрузить базу</h2>
       <p className="muted">
-        CSV или Excel (.xlsx). Первая колонка — телефон, вторая — имя (необязательно). Заголовки
-        «Телефон»/«Имя» распознаются автоматически.
+        CSV, Excel (.xlsx) или текстовый файл (.txt). В CSV/Excel первая колонка — телефон, вторая
+        — имя (необязательно), заголовки «Телефон»/«Имя» распознаются автоматически. В TXT —
+        построчно «Метка: значение»: «ИМЯ:», «Дата рождения:», «Основной номер:», «Номер
+        телефона:» (доп. номера), остальные строки идут в доп. инфу.
       </p>
       <form className="inline-form" onSubmit={handleUpload}>
-        <input type="file" accept=".csv,.xlsx" onChange={handleFileChange} />
+        <input type="file" accept=".csv,.xlsx,.txt" onChange={handleFileChange} />
         <button type="submit" disabled={!file || uploading}>
           {uploading ? "Загрузка..." : "Загрузить"}
         </button>
