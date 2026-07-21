@@ -14,6 +14,8 @@ const EXTRA_PHONE_LABELS = [
   "additional phone",
   "additional phones",
 ];
+const INN_LABELS = ["инн юл", "инн (юл)", "инн юр.лица", "инн юридического лица", "инн организации"];
+const ADDRESS_LABELS = ["адрес", "адрес клиента", "address"];
 
 export interface ExtraInfoField {
   label: string | null;
@@ -23,14 +25,18 @@ export interface ExtraInfoField {
 export interface ParsedExtraInfo {
   birthDate: string | null;
   extraPhones: string[];
+  inn: string | null;
+  address: string | null;
   rest: ExtraInfoField[];
 }
 
 export function parseExtraInfo(extraInfo: string | null | undefined): ParsedExtraInfo {
-  if (!extraInfo) return { birthDate: null, extraPhones: [], rest: [] };
+  if (!extraInfo) return { birthDate: null, extraPhones: [], inn: null, address: null, rest: [] };
 
   let birthDate: string | null = null;
   let extraPhones: string[] = [];
+  let inn: string | null = null;
+  let address: string | null = null;
   const rest: ExtraInfoField[] = [];
 
   for (const part of extraInfo.split(";").map((p) => p.trim())) {
@@ -50,12 +56,16 @@ export function parseExtraInfo(extraInfo: string | null | undefined): ParsedExtr
         .split(",")
         .map((p) => p.trim())
         .filter(Boolean);
+    } else if (INN_LABELS.includes(labelLower)) {
+      inn = value;
+    } else if (ADDRESS_LABELS.includes(labelLower)) {
+      address = value;
     } else {
       rest.push({ label, value });
     }
   }
 
-  return { birthDate, extraPhones, rest };
+  return { birthDate, extraPhones, inn, address, rest };
 }
 
 // True if `fullName` already visibly contains the birth date (real-world

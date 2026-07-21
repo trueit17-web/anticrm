@@ -182,3 +182,9 @@ export interface ContactBatch {
   createdAt: string;
   counts: Partial<Record<ContactStatus, number>>;
 }
+
+export interface SocialFundOffice {
+  id: number;
+  city: string;
+  address: string;
+}

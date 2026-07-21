@@ -271,3 +271,16 @@ model Contact {
   @@index([batchId])
   @@index([claimedById])
 }
+
+// Admin-curated "город → адрес СФР" reference list, used by the call card
+// to show the local social fund (СФР) office address derived from a
+// client's "Адрес" field. Not branch-scoped — a city's office address is
+// the same regardless of which branch is calling.
+model SocialFundOffice {
+  id      Int    @id @default(autoincrement())
+  city    String @unique
+  address String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

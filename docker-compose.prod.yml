@@ -35,6 +35,7 @@ services:
       SEED_SUPERADMIN_USERNAME: ${SEED_SUPERADMIN_USERNAME:-}
       SEED_SUPERADMIN_PASSWORD: ${SEED_SUPERADMIN_PASSWORD:-}
       SEED_SUPERADMIN_FULLNAME: ${SEED_SUPERADMIN_FULLNAME:-Super Admin}
+      DADATA_API_KEY: ${DADATA_API_KEY:-}
     volumes:
       - uploads_data:/app/uploads
     # Intentionally no `ports:` — only the frontend/nginx container talks to the API.

@@ -13,9 +13,17 @@ import {
   listBatchesHandler,
   listMineHandler,
   listQueueHandler,
+  lookupOrgHandler,
   setOutcomeHandler,
   uploadBatchHandler,
 } from "./contacts.controller";
+import {
+  createSocialFundOfficeHandler,
+  deleteSocialFundOfficeHandler,
+  listSocialFundOfficesHandler,
+  lookupSocialFundOfficeHandler,
+  updateSocialFundOfficeHandler,
+} from "./socialFundOffices.controller";
 
 export const contactsRouter = Router();
 
@@ -81,4 +89,38 @@ contactsRouter.post(
   "/:id/convert",
   requireRole(Role.MANAGER, Role.ADMIN, Role.SUPERADMIN),
   asyncHandler(convertToAppealHandler)
+);
+
+// ИНН ЮЛ → название организации (DaData) for the call card's "Доп. инфа".
+contactsRouter.post(
+  "/lookup-org",
+  requireRole(Role.MANAGER, Role.ADMIN, Role.SUPERADMIN),
+  asyncHandler(lookupOrgHandler)
+);
+
+// Admin-curated "город → адрес СФР" reference list used by the call card.
+contactsRouter.get(
+  "/social-fund-offices",
+  requireRole(Role.ADMIN, Role.SUPERADMIN),
+  asyncHandler(listSocialFundOfficesHandler)
+);
+contactsRouter.post(
+  "/social-fund-offices",
+  requireRole(Role.ADMIN, Role.SUPERADMIN),
+  asyncHandler(createSocialFundOfficeHandler)
+);
+contactsRouter.patch(
+  "/social-fund-offices/:id",
+  requireRole(Role.ADMIN, Role.SUPERADMIN),
+  asyncHandler(updateSocialFundOfficeHandler)
+);
+contactsRouter.delete(
+  "/social-fund-offices/:id",
+  requireRole(Role.ADMIN, Role.SUPERADMIN),
+  asyncHandler(deleteSocialFundOfficeHandler)
+);
+contactsRouter.get(
+  "/social-fund-offices/lookup",
+  requireRole(Role.MANAGER, Role.ADMIN, Role.SUPERADMIN),
+  asyncHandler(lookupSocialFundOfficeHandler)
 );

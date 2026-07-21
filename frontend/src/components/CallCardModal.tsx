@@ -25,17 +25,51 @@ export function CallCardModal({ onClose }: { onClose: () => void }) {
   // Which tel: link was actually tapped — defaults to the main number, but
   // switches if the manager calls one of the "Доп. номера" links instead.
   const [calledPhone, setCalledPhone] = useState<string | null>(null);
+  // Auto-lookups triggered off the new contact's "ИНН ЮЛ"/"Адрес" fields —
+  // null just means "nothing found yet / no source data", distinguished
+  // from "still searching" by the *Loading flags below.
+  const [orgName, setOrgName] = useState<string | null>(null);
+  const [orgLoading, setOrgLoading] = useState(false);
+  const [sfrAddress, setSfrAddress] = useState<string | null>(null);
+  const [sfrLoading, setSfrLoading] = useState(false);
+
+  function lookupOrg(inn: string) {
+    setOrgLoading(true);
+    api
+      .post<{ name: string | null }>("/contacts/lookup-org", { inn })
+      .then((res) => setOrgName(res.name))
+      .catch(() => setOrgName(null))
+      .finally(() => setOrgLoading(false));
+  }
+
+  function lookupSfr(address: string) {
+    setSfrLoading(true);
+    api
+      .get<{ address: string | null }>(`/social-fund-offices/lookup?address=${encodeURIComponent(address)}`)
+      .then((res) => setSfrAddress(res.address))
+      .catch(() => setSfrAddress(null))
+      .finally(() => setSfrLoading(false));
+  }
 
   function loadNext() {
     setLoading(true);
     setError(null);
     setDep("");
     setDescription("");
+    setOrgName(null);
+    setOrgLoading(false);
+    setSfrAddress(null);
+    setSfrLoading(false);
     api
       .post<{ contact: Contact | null }>("/contacts/claim-next")
       .then((res) => {
         setContact(res.contact);
         setCalledPhone(res.contact?.phone ?? null);
+        if (res.contact) {
+          const { inn, address } = parseExtraInfo(res.contact.extraInfo);
+          if (inn) lookupOrg(inn);
+          if (address) lookupSfr(address);
+        }
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : "Не удалось получить контакт"))
       .finally(() => setLoading(false));
@@ -84,7 +118,7 @@ export function CallCardModal({ onClose }: { onClose: () => void }) {
     );
   }
 
-  const { birthDate, extraPhones, rest } = parseExtraInfo(contact?.extraInfo);
+  const { birthDate, extraPhones, inn, address, rest } = parseExtraInfo(contact?.extraInfo);
   const showBirthDateSeparately = birthDate && !fullNameIncludesBirthDate(contact?.fullName, birthDate);
   const title = contact
     ? [contact.fullName || "Без имени", showBirthDateSeparately ? birthDate : null].filter(Boolean).join(", ")
@@ -128,15 +162,36 @@ export function CallCardModal({ onClose }: { onClose: () => void }) {
               <label className="span-2">
                 Доп. инфа
                 <div className="call-card-extra-info">
-                  {rest.length === 0 ? (
+                  {rest.length === 0 && !inn && !address ? (
                     <span className="muted">—</span>
                   ) : (
-                    rest.map((f, i) => (
-                      <div key={i}>
-                        {f.label && <strong>{f.label}: </strong>}
-                        {f.value}
-                      </div>
-                    ))
+                    <>
+                      {address && (
+                        <div>
+                          <strong>Адрес: </strong>
+                          {address}
+                        </div>
+                      )}
+                      {address && (
+                        <div>
+                          <strong>Соц. фонд (СФР): </strong>
+                          {sfrLoading ? "Поиск..." : sfrAddress || "Не найден"}
+                        </div>
+                      )}
+                      {inn && (
+                        <div>
+                          <strong>ИНН ЮЛ: </strong>
+                          {inn}
+                          {orgLoading ? " (поиск...)" : orgName ? ` — ${orgName}` : " (не найдено)"}
+                        </div>
+                      )}
+                      {rest.map((f, i) => (
+                        <div key={i}>
+                          {f.label && <strong>{f.label}: </strong>}
+                          {f.value}
+                        </div>
+                      ))}
+                    </>
                   )}
                 </div>
               </label>

@@ -3,6 +3,7 @@ import { ContactStatus, Role } from "@prisma/client";
 import { z } from "zod";
 import { resolveBranchId } from "../../utils/branchScope";
 import { parseContactsFile } from "../../utils/parseContactsFile";
+import { lookupOrganizationByInn } from "../../utils/dadataLookup";
 import {
   claimContact,
   claimNext,
@@ -174,4 +175,20 @@ export async function convertToAppealHandler(req: Request, res: Response) {
     return res.status(409).json({ error: "Контакт уже обработан" });
   }
   res.json({ contact: result.contact, appeal: result.appeal });
+}
+
+const lookupOrgSchema = z.object({ inn: z.string().min(1) });
+
+// Powers the call card's "ИНН ЮЛ → название организации" line — looks the
+// INN up via DaData. Never errors out to the client: no API key or a failed
+// lookup both just come back as `name: null`, since this is a nice-to-have
+// on top of the manually uploaded client data, not something the rest of
+// the card should depend on.
+export async function lookupOrgHandler(req: Request, res: Response) {
+  const parsed = lookupOrgSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: "Укажите ИНН" });
+  }
+  const name = await lookupOrganizationByInn(parsed.data.inn.trim());
+  res.json({ name });
 }

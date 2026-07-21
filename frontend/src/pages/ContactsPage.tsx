@@ -2,7 +2,7 @@ import { ChangeEvent, FormEvent, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { api, ApiError, getActiveBranchId } from "../api/client";
-import { Branch, CONTACT_STATUS_LABELS, Contact, ContactBatch, ContactStatus } from "../types";
+import { Branch, CONTACT_STATUS_LABELS, Contact, ContactBatch, ContactStatus, SocialFundOffice } from "../types";
 import { BranchSwitcher } from "../components/BranchSwitcher";
 import { IconBack, IconTrash } from "../components/icons";
 import { EmployeeNameButton } from "../components/EmployeeCard";
@@ -125,6 +125,80 @@ function BatchesSection({ batches, loading, error, onDeleted }: {
           })}
         </ul>
       )}
+    </section>
+  );
+}
+
+function SocialFundOfficesSection({ offices, loading, error, onChanged }: {
+  offices: SocialFundOffice[];
+  loading: boolean;
+  error: string | null;
+  onChanged: () => void;
+}) {
+  const [city, setCity] = useState("");
+  const [address, setAddress] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  async function handleAdd(e: FormEvent) {
+    e.preventDefault();
+    if (!city.trim() || !address.trim()) return;
+    setSubmitting(true);
+    setFormError(null);
+    try {
+      await api.post("/contacts/social-fund-offices", { city: city.trim(), address: address.trim() });
+      setCity("");
+      setAddress("");
+      onChanged();
+    } catch (err) {
+      setFormError(err instanceof ApiError ? err.message : "Не удалось добавить");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleDelete(id: number) {
+    await api.delete(`/contacts/social-fund-offices/${id}`);
+    onChanged();
+  }
+
+  return (
+    <section className="admin-field-card fit-content">
+      <h2>Города — адреса СФР</h2>
+      <p className="muted">
+        Используется в карточке звонка: по городу из поля «Адрес» клиента подставляется адрес
+        местного соц. фонда.
+      </p>
+      {loading && <p className="muted">Загрузка...</p>}
+      {error && <p className="error-text">{error}</p>}
+      {!loading && !error && offices.length === 0 && <p className="muted">Список пуст.</p>}
+      {!loading && !error && offices.length > 0 && (
+        <ul className="admin-option-list">
+          {offices.map((o) => (
+            <li key={o.id}>
+              <span>
+                {o.city} — {o.address}
+              </span>
+              <button
+                className="delete-x"
+                title="Удалить"
+                aria-label="Удалить"
+                onClick={() => handleDelete(o.id)}
+              >
+                <IconTrash width={13} height={13} />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <form className="inline-form" onSubmit={handleAdd}>
+        <input placeholder="Город" value={city} onChange={(e) => setCity(e.target.value)} />
+        <input placeholder="Адрес СФР" value={address} onChange={(e) => setAddress(e.target.value)} />
+        <button type="submit" disabled={submitting}>
+          Добавить
+        </button>
+      </form>
+      {formError && <p className="error-text">{formError}</p>}
     </section>
   );
 }
@@ -310,6 +384,10 @@ export function ContactsPage() {
   const [mineLoading, setMineLoading] = useState(true);
   const [mineError, setMineError] = useState<string | null>(null);
 
+  const [offices, setOffices] = useState<SocialFundOffice[]>([]);
+  const [officesLoading, setOfficesLoading] = useState(isAdmin);
+  const [officesError, setOfficesError] = useState<string | null>(null);
+
   function loadBatches() {
     if (!isAdmin) return;
     setBatchesLoading(true);
@@ -341,10 +419,22 @@ export function ContactsPage() {
       .finally(() => setMineLoading(false));
   }
 
+  function loadOffices() {
+    if (!isAdmin) return;
+    setOfficesLoading(true);
+    setOfficesError(null);
+    api
+      .get<{ offices: SocialFundOffice[] }>("/contacts/social-fund-offices")
+      .then((res) => setOffices(res.offices))
+      .catch((err) => setOfficesError(err instanceof ApiError ? err.message : "Не удалось загрузить"))
+      .finally(() => setOfficesLoading(false));
+  }
+
   useEffect(() => {
     loadBatches();
     loadQueue();
     loadMine();
+    loadOffices();
     api
       .get<{ branches: Branch[] }>("/branches/mine")
       .then((res) => {
@@ -398,6 +488,14 @@ export function ContactsPage() {
                   loading={batchesLoading}
                   error={batchesError}
                   onDeleted={handleClaimedOrChanged}
+                />
+              )}
+              {isAdmin && (
+                <SocialFundOfficesSection
+                  offices={offices}
+                  loading={officesLoading}
+                  error={officesError}
+                  onChanged={loadOffices}
                 />
               )}
             </div>
