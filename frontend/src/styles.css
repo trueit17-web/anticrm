@@ -502,7 +502,7 @@ a {
 }
 
 .call-card-extra-info {
-  max-height: 110px;
+  max-height: 227px;
   overflow-y: auto;
   padding: 7px 10px;
   border: 1px solid var(--border);
