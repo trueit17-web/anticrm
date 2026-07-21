@@ -1,11 +1,21 @@
-// Looks up a legal entity's short name by ИНН via DaData's free "suggestions"
-// API (https://dadata.ru/api/find-party/). `apiKey` comes from the calling
-// branch's override (falling back to the DADATA_API_KEY env var — see
-// branches.service.ts's getDadataApiKey). When there's no key configured
-// anywhere, or the lookup fails for any reason, callers get null rather
-// than a thrown error so the rest of the call card still renders.
-export async function lookupOrganizationByInn(inn: string, apiKey: string | null): Promise<string | null> {
-  if (!apiKey) return null;
+export interface OrganizationLookupResult {
+  name: string | null;
+  managerName: string | null;
+}
+
+// Looks up a legal entity's short name + director's ФИО by ИНН via DaData's
+// free "suggestions" API (https://dadata.ru/api/find-party/) — the
+// director comes from the same response's `data.management.name`.
+// `apiKey` comes from the calling branch's override (falling back to the
+// DADATA_API_KEY env var — see branches.service.ts's getDadataApiKey).
+// When there's no key configured anywhere, or the lookup fails for any
+// reason, callers get nulls rather than a thrown error so the rest of the
+// call card still renders.
+export async function lookupOrganizationByInn(
+  inn: string,
+  apiKey: string | null
+): Promise<OrganizationLookupResult> {
+  if (!apiKey) return { name: null, managerName: null };
 
   try {
     const res = await fetch("https://suggestions.dadata.ru/suggestions/api/4_1/rs/findById/party", {
@@ -17,10 +27,16 @@ export async function lookupOrganizationByInn(inn: string, apiKey: string | null
       },
       body: JSON.stringify({ query: inn }),
     });
-    if (!res.ok) return null;
-    const body = (await res.json()) as { suggestions?: { value?: string }[] };
-    return body.suggestions?.[0]?.value ?? null;
+    if (!res.ok) return { name: null, managerName: null };
+    const body = (await res.json()) as {
+      suggestions?: { value?: string; data?: { management?: { name?: string } } }[];
+    };
+    const suggestion = body.suggestions?.[0];
+    return {
+      name: suggestion?.value ?? null,
+      managerName: suggestion?.data?.management?.name ?? null,
+    };
   } catch {
-    return null;
+    return { name: null, managerName: null };
   }
 }

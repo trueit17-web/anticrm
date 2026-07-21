@@ -180,11 +180,11 @@ export async function convertToAppealHandler(req: Request, res: Response) {
 
 const lookupOrgSchema = z.object({ inn: z.string().min(1) });
 
-// Powers the call card's "ИНН ЮЛ → название организации" line — looks the
-// INN up via DaData. Never errors out to the client: no API key or a failed
-// lookup both just come back as `name: null`, since this is a nice-to-have
-// on top of the manually uploaded client data, not something the rest of
-// the card should depend on.
+// Powers the call card's "ИНН ЮЛ → название организации, руководитель"
+// line — looks the INN up via DaData. Never errors out to the client: no
+// API key or a failed lookup both just come back as nulls, since this is a
+// nice-to-have on top of the manually uploaded client data, not something
+// the rest of the card should depend on.
 export async function lookupOrgHandler(req: Request, res: Response) {
   const parsed = lookupOrgSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -192,6 +192,6 @@ export async function lookupOrgHandler(req: Request, res: Response) {
   }
   const branchId = await resolveBranchId(req);
   const apiKey = branchId !== null ? await getDadataApiKey(branchId) : process.env.DADATA_API_KEY || null;
-  const name = await lookupOrganizationByInn(parsed.data.inn.trim(), apiKey);
-  res.json({ name });
+  const result = await lookupOrganizationByInn(parsed.data.inn.trim(), apiKey);
+  res.json(result);
 }

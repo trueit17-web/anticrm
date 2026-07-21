@@ -29,6 +29,7 @@ export function CallCardModal({ onClose }: { onClose: () => void }) {
   // null just means "nothing found yet / no source data", distinguished
   // from "still searching" by the *Loading flags below.
   const [orgName, setOrgName] = useState<string | null>(null);
+  const [orgManagerName, setOrgManagerName] = useState<string | null>(null);
   const [orgLoading, setOrgLoading] = useState(false);
   const [sfrAddress, setSfrAddress] = useState<string | null>(null);
   const [sfrLoading, setSfrLoading] = useState(false);
@@ -36,9 +37,15 @@ export function CallCardModal({ onClose }: { onClose: () => void }) {
   function lookupOrg(inn: string) {
     setOrgLoading(true);
     api
-      .post<{ name: string | null }>("/contacts/lookup-org", { inn })
-      .then((res) => setOrgName(res.name))
-      .catch(() => setOrgName(null))
+      .post<{ name: string | null; managerName: string | null }>("/contacts/lookup-org", { inn })
+      .then((res) => {
+        setOrgName(res.name);
+        setOrgManagerName(res.managerName);
+      })
+      .catch(() => {
+        setOrgName(null);
+        setOrgManagerName(null);
+      })
       .finally(() => setOrgLoading(false));
   }
 
@@ -57,6 +64,7 @@ export function CallCardModal({ onClose }: { onClose: () => void }) {
     setDep("");
     setDescription("");
     setOrgName(null);
+    setOrgManagerName(null);
     setOrgLoading(false);
     setSfrAddress(null);
     setSfrLoading(false);
@@ -183,6 +191,12 @@ export function CallCardModal({ onClose }: { onClose: () => void }) {
                           <strong>ИНН ЮЛ: </strong>
                           {inn}
                           {orgLoading ? " (поиск...)" : orgName ? ` — ${orgName}` : " (не найдено)"}
+                        </div>
+                      )}
+                      {inn && !orgLoading && orgManagerName && (
+                        <div>
+                          <strong>Руководитель: </strong>
+                          {orgManagerName}
                         </div>
                       )}
                       {rest.map((f, i) => (
