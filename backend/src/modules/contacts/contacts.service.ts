@@ -151,6 +151,18 @@ function extractBirthDate(extraInfo: string | null): string | null {
   return null;
 }
 
+// Appends the DaData lookup results the call card already fetched (org
+// name + director's ФИО) onto the contact's extraInfo, so they persist on
+// the "Доп. инфа из базы прозвона" block on the resulting trubka even
+// after the call card itself is gone.
+function appendDadataInfo(extraInfo: string | null, orgName?: string, managerName?: string): string | null {
+  const additions: string[] = [];
+  if (orgName?.trim()) additions.push(`Организация (Dadata): ${orgName.trim()}`);
+  if (managerName?.trim()) additions.push(`Руководитель (Dadata): ${managerName.trim()}`);
+  if (additions.length === 0) return extraInfo;
+  return [extraInfo, ...additions].filter(Boolean).join("; ");
+}
+
 const OUTCOME_STATUSES: ContactStatus[] = [ContactStatus.NOT_REACHED, ContactStatus.DECLINED, ContactStatus.CALLBACK];
 
 export async function setOutcome(
@@ -187,7 +199,9 @@ export async function convertToAppeal(
   canActOnAnyContact: boolean,
   dep?: string,
   phone?: string,
-  description?: string
+  description?: string,
+  orgName?: string,
+  managerName?: string
 ) {
   const where: Prisma.ContactWhereInput = canActOnAnyContact
     ? { id, branchId }
@@ -217,7 +231,11 @@ export async function convertToAppeal(
 
   const updated = await prisma.contact.update({
     where: { id },
-    data: { status: ContactStatus.REACHED, appealId: appeal.id },
+    data: {
+      status: ContactStatus.REACHED,
+      appealId: appeal.id,
+      extraInfo: appendDadataInfo(contact.extraInfo, orgName, managerName),
+    },
     include: contactInclude,
   });
 

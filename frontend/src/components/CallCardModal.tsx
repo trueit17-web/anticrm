@@ -94,6 +94,8 @@ export function CallCardModal({ onClose }: { onClose: () => void }) {
         dep: dep.trim() || undefined,
         phone: calledPhone || contact.phone,
         description: description.trim() || undefined,
+        orgName: orgName ?? undefined,
+        managerName: orgManagerName ?? undefined,
       });
       loadNext();
     } catch (err) {

@@ -149,6 +149,8 @@ const convertSchema = z.object({
   dep: z.string().optional(),
   phone: z.string().optional(),
   description: z.string().optional(),
+  orgName: z.string().optional(),
+  managerName: z.string().optional(),
 });
 
 export async function convertToAppealHandler(req: Request, res: Response) {
@@ -169,7 +171,9 @@ export async function convertToAppealHandler(req: Request, res: Response) {
     canActOnAnyContact(req.user!.role),
     parsed.data.dep,
     parsed.data.phone,
-    parsed.data.description
+    parsed.data.description,
+    parsed.data.orgName,
+    parsed.data.managerName
   );
   if ("error" in result) {
     if (result.error === "not_found") return res.status(404).json({ error: "Контакт не найден" });
