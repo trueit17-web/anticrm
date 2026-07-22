@@ -2,11 +2,11 @@ import { useEffect, useState } from "react";
 import { useAuth } from "../auth/AuthContext";
 import { api, ApiError, getActiveBranchId, getSelectedDate } from "../api/client";
 import { formatRuDate, todayInputValue } from "../lib/dateUtils";
-import { Appeal, Branch, OperatorStat, SelectOption } from "../types";
+import { Appeal, OperatorStat, SelectOption } from "../types";
 import { AppealsTable, NewAppealValues } from "../components/AppealsTable";
 import { AppealFormModal, AppealFormValues } from "../components/AppealFormModal";
 import { CallCardModal } from "../components/CallCardModal";
-import { BranchSwitcher } from "../components/BranchSwitcher";
+import { useBranchSwitcher } from "../hooks/useBranchSwitcher";
 import {
   IconAdmin,
   IconBack,
@@ -196,7 +196,14 @@ export function AppealsPage() {
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<Appeal | null>(null);
   const [creating, setCreating] = useState(false);
-  const [branchName, setBranchName] = useState<string | null>(user?.branchName ?? null);
+  const { loaded: branchesLoaded, current: currentBranch, needsSwitcher, canStep, target, step } = useBranchSwitcher();
+  // Falls back to the account's home branch name (known immediately from
+  // auth) until the branch list finishes loading, so the title doesn't
+  // flash "Трубки" first.
+  const branchName = currentBranch?.name ?? user?.branchName ?? "Трубки";
+  // Defaults to enabled so the nav doesn't flicker while /branches/mine
+  // loads — the backend enforces the flag regardless of this.
+  const contactsModuleEnabled = !branchesLoaded || currentBranch === null || currentBranch.contactsEnabled;
   // Only SUPERADMIN can browse a date other than today — picked from the
   // Админка page (see AdminPage.tsx) and persisted via getSelectedDate();
   // everyone else always works off today's trubki regardless of what's
@@ -206,9 +213,6 @@ export function AppealsPage() {
   );
   const [showTrash, setShowTrash] = useState(false);
   const [showCallCard, setShowCallCard] = useState(false);
-  // Defaults to enabled so the nav doesn't flicker while /branches/mine
-  // loads — the backend enforces the flag regardless of this.
-  const [contactsModuleEnabled, setContactsModuleEnabled] = useState(true);
 
   // `silent` is used for the background poll below: it refreshes the data
   // without flashing the loading state or an error banner over the table
@@ -234,22 +238,6 @@ export function AppealsPage() {
     api
       .get<{ options: SelectOption[] }>("/select-options")
       .then((res) => setOptions(res.options))
-      .catch(() => {});
-    // Refines the header title for SUPERADMIN/multi-branch accounts, whose
-    // active branch (picked via the switcher) can differ from their home one.
-    api
-      .get<{ branches: Branch[] }>("/branches/mine")
-      .then((res) => {
-        const activeId = getActiveBranchId();
-        const active = activeId ? res.branches.find((b) => b.id === activeId) : null;
-        if (active) {
-          setBranchName(active.name);
-          setContactsModuleEnabled(active.contactsEnabled);
-        } else if (res.branches.length === 1) {
-          setBranchName(res.branches[0].name);
-          setContactsModuleEnabled(res.branches[0].contactsEnabled);
-        }
-      })
       .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -348,12 +336,37 @@ export function AppealsPage() {
     <div className="page">
       <header className="page-header page-header-center">
         <div>
-          <h1>{branchName ?? "Трубки"}</h1>
+          <h1 className="branch-title">
+            {needsSwitcher && (
+              <button
+                type="button"
+                className="branch-switcher-btn"
+                onClick={() => step(-1)}
+                disabled={!canStep}
+                aria-label={canStep && target(-1) ? `Перейти к ${target(-1)!.name}` : "Предыдущий филиал"}
+                title={canStep && target(-1) ? `Перейти к ${target(-1)!.name}` : undefined}
+              >
+                ‹
+              </button>
+            )}
+            <span>{branchName}</span>
+            {needsSwitcher && (
+              <button
+                type="button"
+                className="branch-switcher-btn"
+                onClick={() => step(1)}
+                disabled={!canStep}
+                aria-label={canStep && target(1) ? `Перейти к ${target(1)!.name}` : "Следующий филиал"}
+                title={canStep && target(1) ? `Перейти к ${target(1)!.name}` : undefined}
+              >
+                ›
+              </button>
+            )}
+          </h1>
         </div>
         <WeekLeaders />
         <div className="header-actions-col">
           <div className="header-actions">
-            <BranchSwitcher />
             {user.role === "SUPERADMIN" && (
               <Link to="/branches" className="icon-link" title="Филиалы" aria-label="Филиалы">
                 <IconTorii />

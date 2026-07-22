@@ -1190,6 +1190,12 @@ textarea:hover {
   line-height: 1.15;
 }
 
+.page-header h1.branch-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .page-header .muted {
   margin: 6px 0 0;
   color: rgba(238, 240, 243, 0.68);
@@ -1253,6 +1259,28 @@ textarea:hover {
   font-size: 13px;
   color: var(--text-on-dark);
   white-space: nowrap;
+}
+
+.stats-footer {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(238, 240, 243, 0.14);
+  text-align: center;
+}
+
+.changelog-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.changelog-changes {
+  margin: 8px 0 0;
+  padding-left: 18px;
+}
+
+.changelog-changes li {
+  margin-bottom: 4px;
 }
 
 .table-scroll,

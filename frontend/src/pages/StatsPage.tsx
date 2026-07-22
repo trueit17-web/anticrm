@@ -6,6 +6,7 @@ import { detectMobileOperator } from "../lib/mobileOperator";
 import { BranchSwitcher } from "../components/BranchSwitcher";
 import { IconBack } from "../components/icons";
 import { EmployeeNameButton } from "../components/EmployeeCard";
+import { APP_BUILD, APP_VERSION } from "../data/changelog";
 
 type Period = "today" | "week" | "custom";
 
@@ -494,6 +495,10 @@ export function StatsPage() {
           </section>
         </>
       )}
+
+      <footer className="stats-footer muted">
+        Версия {APP_VERSION} (сборка {APP_BUILD}) · <Link to="/changelog">История версий и обновлений</Link>
+      </footer>
     </div>
   );
 }
