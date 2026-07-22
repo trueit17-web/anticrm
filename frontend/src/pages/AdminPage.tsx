@@ -1,9 +1,11 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { api, ApiError } from "../api/client";
+import { useAuth } from "../auth/AuthContext";
+import { api, ApiError, getSelectedDate, setSelectedDate } from "../api/client";
 import { Appeal, OPTION_FIELD_LABELS, OptionField, SelectOption } from "../types";
 import { BranchSwitcher } from "../components/BranchSwitcher";
 import { IconBack, IconTrash } from "../components/icons";
+import { formatRuDate, todayInputValue } from "../lib/dateUtils";
 
 const FIELDS: OptionField[] = ["TF", "GOV", "CB", "FSB", "CLOSER", "STATUS"];
 
@@ -147,7 +149,7 @@ function formatAppealLine(a: Appeal): string {
   return parts.join(" — ");
 }
 
-function AppealsDeleteSection() {
+function AppealsDeleteSection({ date }: { date: string }) {
   const [appeals, setAppeals] = useState<Appeal[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -156,13 +158,13 @@ function AppealsDeleteSection() {
     setLoading(true);
     setError(null);
     api
-      .get<{ appeals: Appeal[] }>("/appeals")
+      .get<{ appeals: Appeal[] }>(`/appeals?date=${date}`)
       .then((res) => setAppeals(res.appeals))
       .catch((err) => setError(err instanceof ApiError ? err.message : "Не удалось загрузить"))
       .finally(() => setLoading(false));
   }
 
-  useEffect(load, []);
+  useEffect(load, [date]);
 
   async function handleDelete(id: number) {
     setAppeals((prev) => prev.filter((a) => a.id !== id));
@@ -176,7 +178,7 @@ function AppealsDeleteSection() {
 
   return (
     <section className="admin-field-card fit-content">
-      <h2>Трубки за сегодня</h2>
+      <h2>Трубки за {date === todayInputValue() ? "сегодня" : formatRuDate(date)}</h2>
       {loading && <p className="muted">Загрузка...</p>}
       {error && <p className="error-text">{error}</p>}
       {!loading && !error && appeals.length === 0 && <p className="muted">Трубок пока нет.</p>}
@@ -202,9 +204,15 @@ function AppealsDeleteSection() {
 }
 
 export function AdminPage() {
+  const { user } = useAuth();
   const [options, setOptions] = useState<SelectOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // SUPERADMIN picks which date's trubki to browse here (moved off the main
+  // trubki page); everyone else always works off today's.
+  const [selectedDate, setSelectedDateState] = useState(() =>
+    user?.role === "SUPERADMIN" ? getSelectedDate() ?? todayInputValue() : todayInputValue()
+  );
 
   function load() {
     setLoading(true);
@@ -218,6 +226,11 @@ export function AdminPage() {
 
   useEffect(load, []);
 
+  function handleDateChange(date: string) {
+    setSelectedDateState(date);
+    setSelectedDate(date);
+  }
+
   return (
     <div className="page">
       <header className="page-header">
@@ -226,6 +239,14 @@ export function AdminPage() {
           <p className="muted">Справочники для полей ТФ / Госы / ЦБ / ФСБ / Закрыв / Статус</p>
         </div>
         <div className="header-actions">
+          {user?.role === "SUPERADMIN" && (
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => handleDateChange(e.target.value)}
+              title="Показать трубки за дату"
+            />
+          )}
           <BranchSwitcher />
           <Link to="/" className="icon-link" title="К трубкам" aria-label="К трубкам">
             <IconBack />
@@ -233,7 +254,7 @@ export function AdminPage() {
         </div>
       </header>
 
-      <AppealsDeleteSection />
+      <AppealsDeleteSection date={selectedDate} />
 
       {loading && <p>Загрузка...</p>}
       {error && <p className="error-text">{error}</p>}

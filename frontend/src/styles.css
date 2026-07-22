@@ -980,7 +980,7 @@ a {
 .week-leaders {
   display: flex;
   align-items: flex-end;
-  gap: 34px;
+  gap: 22px;
   justify-self: center;
   padding: 10px 0 4px;
 }
@@ -1019,6 +1019,13 @@ a {
 .week-leader.rank-3 .week-leader-ring {
   width: 42px;
   height: 42px;
+}
+
+.week-leader.rank-4 .week-leader-ring,
+.week-leader.rank-5 .week-leader-ring {
+  width: 32px;
+  height: 32px;
+  transform: translateY(10px);
 }
 
 .week-leader-avatar {

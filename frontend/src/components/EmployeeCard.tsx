@@ -283,13 +283,18 @@ export function EmployeeNameButton({ id, fullName }: { id: number; fullName: str
 }
 
 // Avatar with a rank-colored ring — 1st place gold, 2nd silver, 3rd plain —
-// used by the "top of the week" header widget. Clicking it opens the same
-// employee card as the name links everywhere else.
+// used by the "top of the week" header widget. 4th/5th get a plain smaller
+// ring with no laurel wreath (that's reserved for the podium). Clicking it
+// opens the same employee card as the name links everywhere else.
 const WREATH_COLORS: Record<1 | 2 | 3, { base: string; highlight: string }> = {
   1: { base: "#c8952f", highlight: "#f3d691" },
   2: { base: "#9aa1a8", highlight: "#eef1f4" },
   3: { base: "#b5776a", highlight: "#eecabb" },
 };
+
+function isPodiumRank(rank: 1 | 2 | 3 | 4 | 5): rank is 1 | 2 | 3 {
+  return rank <= 3;
+}
 
 export function EmployeeAvatarButton({
   id,
@@ -302,7 +307,7 @@ export function EmployeeAvatarButton({
   fullName: string;
   avatarUrl: string | null;
   count: number;
-  rank: 1 | 2 | 3;
+  rank: 1 | 2 | 3 | 4 | 5;
 }) {
   const { open, setOpen, card, loading, error, pos, triggerRef, handleClick } = useEmployeeCard(id);
 
@@ -317,7 +322,9 @@ export function EmployeeAvatarButton({
       >
         <span className="week-leader-ring">
           <EmployeeAvatar className="week-leader-avatar" fullName={fullName} avatarUrl={avatarUrl} />
-          <Wreath base={WREATH_COLORS[rank].base} highlight={WREATH_COLORS[rank].highlight} />
+          {isPodiumRank(rank) && (
+            <Wreath base={WREATH_COLORS[rank].base} highlight={WREATH_COLORS[rank].highlight} />
+          )}
           <span className="week-leader-rank">{rank}</span>
         </span>
       </button>

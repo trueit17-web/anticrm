@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../auth/AuthContext";
-import { api, ApiError, getActiveBranchId } from "../api/client";
+import { api, ApiError, getActiveBranchId, getSelectedDate } from "../api/client";
+import { formatRuDate, todayInputValue } from "../lib/dateUtils";
 import { Appeal, Branch, OperatorStat, ROLE_LABELS, SelectOption } from "../types";
 import { AppealsTable, NewAppealValues } from "../components/AppealsTable";
 import { AppealFormModal, AppealFormValues } from "../components/AppealFormModal";
@@ -53,14 +54,6 @@ function defaultStatusValue(options: SelectOption[]): string {
   return statuses.find((o) => o.isDefault)?.value ?? statuses[0]?.value ?? "Новое";
 }
 
-function todayInputValue(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function formatRuDate(isoDate: string): string {
-  return new Date(`${isoDate}T00:00:00`).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" });
-}
-
 function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
 }
@@ -74,8 +67,10 @@ function mondayOfWeek(isoDate: string): string {
   return d.toISOString().slice(0, 10);
 }
 
-// Top 3 by trubki count for the current week (Пн–Сб) — shown centered in the
-// header as an avatar with a rank ring (gold/silver/plain).
+// Top 5 by trubki count for the current week (Пн–Сб) — shown centered in the
+// header as avatars with a rank ring (gold/silver/plain for 1–3, smaller and
+// lower for 4–5). Displayed 4th–2nd–1st–3rd–5th so the podium (1–3) stays
+// the visual focal point in the middle, with 4th/5th flanking it.
 function WeekLeaders() {
   const [leaders, setLeaders] = useState<OperatorStat[]>([]);
 
@@ -85,22 +80,20 @@ function WeekLeaders() {
     to.setUTCDate(to.getUTCDate() + 6);
     api
       .get<{ byOperator: OperatorStat[] }>(`/appeals/stats?from=${monday}&to=${to.toISOString().slice(0, 10)}`)
-      .then((res) => setLeaders(res.byOperator.slice(0, 3)))
+      .then((res) => setLeaders(res.byOperator.slice(0, 5)))
       .catch(() => {});
   }, []);
 
   if (leaders.length === 0) return null;
 
-  // Displayed 2nd–1st–3rd (podium order) rather than the ranking order —
-  // 1st stays centered as the visual focal point.
-  const ranked = leaders.map((l, i) => ({ ...l, rank: (i + 1) as 1 | 2 | 3 }));
-  const podiumOrder = [ranked[1], ranked[0], ranked[2]].filter(
+  const ranked = leaders.map((l, i) => ({ ...l, rank: (i + 1) as 1 | 2 | 3 | 4 | 5 }));
+  const displayOrder = [ranked[3], ranked[1], ranked[0], ranked[2], ranked[4]].filter(
     (l): l is (typeof ranked)[number] => l !== undefined
   );
 
   return (
     <div className="week-leaders" title="Лучшие по числу трубок за текущую неделю (Пн–Сб)">
-      {podiumOrder.map((l) => (
+      {displayOrder.map((l) => (
         <EmployeeAvatarButton
           key={l.operatorId}
           id={l.operatorId}
@@ -204,9 +197,13 @@ export function AppealsPage() {
   const [editing, setEditing] = useState<Appeal | null>(null);
   const [creating, setCreating] = useState(false);
   const [branchName, setBranchName] = useState<string | null>(user?.branchName ?? null);
-  // Only SUPERADMIN gets to pick a date other than today (see the date input
-  // in the header) — everyone else always works off today's trubki.
-  const [selectedDate, setSelectedDate] = useState(todayInputValue());
+  // Only SUPERADMIN can browse a date other than today — picked from the
+  // Админка page (see AdminPage.tsx) and persisted via getSelectedDate();
+  // everyone else always works off today's trubki regardless of what's
+  // stored there.
+  const [selectedDate] = useState(() =>
+    user?.role === "SUPERADMIN" ? getSelectedDate() ?? todayInputValue() : todayInputValue()
+  );
   const [showTrash, setShowTrash] = useState(false);
   const [showCallCard, setShowCallCard] = useState(false);
   // Defaults to enabled so the nav doesn't flicker while /branches/mine
@@ -360,14 +357,6 @@ export function AppealsPage() {
         <WeekLeaders />
         <div className="header-actions-col">
           <div className="header-actions">
-            {user.role === "SUPERADMIN" && (
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                title="Показать трубки за дату"
-              />
-            )}
             <BranchSwitcher />
             {user.role === "SUPERADMIN" && (
               <Link to="/branches" className="icon-link" title="Филиалы" aria-label="Филиалы">
