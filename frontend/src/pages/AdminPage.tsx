@@ -85,7 +85,7 @@ function OptionFieldEditor({
   const showDefault = field === "STATUS";
 
   return (
-    <section className="admin-field-card">
+    <section className="admin-field-card fit-content">
       <h2>{OPTION_FIELD_LABELS[field]}</h2>
       {options.length === 0 ? (
         <p className="muted">Список пуст.</p>
