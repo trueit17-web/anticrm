@@ -203,11 +203,14 @@ function AppealsDeleteSection({ date }: { date: string }) {
   );
 }
 
+type AdminTab = "appeals" | OptionField;
+
 export function AdminPage() {
   const { user } = useAuth();
   const [options, setOptions] = useState<SelectOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<AdminTab>("appeals");
   // SUPERADMIN picks which date's trubki to browse here (moved off the main
   // trubki page); everyone else always works off today's.
   const [selectedDate, setSelectedDateState] = useState(() =>
@@ -235,7 +238,10 @@ export function AdminPage() {
     <div className="page">
       <header className="page-header">
         <div>
-          <h1>Админка</h1>
+          <div className="page-title-row">
+            <h1>Админка</h1>
+            <BranchSwitcher />
+          </div>
           <p className="muted">Справочники для полей ТФ / Госы / ЦБ / ФСБ / Закрыв / Статус</p>
         </div>
         <div className="header-actions">
@@ -247,30 +253,49 @@ export function AdminPage() {
               title="Показать трубки за дату"
             />
           )}
-          <BranchSwitcher />
           <Link to="/" className="icon-link" title="К трубкам" aria-label="К трубкам">
             <IconBack />
           </Link>
         </div>
       </header>
 
-      <AppealsDeleteSection date={selectedDate} />
+      <div className="admin-tabs">
+        <button
+          type="button"
+          className={`admin-tab${activeTab === "appeals" ? " admin-tab-active" : ""}`}
+          onClick={() => setActiveTab("appeals")}
+        >
+          Трубки
+        </button>
+        {FIELDS.map((field) => (
+          <button
+            key={field}
+            type="button"
+            className={`admin-tab${activeTab === field ? " admin-tab-active" : ""}`}
+            onClick={() => setActiveTab(field)}
+          >
+            {OPTION_FIELD_LABELS[field]}
+          </button>
+        ))}
+      </div>
 
-      {loading && <p>Загрузка...</p>}
-      {error && <p className="error-text">{error}</p>}
-
-      {!loading && !error && (
-        <div className="admin-fields-grid">
-          {FIELDS.map((field) => (
-            <OptionFieldEditor
-              key={field}
-              field={field}
-              options={options.filter((o) => o.field === field)}
-              onChange={load}
-            />
-          ))}
-        </div>
-      )}
+      <div className="admin-tab-panel">
+        {activeTab === "appeals" ? (
+          <AppealsDeleteSection date={selectedDate} />
+        ) : (
+          <>
+            {loading && <p>Загрузка...</p>}
+            {error && <p className="error-text">{error}</p>}
+            {!loading && !error && (
+              <OptionFieldEditor
+                field={activeTab}
+                options={options.filter((o) => o.field === activeTab)}
+                onChange={load}
+              />
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 }

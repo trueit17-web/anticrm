@@ -652,6 +652,49 @@ a {
   margin-bottom: 10px;
 }
 
+.admin-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.admin-tab {
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 8px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  min-height: 0;
+}
+
+.admin-tab:hover {
+  background: rgba(195, 154, 79, 0.18);
+}
+
+.admin-tab.admin-tab-active {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+.admin-tab-panel {
+  animation: admin-tab-fade 0.15s ease;
+}
+
+@keyframes admin-tab-fade {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .stats-chart-wrap {
   padding: 12px;
 }
@@ -1194,6 +1237,12 @@ textarea:hover {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+.page-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .page-header .muted {

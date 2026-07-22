@@ -460,11 +460,13 @@ export function ContactsPage() {
     <div className="page">
       <header className="page-header">
         <div>
-          <h1>Прозвон</h1>
+          <div className="page-title-row">
+            <h1>Прозвон</h1>
+            <BranchSwitcher />
+          </div>
           <p className="muted">Загруженная база клиентов и очередь на обзвон.</p>
         </div>
         <div className="header-actions">
-          <BranchSwitcher />
           <Link to="/" className="icon-link" title="К трубкам" aria-label="К трубкам">
             <IconBack />
           </Link>

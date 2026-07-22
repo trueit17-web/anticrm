@@ -396,10 +396,12 @@ export function StatsPage() {
     <div className="page">
       <header className="page-header">
         <div>
-          <h1>Статистика</h1>
+          <div className="page-title-row">
+            <h1>Статистика</h1>
+            <BranchSwitcher />
+          </div>
         </div>
         <div className="header-actions">
-          <BranchSwitcher />
           <Link to="/" className="icon-link" title="К трубкам" aria-label="К трубкам">
             <IconBack />
           </Link>
