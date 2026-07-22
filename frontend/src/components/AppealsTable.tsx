@@ -1,8 +1,9 @@
-import { KeyboardEvent, useState } from "react";
+import { KeyboardEvent, useRef, useState } from "react";
 import { Appeal } from "../types";
 import { AuthUser } from "../types";
 import { canEditAppeal, canEditAssignments } from "../lib/permissions";
 import { detectMobileOperator } from "../lib/mobileOperator";
+import { useEdgeAutoScroll } from "../hooks/useEdgeAutoScroll";
 import { IconEdit, IconTrash } from "./icons";
 import { EmployeeNameButton } from "./EmployeeCard";
 
@@ -186,6 +187,8 @@ export function AppealsTable({
   onSubmitCreate: (values: NewAppealValues) => Promise<void>;
 }) {
   const canAssign = canEditAssignments(currentUser);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useEdgeAutoScroll(scrollRef);
 
   function renderTagSelect(appeal: Appeal, field: TagField, options: string[]) {
     const value = appeal[field] ?? "";
@@ -205,7 +208,7 @@ export function AppealsTable({
   }
 
   return (
-    <div className="table-scroll">
+    <div className="table-scroll" ref={scrollRef}>
       <table className="appeals-table">
         <colgroup>
           <col style={{ width: 36 }} />
