@@ -8,10 +8,14 @@ import { Branch } from "../types";
 // Hides itself once branches are loaded if there's nothing to switch between.
 // Reloads the page on change so every already-loaded list refetches scoped
 // to the new branch, instead of threading a live branchId through every page.
+//
+// Flip through branch names with the arrow buttons rather than picking from
+// a dropdown list — quicker when there's only a handful of branches, which
+// is the common case.
 export function BranchSwitcher() {
   const { user } = useAuth();
   const [branches, setBranches] = useState<Branch[] | null>(null);
-  const [value, setValue] = useState<string>(String(getActiveBranchId() ?? ""));
+  const [activeId, setActiveId] = useState<number | null>(getActiveBranchId());
 
   useEffect(() => {
     api
@@ -29,25 +33,47 @@ export function BranchSwitcher() {
     return null;
   }
 
-  function handleChange(id: string) {
-    setValue(id);
-    setActiveBranchId(id ? Number(id) : null);
+  function selectBranch(id: number) {
+    setActiveId(id);
+    setActiveBranchId(id);
     window.location.reload();
   }
 
+  function step(delta: 1 | -1) {
+    if (branches!.length === 0) return;
+    const currentIndex = branches!.findIndex((b) => b.id === activeId);
+    const nextIndex =
+      currentIndex === -1
+        ? delta > 0
+          ? 0
+          : branches!.length - 1
+        : (currentIndex + delta + branches!.length) % branches!.length;
+    selectBranch(branches![nextIndex].id);
+  }
+
+  const current = branches.find((b) => b.id === activeId);
+
   return (
-    <select
-      className="branch-switcher"
-      value={value}
-      onChange={(e) => handleChange(e.target.value)}
-      title="Выбранный филиал"
-    >
-      <option value="">Выберите филиал</option>
-      {branches.map((b) => (
-        <option key={b.id} value={b.id}>
-          {b.name}
-        </option>
-      ))}
-    </select>
+    <div className="branch-switcher" title="Выбранный филиал">
+      <button
+        type="button"
+        className="branch-switcher-btn"
+        onClick={() => step(-1)}
+        disabled={branches.length < 2}
+        aria-label="Предыдущий филиал"
+      >
+        ‹
+      </button>
+      <span className="branch-switcher-name">{current?.name ?? "Выберите филиал"}</span>
+      <button
+        type="button"
+        className="branch-switcher-btn"
+        onClick={() => step(1)}
+        disabled={branches.length < 2}
+        aria-label="Следующий филиал"
+      >
+        ›
+      </button>
+    </div>
   );
 }

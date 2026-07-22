@@ -1218,6 +1218,43 @@ textarea:hover {
   box-shadow: 0 7px 18px rgba(22, 163, 74, 0.2);
 }
 
+.branch-switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.branch-switcher-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  min-height: 0;
+  padding: 0;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(238, 240, 243, 0.14);
+  color: var(--text-on-dark);
+  font-size: 16px;
+  line-height: 1;
+}
+
+.branch-switcher-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  background: rgba(195, 154, 79, 0.25);
+  border-color: rgba(195, 154, 79, 0.55);
+  color: #e2c07f;
+}
+
+.branch-switcher-name {
+  min-width: 88px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-on-dark);
+  white-space: nowrap;
+}
+
 .table-scroll,
 .stats-panel,
 .stats-card,

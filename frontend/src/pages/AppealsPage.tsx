@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "../auth/AuthContext";
 import { api, ApiError, getActiveBranchId, getSelectedDate } from "../api/client";
 import { formatRuDate, todayInputValue } from "../lib/dateUtils";
-import { Appeal, Branch, OperatorStat, ROLE_LABELS, SelectOption } from "../types";
+import { Appeal, Branch, OperatorStat, SelectOption } from "../types";
 import { AppealsTable, NewAppealValues } from "../components/AppealsTable";
 import { AppealFormModal, AppealFormValues } from "../components/AppealFormModal";
 import { CallCardModal } from "../components/CallCardModal";
@@ -349,10 +349,6 @@ export function AppealsPage() {
       <header className="page-header page-header-center">
         <div>
           <h1>{branchName ?? "Трубки"}</h1>
-          <p className="muted">
-            {user.fullName} · {ROLE_LABELS[user.role]} ·{" "}
-            {selectedDate === todayInputValue() ? "за сегодня" : `за ${formatRuDate(selectedDate)}`}
-          </p>
         </div>
         <WeekLeaders />
         <div className="header-actions-col">
