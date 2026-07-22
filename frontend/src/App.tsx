@@ -3,10 +3,8 @@ import { AuthProvider } from "./auth/AuthContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { LoginPage } from "./pages/LoginPage";
 import { AppealsPage } from "./pages/AppealsPage";
-import { UsersPage } from "./pages/UsersPage";
 import { StatsPage } from "./pages/StatsPage";
 import { AdminPage } from "./pages/AdminPage";
-import { BranchesPage } from "./pages/BranchesPage";
 import { ContactsPage } from "./pages/ContactsPage";
 import { ChangelogPage } from "./pages/ChangelogPage";
 
@@ -24,14 +22,6 @@ export function App() {
           }
         />
         <Route
-          path="/users"
-          element={
-            <ProtectedRoute roles={["ADMIN", "SUPERADMIN"]}>
-              <UsersPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
           path="/stats"
           element={
             <ProtectedRoute>
@@ -44,14 +34,6 @@ export function App() {
           element={
             <ProtectedRoute roles={["ADMIN", "SUPERADMIN"]}>
               <AdminPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/branches"
-          element={
-            <ProtectedRoute roles={["SUPERADMIN"]}>
-              <BranchesPage />
             </ProtectedRoute>
           }
         />

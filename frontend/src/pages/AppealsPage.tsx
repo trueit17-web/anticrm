@@ -15,9 +15,7 @@ import {
   IconPhone,
   IconRestore,
   IconStats,
-  IconTorii,
   IconTrash,
-  IconUsers,
 } from "../components/icons";
 import { canDeleteAppeal } from "../lib/permissions";
 import { EmployeeAvatarButton } from "../components/EmployeeCard";
@@ -367,11 +365,6 @@ export function AppealsPage() {
         <WeekLeaders />
         <div className="header-actions-col">
           <div className="header-actions">
-            {user.role === "SUPERADMIN" && (
-              <Link to="/branches" className="icon-link" title="Филиалы" aria-label="Филиалы">
-                <IconTorii />
-              </Link>
-            )}
             <Link to="/stats" className="icon-link" title="Статистика" aria-label="Статистика">
               <IconStats />
             </Link>
@@ -388,11 +381,6 @@ export function AppealsPage() {
             {(user.role === "ADMIN" || user.role === "SUPERADMIN") && (
               <Link to="/admin" className="icon-link" title="Админка" aria-label="Админка">
                 <IconAdmin />
-              </Link>
-            )}
-            {(user.role === "ADMIN" || user.role === "SUPERADMIN") && (
-              <Link to="/users" className="icon-link" title="Пользователи" aria-label="Пользователи">
-                <IconUsers />
               </Link>
             )}
             {canDeleteAppeal(user) && (

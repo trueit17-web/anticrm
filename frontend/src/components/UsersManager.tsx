@@ -1,11 +1,9 @@
 import { Fragment, FormEvent, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import { api, ApiError, fileUrl } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import { Branch, LoginEvent, ROLE_LABELS, Role, UserSummary } from "../types";
-import { BranchSwitcher } from "../components/BranchSwitcher";
-import { IconBack, IconEdit, IconKey } from "../components/icons";
-import { EmployeeNameButton } from "../components/EmployeeCard";
+import { IconEdit, IconKey } from "./icons";
+import { EmployeeNameButton } from "./EmployeeCard";
 
 function formatEventTime(iso: string): string {
   return new Date(iso).toLocaleString("ru-RU", {
@@ -252,7 +250,7 @@ function LoginHistoryRow({
   );
 }
 
-export function UsersPage() {
+export function UsersManager() {
   const { user: currentUser } = useAuth();
   const isSuperadmin = currentUser?.role === "SUPERADMIN";
   const assignableRoles = (Object.keys(ROLE_LABELS) as Role[]).filter(
@@ -330,26 +328,14 @@ export function UsersPage() {
   const totalColumns = isSuperadmin ? 7 : 5;
 
   return (
-    <div className="page">
-      <header className="page-header">
-        <div>
-          <div className="page-title-row">
-            <h1>Пользователи</h1>
-            <BranchSwitcher />
-          </div>
-          {isSuperadmin && (
-            <p className="muted">
-              Новый сотрудник регистрируется в филиал, выбранный переключателем слева. Доступ к
-              дополнительным филиалам настраивается кнопкой «Доступ» в строке сотрудника.
-            </p>
-          )}
-        </div>
-        <div className="header-actions">
-          <Link to="/" className="icon-link" title="К трубкам" aria-label="К трубкам">
-            <IconBack />
-          </Link>
-        </div>
-      </header>
+    <div>
+      {isSuperadmin && (
+        <p className="muted">
+          Новый сотрудник регистрируется в филиал, выбранный переключателем слева от заголовка
+          страницы. Доступ к дополнительным филиалам настраивается кнопкой «Доступ» в строке
+          сотрудника.
+        </p>
+      )}
 
       <form className="inline-form" onSubmit={handleCreate}>
         <input
@@ -390,113 +376,113 @@ export function UsersPage() {
 
       {!loading && !error && (
         <div className="table-scroll fit-content">
-        <table className="appeals-table table-auto">
-          <thead>
-            <tr>
-              <th>🔑 Логин</th>
-              <th>👤 Имя</th>
-              <th className="col-center">🎭 Роль</th>
-              {isSuperadmin && <th>🏢 Филиал</th>}
-              {isSuperadmin && <th>🔐 Доп. доступ</th>}
-              <th className="col-center">🚦 Статус</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.map((u) => {
-              if (editingId === u.id) {
+          <table className="appeals-table table-auto">
+            <thead>
+              <tr>
+                <th>🔑 Логин</th>
+                <th>👤 Имя</th>
+                <th className="col-center">🎭 Роль</th>
+                {isSuperadmin && <th>🏢 Филиал</th>}
+                {isSuperadmin && <th>🔐 Доп. доступ</th>}
+                <th className="col-center">🚦 Статус</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.map((u) => {
+                if (editingId === u.id) {
+                  return (
+                    <EditUserRow
+                      key={u.id}
+                      user={u}
+                      colSpan={editColSpan}
+                      onCancel={() => setEditingId(null)}
+                      onSaved={() => {
+                        setEditingId(null);
+                        loadUsers();
+                      }}
+                    />
+                  );
+                }
+                if (accessEditingId === u.id) {
+                  return (
+                    <BranchAccessRow
+                      key={u.id}
+                      user={u}
+                      branches={branches}
+                      colSpan={editColSpan}
+                      onCancel={() => setAccessEditingId(null)}
+                      onSaved={() => {
+                        setAccessEditingId(null);
+                        loadUsers();
+                      }}
+                    />
+                  );
+                }
+                const historyOpen = loginHistoryId === u.id;
                 return (
-                  <EditUserRow
-                    key={u.id}
-                    user={u}
-                    colSpan={editColSpan}
-                    onCancel={() => setEditingId(null)}
-                    onSaved={() => {
-                      setEditingId(null);
-                      loadUsers();
-                    }}
-                  />
-                );
-              }
-              if (accessEditingId === u.id) {
-                return (
-                  <BranchAccessRow
-                    key={u.id}
-                    user={u}
-                    branches={branches}
-                    colSpan={editColSpan}
-                    onCancel={() => setAccessEditingId(null)}
-                    onSaved={() => {
-                      setAccessEditingId(null);
-                      loadUsers();
-                    }}
-                  />
-                );
-              }
-              const historyOpen = loginHistoryId === u.id;
-              return (
-                <Fragment key={u.id}>
-                  <tr>
-                    <td>{u.username}</td>
-                    <td>
-                      <EmployeeNameButton id={u.id} fullName={u.fullName} />
-                    </td>
-                    <td className="col-center">
-                      <select value={u.role} onChange={(e) => changeRole(u, e.target.value as Role)}>
-                        {assignableRoles.map((value) => (
-                          <option key={value} value={value}>
-                            {ROLE_LABELS[value]}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    {isSuperadmin && <td>{u.branch?.name ?? "—"}</td>}
-                    {isSuperadmin && (
-                      <td>{u.branchAccess.length > 0 ? u.branchAccess.map((b) => b.name).join(", ") : "—"}</td>
-                    )}
-                    <td className="col-center">{u.active ? "Активен" : "Отключён"}</td>
-                    <td>
-                      <button
-                        className="icon-btn"
-                        title="Редактировать"
-                        aria-label="Редактировать"
-                        onClick={() => setEditingId(u.id)}
-                      >
-                        <IconEdit width={16} height={16} />
-                      </button>{" "}
+                  <Fragment key={u.id}>
+                    <tr>
+                      <td>{u.username}</td>
+                      <td>
+                        <EmployeeNameButton id={u.id} fullName={u.fullName} />
+                      </td>
+                      <td className="col-center">
+                        <select value={u.role} onChange={(e) => changeRole(u, e.target.value as Role)}>
+                          {assignableRoles.map((value) => (
+                            <option key={value} value={value}>
+                              {ROLE_LABELS[value]}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      {isSuperadmin && <td>{u.branch?.name ?? "—"}</td>}
                       {isSuperadmin && (
+                        <td>{u.branchAccess.length > 0 ? u.branchAccess.map((b) => b.name).join(", ") : "—"}</td>
+                      )}
+                      <td className="col-center">{u.active ? "Активен" : "Отключён"}</td>
+                      <td>
                         <button
                           className="icon-btn"
-                          title="Доступ к филиалам"
-                          aria-label="Доступ к филиалам"
-                          onClick={() => setAccessEditingId(u.id)}
+                          title="Редактировать"
+                          aria-label="Редактировать"
+                          onClick={() => setEditingId(u.id)}
                         >
-                          <IconKey width={16} height={16} />
+                          <IconEdit width={16} height={16} />
+                        </button>{" "}
+                        {isSuperadmin && (
+                          <button
+                            className="icon-btn"
+                            title="Доступ к филиалам"
+                            aria-label="Доступ к филиалам"
+                            onClick={() => setAccessEditingId(u.id)}
+                          >
+                            <IconKey width={16} height={16} />
+                          </button>
+                        )}{" "}
+                        <button
+                          className="link-button"
+                          onClick={() => setLoginHistoryId(historyOpen ? null : u.id)}
+                        >
+                          {historyOpen ? "Скрыть входы" : "История входов"}
+                        </button>{" "}
+                        <button className="link-button" onClick={() => toggleActive(u)}>
+                          {u.active ? "Отключить" : "Включить"}
                         </button>
-                      )}{" "}
-                      <button
-                        className="link-button"
-                        onClick={() => setLoginHistoryId(historyOpen ? null : u.id)}
-                      >
-                        {historyOpen ? "Скрыть входы" : "История входов"}
-                      </button>{" "}
-                      <button className="link-button" onClick={() => toggleActive(u)}>
-                        {u.active ? "Отключить" : "Включить"}
-                      </button>
-                    </td>
-                  </tr>
-                  {historyOpen && (
-                    <LoginHistoryRow
-                      userId={u.id}
-                      colSpan={totalColumns}
-                      onClose={() => setLoginHistoryId(null)}
-                    />
-                  )}
-                </Fragment>
-              );
-            })}
-          </tbody>
-        </table>
+                      </td>
+                    </tr>
+                    {historyOpen && (
+                      <LoginHistoryRow
+                        userId={u.id}
+                        colSpan={totalColumns}
+                        onClose={() => setLoginHistoryId(null)}
+                      />
+                    )}
+                  </Fragment>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
     </div>

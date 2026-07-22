@@ -655,8 +655,16 @@ a {
 .admin-tabs {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
   margin-bottom: 20px;
+}
+
+.admin-tabs-divider {
+  width: 1px;
+  align-self: stretch;
+  margin: 0 8px;
+  background: rgba(238, 240, 243, 0.25);
 }
 
 .admin-tab {

@@ -4,6 +4,8 @@ import { useAuth } from "../auth/AuthContext";
 import { api, ApiError, getSelectedDate, setSelectedDate } from "../api/client";
 import { Appeal, OPTION_FIELD_LABELS, OptionField, SelectOption } from "../types";
 import { BranchSwitcher } from "../components/BranchSwitcher";
+import { UsersManager } from "../components/UsersManager";
+import { BranchesManager } from "../components/BranchesManager";
 import { IconBack, IconTrash } from "../components/icons";
 import { formatRuDate, todayInputValue } from "../lib/dateUtils";
 
@@ -203,7 +205,7 @@ function AppealsDeleteSection({ date }: { date: string }) {
   );
 }
 
-type AdminTab = "appeals" | OptionField;
+type AdminTab = "appeals" | OptionField | "users" | "branches";
 
 export function AdminPage() {
   const { user } = useAuth();
@@ -277,11 +279,36 @@ export function AdminPage() {
             {OPTION_FIELD_LABELS[field]}
           </button>
         ))}
+        {(user?.role === "ADMIN" || user?.role === "SUPERADMIN") && (
+          <>
+            <span className="admin-tabs-divider" aria-hidden="true" />
+            <button
+              type="button"
+              className={`admin-tab${activeTab === "users" ? " admin-tab-active" : ""}`}
+              onClick={() => setActiveTab("users")}
+            >
+              Пользователи
+            </button>
+            {user?.role === "SUPERADMIN" && (
+              <button
+                type="button"
+                className={`admin-tab${activeTab === "branches" ? " admin-tab-active" : ""}`}
+                onClick={() => setActiveTab("branches")}
+              >
+                Филиалы
+              </button>
+            )}
+          </>
+        )}
       </div>
 
       <div className="admin-tab-panel">
         {activeTab === "appeals" ? (
           <AppealsDeleteSection date={selectedDate} />
+        ) : activeTab === "users" ? (
+          <UsersManager />
+        ) : activeTab === "branches" ? (
+          <BranchesManager />
         ) : (
           <>
             {loading && <p>Загрузка...</p>}

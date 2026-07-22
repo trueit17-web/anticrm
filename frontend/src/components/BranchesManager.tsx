@@ -1,9 +1,7 @@
 import { FormEvent, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import { api, ApiError } from "../api/client";
 import { Branch } from "../types";
-import { BranchSwitcher } from "../components/BranchSwitcher";
-import { IconBack, IconEdit } from "../components/icons";
+import { IconEdit } from "./icons";
 
 function BranchRow({
   branch,
@@ -61,7 +59,7 @@ function BranchRow({
   );
 }
 
-export function BranchesPage() {
+export function BranchesManager() {
   const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -111,24 +109,11 @@ export function BranchesPage() {
   }
 
   return (
-    <div className="page">
-      <header className="page-header">
-        <div>
-          <div className="page-title-row">
-            <h1>Филиалы</h1>
-            <BranchSwitcher />
-          </div>
-          <p className="muted">
-            Создайте филиал, затем зарегистрируйте для него сотрудников на странице{" "}
-            <Link to="/users">Пользователи</Link>, выбрав этот филиал переключателем сверху.
-          </p>
-        </div>
-        <div className="header-actions">
-          <Link to="/" className="icon-link" title="К трубкам" aria-label="К трубкам">
-            <IconBack />
-          </Link>
-        </div>
-      </header>
+    <div>
+      <p className="muted">
+        Создайте филиал, затем зарегистрируйте для него сотрудников на вкладке «Пользователи»,
+        выбрав этот филиал переключателем слева от заголовка страницы.
+      </p>
 
       <form className="inline-form" onSubmit={handleCreate}>
         <input
