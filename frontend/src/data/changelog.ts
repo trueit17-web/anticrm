@@ -10,6 +10,14 @@ export interface ChangelogEntry {
 // separately, so there's only one place to update.
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.14.0",
+    date: "2026-07-23",
+    changes: [
+      "Обновлён дизайн страницы статистики: крупные карточки-показатели с цветовыми акцентами и разделители секций",
+      "Новый блок «Прозвон» в статистике: очередь и обработанные контакты, конверсия в дозвон, разбивка по менеджерам",
+    ],
+  },
+  {
     version: "1.13.0",
     date: "2026-07-23",
     changes: [

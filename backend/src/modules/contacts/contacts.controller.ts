@@ -11,6 +11,7 @@ import {
   convertToAppeal,
   createBatch,
   deleteBatch,
+  getContactStatsForRange,
   listBatches,
   listMine,
   listQueue,
@@ -201,6 +202,44 @@ export async function convertToAppealHandler(req: Request, res: Response) {
     return res.status(409).json({ error: "Контакт уже обработан" });
   }
   res.json({ contact: result.contact, appeal: result.appeal });
+}
+
+// `to` is expected exclusive (start of the day after the last wanted day) —
+// the Статистика page computes this for each today/week/custom preset, same
+// as it does for the appeals stats endpoint. Falls back to "today".
+function parseRangeParams(req: Request): { from: Date; to: Date } {
+  const rawFrom = req.query.from;
+  const rawTo = req.query.to;
+  const from = typeof rawFrom === "string" ? new Date(rawFrom) : null;
+  const to = typeof rawTo === "string" ? new Date(rawTo) : null;
+  if (from && !Number.isNaN(from.getTime()) && to && !Number.isNaN(to.getTime())) {
+    return { from, to };
+  }
+  const start = new Date();
+  start.setUTCHours(0, 0, 0, 0);
+  const end = new Date(start);
+  end.setUTCDate(end.getUTCDate() + 1);
+  return { from: start, to: end };
+}
+
+export async function getContactStatsHandler(req: Request, res: Response) {
+  const branchId = await resolveBranchId(req);
+  if (branchId === null) {
+    return res.json({
+      queueTotal: 0,
+      queueNew: 0,
+      queueInWork: 0,
+      reached: 0,
+      notReached: 0,
+      declined: 0,
+      callback: 0,
+      handled: 0,
+      byManager: [],
+    });
+  }
+  const { from, to } = parseRangeParams(req);
+  const stats = await getContactStatsForRange(branchId, from, to);
+  res.json(stats);
 }
 
 const lookupOrgSchema = z.object({ inn: z.string().min(1) });

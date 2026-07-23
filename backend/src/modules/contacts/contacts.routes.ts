@@ -10,6 +10,7 @@ import {
   claimNextHandler,
   convertToAppealHandler,
   deleteBatchHandler,
+  getContactStatsHandler,
   listBatchesHandler,
   listMineHandler,
   listQueueHandler,
@@ -60,6 +61,14 @@ contactsRouter.delete(
   "/batches/:id",
   requireRole(Role.ADMIN, Role.SUPERADMIN),
   asyncHandler(deleteBatchHandler)
+);
+
+// Прозвон statistics for the Статистика page. Must come before "/:id/*"
+// routes so "stats" isn't parsed as a contact id.
+contactsRouter.get(
+  "/stats",
+  requireRole(Role.MANAGER, Role.ADMIN, Role.SUPERADMIN),
+  asyncHandler(getContactStatsHandler)
 );
 
 // Working the call queue — managers do the actual calling.

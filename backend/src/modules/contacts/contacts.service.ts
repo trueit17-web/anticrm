@@ -302,6 +302,117 @@ export async function releaseContact(id: number, branchId: number, userId: numbe
   });
 }
 
+// ---------------------------------------------------------------------------
+// Прозвон statistics — powers the "Прозвон" block on the Статистика page.
+// ---------------------------------------------------------------------------
+
+export interface ContactManagerStat {
+  userId: number;
+  fullName: string;
+  reached: number;
+  notReached: number;
+  declined: number;
+  callback: number;
+  // Every contact this manager took into work during the period, including
+  // ones still IN_PROGRESS — reached+notReached+declined+callback+inProgress.
+  total: number;
+}
+
+export interface ContactRangeStats {
+  // Live, branch-wide snapshot — independent of the selected period, so the
+  // queue picture is always "right now" no matter what range is chosen.
+  queueTotal: number;
+  queueNew: number;
+  queueInWork: number;
+  // Scoped to the selected period, bucketed by claimedAt (when the manager
+  // took the contact into work) — the only per-contact timestamp that marks
+  // when the calling actually happened.
+  reached: number;
+  notReached: number;
+  declined: number;
+  callback: number;
+  handled: number; // reached + notReached + declined (contacts with a final outcome)
+  byManager: ContactManagerStat[];
+}
+
+// `to` is exclusive (start of the day after the last day wanted), same
+// convention as the appeals stats endpoint.
+export async function getContactStatsForRange(
+  branchId: number,
+  from: Date,
+  to: Date
+): Promise<ContactRangeStats> {
+  const rangeWhere: Prisma.ContactWhereInput = { branchId, claimedAt: { gte: from, lt: to } };
+
+  const [statusGroups, managerGroups, liveGroups] = await Promise.all([
+    prisma.contact.groupBy({ by: ["status"], where: rangeWhere, _count: { _all: true } }),
+    prisma.contact.groupBy({ by: ["claimedById", "status"], where: rangeWhere, _count: { _all: true } }),
+    prisma.contact.groupBy({ by: ["status"], where: { branchId }, _count: { _all: true } }),
+  ]);
+
+  const rangeCount = (s: ContactStatus) => statusGroups.find((g) => g.status === s)?._count._all ?? 0;
+  const reached = rangeCount(ContactStatus.REACHED);
+  const notReached = rangeCount(ContactStatus.NOT_REACHED);
+  const declined = rangeCount(ContactStatus.DECLINED);
+  const callback = rangeCount(ContactStatus.CALLBACK);
+
+  const liveCount = (s: ContactStatus) => liveGroups.find((g) => g.status === s)?._count._all ?? 0;
+  const queueTotal = liveGroups.reduce((sum, g) => sum + g._count._all, 0);
+  const queueNew = liveCount(ContactStatus.NEW);
+  const queueInWork = liveCount(ContactStatus.IN_PROGRESS) + liveCount(ContactStatus.CALLBACK);
+
+  // Only managers who took ≥1 contact into work during the period appear —
+  // no zero-rows for the whole staff list (unlike По трубкам, where a full
+  // leaderboard makes sense; here it would just be noise).
+  const managerIds = [
+    ...new Set(managerGroups.map((g) => g.claimedById).filter((id): id is number => id !== null)),
+  ];
+  const users = managerIds.length
+    ? await prisma.user.findMany({ where: { id: { in: managerIds } }, select: { id: true, fullName: true } })
+    : [];
+  const nameById = new Map(users.map((u) => [u.id, u.fullName]));
+
+  const statByManager = new Map<number, ContactManagerStat>();
+  for (const g of managerGroups) {
+    if (g.claimedById === null) continue;
+    const stat =
+      statByManager.get(g.claimedById) ??
+      {
+        userId: g.claimedById,
+        fullName: nameById.get(g.claimedById) ?? "—",
+        reached: 0,
+        notReached: 0,
+        declined: 0,
+        callback: 0,
+        total: 0,
+      };
+    const c = g._count._all;
+    if (g.status === ContactStatus.REACHED) stat.reached += c;
+    else if (g.status === ContactStatus.NOT_REACHED) stat.notReached += c;
+    else if (g.status === ContactStatus.DECLINED) stat.declined += c;
+    else if (g.status === ContactStatus.CALLBACK) stat.callback += c;
+    // IN_PROGRESS contacts claimed in the period count toward `total` only.
+    stat.total += c;
+    statByManager.set(g.claimedById, stat);
+  }
+
+  const byManager = [...statByManager.values()].sort(
+    (a, b) => b.reached - a.reached || b.total - a.total
+  );
+
+  return {
+    queueTotal,
+    queueNew,
+    queueInWork,
+    reached,
+    notReached,
+    declined,
+    callback,
+    handled: reached + notReached + declined,
+    byManager,
+  };
+}
+
 export async function convertToAppeal(
   id: number,
   branchId: number,

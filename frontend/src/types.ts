@@ -193,6 +193,28 @@ export interface ContactBatch {
   counts: Partial<Record<ContactStatus, number>>;
 }
 
+export interface ContactManagerStat {
+  userId: number;
+  fullName: string;
+  reached: number;
+  notReached: number;
+  declined: number;
+  callback: number;
+  total: number;
+}
+
+export interface ContactRangeStats {
+  queueTotal: number;
+  queueNew: number;
+  queueInWork: number;
+  reached: number;
+  notReached: number;
+  declined: number;
+  callback: number;
+  handled: number;
+  byManager: ContactManagerStat[];
+}
+
 export interface SocialFundOffice {
   id: number;
   city: string;

@@ -822,6 +822,191 @@ a {
   margin: 0 0 8px;
 }
 
+/* ============================================================
+   Statistics redesign — KPI tiles, section eyebrows, Прозвон
+   conversion bar. Stays within the established gold/washi-paper
+   system; only outcome colors (green дозвон / red отказ) are new.
+   ============================================================ */
+
+.stats-eyebrow {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--primary);
+  margin: 0 0 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  /* Sits on the dark page background, not a card — use the light chrome tone. */
+  color: #e7c98a;
+}
+
+.stats-eyebrow::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(231, 201, 138, 0.55), rgba(231, 201, 138, 0));
+}
+
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(158px, 1fr));
+  gap: 14px;
+}
+
+.kpi-grid--calls {
+  margin-bottom: 16px;
+}
+
+.kpi {
+  position: relative;
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid rgba(216, 215, 209, 0.82);
+  border-radius: 14px;
+  padding: 18px 20px 18px 24px;
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  transition: transform 0.14s ease, box-shadow 0.14s ease;
+}
+
+.kpi:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 22px 48px rgba(7, 8, 11, 0.46);
+}
+
+.kpi::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 5px;
+  background: var(--kpi-accent, var(--primary));
+}
+
+.kpi-value {
+  font-family: var(--font-display);
+  font-size: 34px;
+  line-height: 1.05;
+  color: var(--text);
+}
+
+.kpi-label {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #565952;
+}
+
+.kpi-sub {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.kpi--gold {
+  --kpi-accent: var(--primary);
+}
+.kpi--success {
+  --kpi-accent: var(--success);
+}
+.kpi--danger {
+  --kpi-accent: var(--danger);
+}
+.kpi--muted {
+  --kpi-accent: #a8a494;
+}
+.kpi--info {
+  --kpi-accent: #3d6ea5;
+}
+
+.stats-panels--calls {
+  margin-top: 4px;
+}
+
+/* Manager leaderboard for Прозвон — дозвон column reads green, total bold. */
+.stats-manager-table .stat-reached {
+  color: var(--success);
+  font-weight: 700;
+}
+.stats-manager-table .stat-total {
+  font-weight: 700;
+}
+
+/* Conversion proportion bar */
+.conv-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.conv-rate {
+  font-family: var(--font-display);
+  font-size: 30px;
+  line-height: 1;
+  color: var(--success);
+}
+
+.conv-bar {
+  display: flex;
+  height: 16px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(33, 30, 23, 0.08);
+}
+
+.conv-seg {
+  height: 100%;
+  transition: width 0.3s ease;
+}
+.conv-seg--reached {
+  background: var(--success);
+}
+.conv-seg--notReached {
+  background: #cbb06a;
+}
+.conv-seg--declined {
+  background: var(--danger);
+}
+
+.conv-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 12px;
+  font-size: 12px;
+  color: #565952;
+  font-weight: 600;
+}
+
+.conv-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.conv-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 3px;
+  display: inline-block;
+}
+.conv-dot--reached {
+  background: var(--success);
+}
+.conv-dot--notReached {
+  background: #cbb06a;
+}
+.conv-dot--declined {
+  background: var(--danger);
+}
+
 .admin-option-list {
   list-style: none;
   padding: 0;

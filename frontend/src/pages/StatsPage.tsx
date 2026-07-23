@@ -1,7 +1,17 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, ApiError } from "../api/client";
-import { Appeal, DailyStat, OperatorStat, RangeStats, StatBucket, SummaryStats, TfTimeBucket } from "../types";
+import {
+  Appeal,
+  ContactManagerStat,
+  ContactRangeStats,
+  DailyStat,
+  OperatorStat,
+  RangeStats,
+  StatBucket,
+  SummaryStats,
+  TfTimeBucket,
+} from "../types";
 import { detectMobileOperator } from "../lib/mobileOperator";
 import { BranchSwitcher } from "../components/BranchSwitcher";
 import { IconBack } from "../components/icons";
@@ -320,6 +330,130 @@ function TfTimeBreakdown({ rows }: { rows: TfTimeBucket[] }) {
   );
 }
 
+// A single KPI tile — big display-font numeral with a colored accent stripe.
+// `accent` maps to a .kpi--* modifier so the stripe/tint matches the metric's
+// meaning (green for дозвон, red for отказ, etc.).
+function Kpi({
+  value,
+  label,
+  sub,
+  accent = "gold",
+}: {
+  value: number | string;
+  label: string;
+  sub?: string;
+  accent?: "gold" | "success" | "danger" | "muted" | "info";
+}) {
+  return (
+    <div className={`kpi kpi--${accent}`}>
+      <span className="kpi-value">{value}</span>
+      <span className="kpi-label">{label}</span>
+      {sub && <span className="kpi-sub">{sub}</span>}
+    </div>
+  );
+}
+
+// Horizontal proportion bar of the period's final outcomes (дозвон / недозвон
+// / отказ) — a quick read on the shape of the calling before diving into the
+// per-manager numbers.
+function ConversionBar({ reached, notReached, declined }: { reached: number; notReached: number; declined: number }) {
+  const total = reached + notReached + declined;
+  if (total === 0) {
+    return <p className="empty-state">За выбранный период обработанных контактов нет.</p>;
+  }
+  const pct = (n: number) => `${(n / total) * 100}%`;
+  const conversion = Math.round((reached / total) * 100);
+
+  return (
+    <div className="conv">
+      <div className="conv-head">
+        <span className="conv-rate">{conversion}%</span>
+        <span className="muted">конверсия в дозвон ({reached} из {total} обработанных)</span>
+      </div>
+      <div className="conv-bar" role="img" aria-label={`Дозвон ${reached}, недозвон ${notReached}, отказ ${declined}`}>
+        {reached > 0 && <div className="conv-seg conv-seg--reached" style={{ width: pct(reached) }} title={`Дозвон: ${reached}`} />}
+        {notReached > 0 && (
+          <div className="conv-seg conv-seg--notReached" style={{ width: pct(notReached) }} title={`Недозвон: ${notReached}`} />
+        )}
+        {declined > 0 && <div className="conv-seg conv-seg--declined" style={{ width: pct(declined) }} title={`Отказ: ${declined}`} />}
+      </div>
+      <div className="conv-legend">
+        <span><i className="conv-dot conv-dot--reached" />Дозвон {reached}</span>
+        <span><i className="conv-dot conv-dot--notReached" />Недозвон {notReached}</span>
+        <span><i className="conv-dot conv-dot--declined" />Отказ {declined}</span>
+      </div>
+    </div>
+  );
+}
+
+function ManagerCallTable({ rows }: { rows: ContactManagerStat[] }) {
+  if (rows.length === 0) {
+    return <p className="empty-state">За выбранный период никто не брал контакты в работу.</p>;
+  }
+  return (
+    <div className="table-scroll">
+      <table className="appeals-table stats-manager-table">
+        <thead>
+          <tr>
+            <th>Менеджер</th>
+            <th className="col-num" title="Переведено в трубку">Дозвон</th>
+            <th className="col-num">Недозвон</th>
+            <th className="col-num">Отказ</th>
+            <th className="col-num" title="Отмечено «Перезвонить»">Перезвон</th>
+            <th className="col-num" title="Всего взято в работу за период">Всего</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.userId}>
+              <td>
+                <EmployeeNameButton id={r.userId} fullName={r.fullName} />
+              </td>
+              <td className="col-num stat-reached">{r.reached || "—"}</td>
+              <td className="col-num">{r.notReached || "—"}</td>
+              <td className="col-num">{r.declined || "—"}</td>
+              <td className="col-num">{r.callback || "—"}</td>
+              <td className="col-num stat-total">{r.total}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function CallStatsSection({ stats }: { stats: ContactRangeStats }) {
+  return (
+    <section className="stats-section">
+      <p className="stats-eyebrow">Прозвон</p>
+
+      <div className="kpi-grid kpi-grid--calls">
+        <Kpi value={stats.queueNew} label="в очереди" sub="ждут звонка сейчас" accent="info" />
+        <Kpi value={stats.queueInWork} label="в работе" sub="взяты, не обработаны" accent="muted" />
+        <Kpi value={stats.reached} label="дозвонов" sub="за период → трубки" accent="success" />
+        <Kpi value={stats.notReached} label="недозвонов" sub="за период" accent="muted" />
+        <Kpi value={stats.declined} label="отказов" sub="за период" accent="danger" />
+        <Kpi value={stats.queueTotal} label="всего в базе" sub="контактов филиала" accent="gold" />
+      </div>
+
+      <div className="stats-panels stats-panels--calls">
+        <div className="stats-panel">
+          <div className="stats-subtable">
+            <h3>Итог обзвона за период</h3>
+            <ConversionBar reached={stats.reached} notReached={stats.notReached} declined={stats.declined} />
+          </div>
+        </div>
+        <div className="stats-panel">
+          <div className="stats-subtable">
+            <h3>По менеджерам</h3>
+            <ManagerCallTable rows={stats.byManager} />
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export function StatsPage() {
   const [period, setPeriod] = useState<Period>("today");
   const [customFrom, setCustomFrom] = useState(todayInputValue());
@@ -331,6 +465,9 @@ export function StatsPage() {
   const [byStatus, setByStatus] = useState<StatBucket[]>([]);
   const [byDate, setByDate] = useState<DailyStat[]>([]);
   const [byTf, setByTf] = useState<TfTimeBucket[]>([]);
+  // Прозвон stats live behind the per-branch module toggle: a 403 (module off)
+  // or any other failure just hides the block rather than erroring the page.
+  const [callStats, setCallStats] = useState<ContactRangeStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -360,6 +497,13 @@ export function StatsPage() {
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : "Не удалось загрузить статистику"))
       .finally(() => setLoading(false));
+
+    // Same range as the appeals stats above. Hidden (null) when the Прозвон
+    // module is off for this branch (403) or the request otherwise fails.
+    api
+      .get<ContactRangeStats>(`/contacts/stats?from=${from}&to=${to}`)
+      .then(setCallStats)
+      .catch(() => setCallStats(null));
   }, [period, customFrom, customTo]);
 
   // Always-visible today/week/all-time counts — independent of whatever
@@ -436,19 +580,10 @@ export function StatsPage() {
           </label>
         </div>
 
-        <div className="stats-summary">
-          <div className="stats-card">
-            <span className="stats-card-value">{summary.today}</span>
-            <span className="muted">трубок сегодня</span>
-          </div>
-          <div className="stats-card">
-            <span className="stats-card-value">{summary.week}</span>
-            <span className="muted">трубок на этой неделе</span>
-          </div>
-          <div className="stats-card">
-            <span className="stats-card-value">{summary.total}</span>
-            <span className="muted">трубок за всё время</span>
-          </div>
+        <div className="stats-summary kpi-grid">
+          <Kpi value={summary.today} label="трубок сегодня" accent="gold" />
+          <Kpi value={summary.week} label="трубок на этой неделе" accent="gold" />
+          <Kpi value={summary.total} label="трубок за всё время" accent="muted" />
         </div>
       </div>
 
@@ -458,6 +593,7 @@ export function StatsPage() {
       {!loading && !error && (
         <>
           <section className="stats-section">
+            <p className="stats-eyebrow">Трубки</p>
             <h2>Трубки по дням — нажмите на столбец, чтобы посмотреть список</h2>
             <div className="table-scroll stats-chart-wrap">
               <DailyChart data={byDate} onPick={loadDay} />
@@ -495,6 +631,8 @@ export function StatsPage() {
               </div>
             </div>
           </section>
+
+          {callStats && <CallStatsSection stats={callStats} />}
         </>
       )}
 
