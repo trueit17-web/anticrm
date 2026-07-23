@@ -100,9 +100,12 @@ export function listMine(branchId: number, userId: number) {
   });
 }
 
+// Must apply the same visibility rule as the queue listing — otherwise a
+// manager could claim straight off another manager's private batch by ID,
+// bypassing the filter that keeps it out of their /contacts/queue view.
 export async function claimContact(id: number, branchId: number, userId: number) {
   const result = await prisma.contact.updateMany({
-    where: { id, branchId, status: ContactStatus.NEW },
+    where: { id, ...visibleQueueWhere(branchId, userId) },
     data: { status: ContactStatus.IN_PROGRESS, claimedById: userId, claimedAt: new Date() },
   });
   if (result.count === 0) return null;
@@ -165,6 +168,20 @@ function appendDadataInfo(extraInfo: string | null, orgName?: string, managerNam
 
 const OUTCOME_STATUSES: ContactStatus[] = [ContactStatus.NOT_REACHED, ContactStatus.DECLINED, ContactStatus.CALLBACK];
 
+// Serializes concurrent setOutcome/convertToAppeal calls on the same
+// contact: without this, two nearly-simultaneous requests (e.g. a double
+// click, or a retried request) can both read the contact while it's still
+// IN_PROGRESS and both proceed — for convertToAppeal that meant two Appeal
+// rows for one contact. The lock is held for the rest of the transaction, so
+// whichever request runs second sees the already-updated status.
+const CONTACT_LOCK_NAMESPACE = 0x434f4e54; // "CONT"
+
+async function lockContact(tx: Prisma.TransactionClient, contactId: number) {
+  // pg_advisory_xact_lock returns void — $queryRaw can't deserialize that,
+  // so this must be $executeRaw (no result set expected).
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(${CONTACT_LOCK_NAMESPACE}::int, ${contactId}::int)`;
+}
+
 export async function setOutcome(
   id: number,
   branchId: number,
@@ -175,21 +192,24 @@ export async function setOutcome(
 ) {
   if (!OUTCOME_STATUSES.includes(status)) return { error: "invalid_status" as const };
 
-  const where: Prisma.ContactWhereInput = canActOnAnyContact
-    ? { id, branchId }
-    : { id, branchId, claimedById: userId };
-  const contact = await prisma.contact.findFirst({ where });
-  if (!contact) return { error: "not_found" as const };
-  if (contact.status !== ContactStatus.IN_PROGRESS && contact.status !== ContactStatus.CALLBACK) {
-    return { error: "already_finished" as const };
-  }
+  return prisma.$transaction(async (tx) => {
+    await lockContact(tx, id);
+    const where: Prisma.ContactWhereInput = canActOnAnyContact
+      ? { id, branchId }
+      : { id, branchId, claimedById: userId };
+    const contact = await tx.contact.findFirst({ where });
+    if (!contact) return { error: "not_found" as const };
+    if (contact.status !== ContactStatus.IN_PROGRESS && contact.status !== ContactStatus.CALLBACK) {
+      return { error: "already_finished" as const };
+    }
 
-  const updated = await prisma.contact.update({
-    where: { id },
-    data: { status, resultNote },
-    include: contactInclude,
+    const updated = await tx.contact.update({
+      where: { id },
+      data: { status, resultNote },
+      include: contactInclude,
+    });
+    return { contact: updated };
   });
-  return { contact: updated };
 }
 
 export async function convertToAppeal(
@@ -203,41 +223,47 @@ export async function convertToAppeal(
   orgName?: string,
   managerName?: string
 ) {
-  const where: Prisma.ContactWhereInput = canActOnAnyContact
-    ? { id, branchId }
-    : { id, branchId, claimedById: userId };
-  const contact = await prisma.contact.findFirst({ where });
-  if (!contact) return { error: "not_found" as const };
-  if (contact.status !== ContactStatus.IN_PROGRESS && contact.status !== ContactStatus.CALLBACK) {
-    return { error: "already_finished" as const };
-  }
+  return prisma.$transaction(async (tx) => {
+    await lockContact(tx, id);
+    const where: Prisma.ContactWhereInput = canActOnAnyContact
+      ? { id, branchId }
+      : { id, branchId, claimedById: userId };
+    const contact = await tx.contact.findFirst({ where });
+    if (!contact) return { error: "not_found" as const };
+    if (contact.status !== ContactStatus.IN_PROGRESS && contact.status !== ContactStatus.CALLBACK) {
+      return { error: "already_finished" as const };
+    }
 
-  const status = await getDefaultOptionValue(branchId, OptionField.STATUS);
-  const birthDate = extractBirthDate(contact.extraInfo);
-  const includesBirthDate = !!(birthDate && contact.fullName?.includes(birthDate));
-  const clientData = [contact.fullName, includesBirthDate ? null : birthDate].filter(Boolean).join(", ") || undefined;
-  // The manager may have tapped one of the extra "Доп. номера" tel: links
-  // instead of the main number — that's the phone that actually got called,
-  // so it's what the trubka should carry, not necessarily contact.phone.
-  const appeal = await createAppeal({
-    branchId,
-    operatorId: userId,
-    phone: phone?.trim() || contact.phone,
-    clientData,
-    dep: dep || undefined,
-    description: description?.trim() || undefined,
-    status,
+    const status = await getDefaultOptionValue(branchId, OptionField.STATUS);
+    const birthDate = extractBirthDate(contact.extraInfo);
+    const includesBirthDate = !!(birthDate && contact.fullName?.includes(birthDate));
+    const clientData = [contact.fullName, includesBirthDate ? null : birthDate].filter(Boolean).join(", ") || undefined;
+    // The manager may have tapped one of the extra "Доп. номера" tel: links
+    // instead of the main number — that's the phone that actually got called,
+    // so it's what the trubka should carry, not necessarily contact.phone.
+    const appeal = await createAppeal(
+      {
+        branchId,
+        operatorId: userId,
+        phone: phone?.trim() || contact.phone,
+        clientData,
+        dep: dep || undefined,
+        description: description?.trim() || undefined,
+        status,
+      },
+      tx
+    );
+
+    const updated = await tx.contact.update({
+      where: { id },
+      data: {
+        status: ContactStatus.REACHED,
+        appealId: appeal.id,
+        extraInfo: appendDadataInfo(contact.extraInfo, orgName, managerName),
+      },
+      include: contactInclude,
+    });
+
+    return { contact: updated, appeal };
   });
-
-  const updated = await prisma.contact.update({
-    where: { id },
-    data: {
-      status: ContactStatus.REACHED,
-      appealId: appeal.id,
-      extraInfo: appendDadataInfo(contact.extraInfo, orgName, managerName),
-    },
-    include: contactInclude,
-  });
-
-  return { contact: updated, appeal };
 }

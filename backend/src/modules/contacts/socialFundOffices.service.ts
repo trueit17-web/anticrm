@@ -45,8 +45,12 @@ export async function deleteSocialFundOffice(id: number) {
   return result.count > 0;
 }
 
+// A city/address starting with =, +, - or @ would otherwise be interpreted
+// as a formula when the export is opened in Excel/Sheets — prefixing with a
+// literal quote (Excel's own "treat as text" convention) neutralizes that.
 function csvField(value: string): string {
-  return /[",\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+  const safe = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
+  return /[",\r\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
 }
 
 // Builds the downloadable CSV for the admin page. Prefixed with a UTF-8 BOM

@@ -14,8 +14,10 @@ export const app = express();
 
 // In production the app only ever sits behind the nginx container (one hop),
 // which sets X-Forwarded-For — needed for express-rate-limit to key on the
-// real client IP instead of nginx's.
-app.set("trust proxy", 1);
+// real client IP instead of nginx's. In development the backend is reached
+// directly, so trusting a client-supplied X-Forwarded-For would let a caller
+// spoof req.ip and dodge the login rate limiter.
+if (env.nodeEnv === "production") app.set("trust proxy", 1);
 
 app.use(cors({ origin: env.corsOrigin }));
 app.use(express.json());

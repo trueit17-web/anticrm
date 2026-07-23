@@ -207,8 +207,30 @@ async function parseXlsx(buffer: Buffer): Promise<string[][]> {
   return rows;
 }
 
+// csv-parse defaults to comma, so a semicolon-delimited export (common for
+// ru-RU Excel CSV) never finds its header row: the whole line falls into
+// column 1 and gets misread as a phone number. Sniffing the delimiter off
+// the first line's most frequent candidate avoids that silently-wrong parse.
+const CSV_DELIMITER_CANDIDATES = [",", ";", "\t"];
+
+function detectDelimiter(text: string): string {
+  const firstLine = text.split(/\r\n|\r|\n/, 1)[0] ?? "";
+  let best = ",";
+  let bestCount = 0;
+  for (const candidate of CSV_DELIMITER_CANDIDATES) {
+    const count = firstLine.split(candidate).length - 1;
+    if (count > bestCount) {
+      best = candidate;
+      bestCount = count;
+    }
+  }
+  return best;
+}
+
 function parseCsvBuffer(buffer: Buffer): string[][] {
-  return parseCsv(buffer, {
+  const text = buffer.toString("utf8");
+  return parseCsv(text, {
+    delimiter: detectDelimiter(text),
     skip_empty_lines: true,
     trim: true,
     relax_column_count: true,

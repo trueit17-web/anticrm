@@ -53,8 +53,14 @@ export interface CreateAppealInput {
   status?: string;
 }
 
-export function createAppeal(input: CreateAppealInput) {
-  return prisma.appeal.create({
+// Accepts an optional transaction client so callers that need the create to
+// participate in a larger atomic operation (e.g. contacts.service's
+// convertToAppeal) can pass `tx` instead of the module-level `prisma`.
+export function createAppeal(
+  input: CreateAppealInput,
+  client: Prisma.TransactionClient | typeof prisma = prisma
+) {
+  return client.appeal.create({
     data: input,
     include: appealInclude,
   });
@@ -184,8 +190,11 @@ export async function setSmsSent(id: number, branchId: number, sent: boolean, us
   return updated;
 }
 
-export async function getAppealHistory(appealId: number, branchId: number) {
-  const appeal = await prisma.appeal.findFirst({ where: { id: appealId, branchId }, select: { id: true } });
+export async function getAppealHistory(appealId: number, branchId: number, canSeeDeleted: boolean) {
+  const where: Prisma.AppealWhereInput = canSeeDeleted
+    ? { id: appealId, branchId }
+    : { id: appealId, branchId, deletedAt: null };
+  const appeal = await prisma.appeal.findFirst({ where, select: { id: true } });
   if (!appeal) return null;
   return prisma.appealHistory.findMany({
     where: { appealId },

@@ -18,8 +18,10 @@ export const usersRouter = Router();
 
 usersRouter.use(requireAuth);
 
-// Manager/Admin need the user list to populate assignment dropdowns (Госы/ЦБ/ФСБ/Закрыв).
-usersRouter.get("/", requireRole(Role.MANAGER, Role.ADMIN, Role.SUPERADMIN), asyncHandler(listUsersHandler));
+// Full account list (username, role, Telegram, bio, branch access...) is
+// only rendered on the Админка "Пользователи" tab, which is ADMIN+ only —
+// the route matches that; MANAGER has no UI surface that calls it.
+usersRouter.get("/", requireRole(Role.ADMIN, Role.SUPERADMIN), asyncHandler(listUsersHandler));
 
 // Any authenticated employee may open a colleague's popup card.
 usersRouter.get("/:id/card", asyncHandler(getUserCardHandler));

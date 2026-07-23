@@ -53,7 +53,7 @@ export function CallCardModal({ onClose }: { onClose: () => void }) {
     setSfrLoading(true);
     const regionParam = region ? `&region=${encodeURIComponent(region)}` : "";
     api
-      .get<{ address: string | null }>(`/social-fund-offices/lookup?address=${encodeURIComponent(address)}${regionParam}`)
+      .get<{ address: string | null }>(`/contacts/social-fund-offices/lookup?address=${encodeURIComponent(address)}${regionParam}`)
       .then((res) => setSfrAddress(res.address))
       .catch(() => setSfrAddress(null))
       .finally(() => setSfrLoading(false));

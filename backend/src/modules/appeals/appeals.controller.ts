@@ -196,7 +196,9 @@ export async function getHistoryHandler(req: Request, res: Response) {
   }
 
   const id = Number(req.params.id);
-  const history = await getAppealHistory(id, branchId);
+  const canSeeDeleted =
+    req.user!.role === Role.MANAGER || req.user!.role === Role.ADMIN || req.user!.role === Role.SUPERADMIN;
+  const history = await getAppealHistory(id, branchId, canSeeDeleted);
   if (history === null) {
     return res.status(404).json({ error: "Трубка не найдена" });
   }

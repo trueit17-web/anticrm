@@ -30,7 +30,7 @@ export async function exportSocialFundOfficesHandler(_req: Request, res: Respons
   res.send(csv);
 }
 
-const createSchema = z.object({ city: z.string().min(1), address: z.string().min(1) });
+const createSchema = z.object({ city: z.string().trim().min(1), address: z.string().trim().min(1) });
 
 export async function createSocialFundOfficeHandler(req: Request, res: Response) {
   const parsed = createSchema.safeParse(req.body);
@@ -49,8 +49,8 @@ export async function createSocialFundOfficeHandler(req: Request, res: Response)
 }
 
 const updateSchema = z.object({
-  city: z.string().min(1).optional(),
-  address: z.string().min(1).optional(),
+  city: z.string().trim().min(1).optional(),
+  address: z.string().trim().min(1).optional(),
 });
 
 export async function updateSocialFundOfficeHandler(req: Request, res: Response) {
