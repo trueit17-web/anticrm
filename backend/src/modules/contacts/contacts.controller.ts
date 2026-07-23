@@ -14,6 +14,7 @@ import {
   listBatches,
   listMine,
   listQueue,
+  releaseContact,
   setOutcome,
 } from "./contacts.service";
 
@@ -144,6 +145,20 @@ export async function setOutcomeHandler(req: Request, res: Response) {
     parsed.data.status as ContactStatus,
     parsed.data.resultNote ?? null
   );
+  if ("error" in result) {
+    if (result.error === "not_found") return res.status(404).json({ error: "Контакт не найден" });
+    return res.status(409).json({ error: "Контакт уже обработан" });
+  }
+  res.json({ contact: result.contact });
+}
+
+export async function releaseContactHandler(req: Request, res: Response) {
+  const branchId = await resolveBranchId(req);
+  if (branchId === null) {
+    return res.status(400).json({ error: "Выберите филиал" });
+  }
+  const id = Number(req.params.id);
+  const result = await releaseContact(id, branchId, req.user!.id, canActOnAnyContact(req.user!.role));
   if ("error" in result) {
     if (result.error === "not_found") return res.status(404).json({ error: "Контакт не найден" });
     return res.status(409).json({ error: "Контакт уже обработан" });

@@ -120,6 +120,25 @@ export function CallCardModal({ onClose }: { onClose: () => void }) {
     }
   }
 
+  // Puts the contact back in the shared queue for someone else instead of
+  // leaving it claimed under this manager indefinitely — for when it's
+  // genuinely not theirs to work (wrong number, duplicate, etc.). Just
+  // clicking "Закрыть" without this is also safe now: reopening the card
+  // resurfaces the same still-claimed contact rather than claiming another.
+  async function handleRelease() {
+    if (!contact) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      await api.post(`/contacts/${contact.id}/release`);
+      loadNext();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Не удалось освободить контакт");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   if (minimized) {
     return (
       <button type="button" className="call-card-tab" onClick={() => setMinimized(false)}>
@@ -240,6 +259,15 @@ export function CallCardModal({ onClose }: { onClose: () => void }) {
             <div className="modal-actions">
               <button type="button" className="secondary" onClick={onClose} disabled={submitting}>
                 Закрыть
+              </button>
+              <button
+                type="button"
+                className="secondary"
+                onClick={handleRelease}
+                disabled={submitting}
+                title="Вернуть контакт в общую очередь, не сохраняя результат"
+              >
+                {submitting ? "..." : "Отпустить"}
               </button>
               <button type="button" className="secondary" onClick={handleNotReached} disabled={submitting}>
                 {submitting ? "..." : "НДЗ"}

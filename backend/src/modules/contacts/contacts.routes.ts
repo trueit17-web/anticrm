@@ -14,6 +14,7 @@ import {
   listMineHandler,
   listQueueHandler,
   lookupOrgHandler,
+  releaseContactHandler,
   setOutcomeHandler,
   uploadBatchHandler,
 } from "./contacts.controller";
@@ -86,6 +87,11 @@ contactsRouter.patch(
   "/:id/outcome",
   requireRole(Role.MANAGER, Role.ADMIN, Role.SUPERADMIN),
   asyncHandler(setOutcomeHandler)
+);
+contactsRouter.post(
+  "/:id/release",
+  requireRole(Role.MANAGER, Role.ADMIN, Role.SUPERADMIN),
+  asyncHandler(releaseContactHandler)
 );
 contactsRouter.post(
   "/:id/convert",

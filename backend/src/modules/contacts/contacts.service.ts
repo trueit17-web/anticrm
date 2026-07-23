@@ -145,12 +145,39 @@ export async function claimContact(id: number, branchId: number, userId: number)
   });
 }
 
+// Shared with claimNext below — serializes concurrent claim-next calls from
+// the same user (e.g. React StrictMode's double mount-effect in dev, or a
+// retried request) so they can't both see "no active contact yet" and each
+// claim one, leaving the manager holding two IN_PROGRESS contacts from a
+// single visual "Звонить!" click.
+const USER_CLAIM_LOCK_NAMESPACE = 0x434c4149; // "CLAI"
+
+async function lockUserClaim(tx: Prisma.TransactionClient, userId: number) {
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(${USER_CLAIM_LOCK_NAMESPACE}::int, ${userId}::int)`;
+}
+
 // Powers the "Звонить!" button — grabs the oldest unclaimed contact instead
 // of making the manager pick one from a list. A handful of retries absorbs
 // the race where two managers hit the button at the same instant; each
 // retry just moves on to the next-oldest still-NEW contact.
+//
+// Idempotent by design: if the caller already has an unresolved contact
+// (IN_PROGRESS or CALLBACK) — from a previous claim-next that was closed
+// without an outcome, or from manually claiming off the queue list —
+// that's returned as-is instead of claiming another one on top of it.
+// Repeatedly opening/closing the card without resolving anything can no
+// longer gradually drain the whole shared queue into one manager's pile.
 export async function claimNext(branchId: number, userId: number) {
   return prisma.$transaction(async (tx) => {
+    await lockUserClaim(tx, userId);
+
+    const current = await tx.contact.findFirst({
+      where: { branchId, claimedById: userId, status: { in: [ContactStatus.IN_PROGRESS, ContactStatus.CALLBACK] } },
+      include: contactInclude,
+      orderBy: { claimedAt: "asc" },
+    });
+    if (current) return current;
+
     for (let attempt = 0; attempt < 5; attempt++) {
       const next = await tx.contact.findFirst({
         where: visibleQueueWhere(branchId, userId),
@@ -242,6 +269,33 @@ export async function setOutcome(
     const updated = await tx.contact.update({
       where: { id },
       data: { status, resultNote },
+      include: contactInclude,
+    });
+    return { contact: updated };
+  });
+}
+
+// Returns a contact the caller has claimed back to the shared queue —
+// clears the claim so someone else can pick it up. The alternative to
+// resolving it via setOutcome/convertToAppeal, for when the manager decides
+// this one genuinely isn't theirs to work (wrong number, not who they
+// expected, etc.) rather than just closing the call card and leaving it
+// claimed indefinitely with no outcome recorded at all.
+export async function releaseContact(id: number, branchId: number, userId: number, canActOnAnyContact: boolean) {
+  return prisma.$transaction(async (tx) => {
+    await lockContact(tx, id);
+    const where: Prisma.ContactWhereInput = canActOnAnyContact
+      ? { id, branchId }
+      : { id, branchId, claimedById: userId };
+    const contact = await tx.contact.findFirst({ where });
+    if (!contact) return { error: "not_found" as const };
+    if (contact.status !== ContactStatus.IN_PROGRESS && contact.status !== ContactStatus.CALLBACK) {
+      return { error: "already_finished" as const };
+    }
+
+    const updated = await tx.contact.update({
+      where: { id },
+      data: { status: ContactStatus.NEW, claimedById: null, claimedAt: null },
       include: contactInclude,
     });
     return { contact: updated };
