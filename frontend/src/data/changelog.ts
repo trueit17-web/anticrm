@@ -10,6 +10,14 @@ export interface ChangelogEntry {
 // separately, so there's only one place to update.
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.13.0",
+    date: "2026-07-23",
+    changes: [
+      "Обновлён визуальный стиль: новая типографика на странице входа и заголовках",
+      "Кнопки «Сохранить» и «Отмена» в формах редактирования теперь чётко различаются цветом и значком",
+    ],
+  },
+  {
     version: "1.12.0",
     date: "2026-07-23",
     changes: [
