@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api, ApiError } from "../api/client";
 import { Contact } from "../types";
 import { detectMobileOperator } from "../lib/mobileOperator";
@@ -34,32 +34,73 @@ export function CallCardModal({ onClose }: { onClose: () => void }) {
   const [sfrAddress, setSfrAddress] = useState<string | null>(null);
   const [sfrLoading, setSfrLoading] = useState(false);
 
-  function lookupOrg(inn: string) {
+  // Bumped on every loadNext() call — org/SFR lookups (and the claim-next
+  // response itself) check their own captured generation against this
+  // before applying anything, so a slow response for the *previous*
+  // contact can't land on top of whatever's on screen now. Without this,
+  // switching contacts quickly (e.g. "Отпустить" right after opening) could
+  // let contact A's lookup resolve after contact B is already showing and
+  // silently overwrite B's org/address fields with A's data.
+  const requestGeneration = useRef(0);
+  const abortControllers = useRef<AbortController[]>([]);
+
+  function lookupOrg(inn: string, generation: number) {
     setOrgLoading(true);
+    const controller = new AbortController();
+    abortControllers.current.push(controller);
     api
-      .post<{ name: string | null; managerName: string | null }>("/contacts/lookup-org", { inn })
+      .post<{ name: string | null; managerName: string | null }>(
+        "/contacts/lookup-org",
+        { inn },
+        { signal: controller.signal }
+      )
       .then((res) => {
+        if (generation !== requestGeneration.current) return;
         setOrgName(res.name);
         setOrgManagerName(res.managerName);
       })
-      .catch(() => {
+      .catch((err) => {
+        if (err instanceof DOMException && err.name === "AbortError") return;
+        if (generation !== requestGeneration.current) return;
         setOrgName(null);
         setOrgManagerName(null);
       })
-      .finally(() => setOrgLoading(false));
+      .finally(() => {
+        if (generation === requestGeneration.current) setOrgLoading(false);
+      });
   }
 
-  function lookupSfr(address: string, region: string | null) {
+  function lookupSfr(address: string, region: string | null, generation: number) {
     setSfrLoading(true);
+    const controller = new AbortController();
+    abortControllers.current.push(controller);
     const regionParam = region ? `&region=${encodeURIComponent(region)}` : "";
     api
-      .get<{ address: string | null }>(`/contacts/social-fund-offices/lookup?address=${encodeURIComponent(address)}${regionParam}`)
-      .then((res) => setSfrAddress(res.address))
-      .catch(() => setSfrAddress(null))
-      .finally(() => setSfrLoading(false));
+      .get<{ address: string | null }>(
+        `/contacts/social-fund-offices/lookup?address=${encodeURIComponent(address)}${regionParam}`,
+        { signal: controller.signal }
+      )
+      .then((res) => {
+        if (generation !== requestGeneration.current) return;
+        setSfrAddress(res.address);
+      })
+      .catch((err) => {
+        if (err instanceof DOMException && err.name === "AbortError") return;
+        if (generation !== requestGeneration.current) return;
+        setSfrAddress(null);
+      })
+      .finally(() => {
+        if (generation === requestGeneration.current) setSfrLoading(false);
+      });
   }
 
   function loadNext() {
+    const generation = ++requestGeneration.current;
+    // Anything still in flight for the previous contact is now stale —
+    // stop it outright rather than just ignoring its result.
+    for (const controller of abortControllers.current) controller.abort();
+    abortControllers.current = [];
+
     setLoading(true);
     setError(null);
     setDep("");
@@ -72,19 +113,34 @@ export function CallCardModal({ onClose }: { onClose: () => void }) {
     api
       .post<{ contact: Contact | null }>("/contacts/claim-next")
       .then((res) => {
+        if (generation !== requestGeneration.current) return;
         setContact(res.contact);
         setCalledPhone(res.contact?.phone ?? null);
         if (res.contact) {
           const { inn, address, region } = parseExtraInfo(res.contact.extraInfo);
-          if (inn) lookupOrg(inn);
-          if (address || region) lookupSfr(address ?? "", region);
+          if (inn) lookupOrg(inn, generation);
+          if (address || region) lookupSfr(address ?? "", region, generation);
         }
       })
-      .catch((err) => setError(err instanceof ApiError ? err.message : "Не удалось получить контакт"))
-      .finally(() => setLoading(false));
+      .catch((err) => {
+        if (generation !== requestGeneration.current) return;
+        setError(err instanceof ApiError ? err.message : "Не удалось получить контакт");
+      })
+      .finally(() => {
+        if (generation === requestGeneration.current) setLoading(false);
+      });
   }
 
-  useEffect(loadNext, []);
+  useEffect(() => {
+    loadNext();
+    return () => {
+      // Unmounting (card closed) — stop treating any in-flight response as
+      // current so it can't call setState after the component is gone.
+      requestGeneration.current++;
+      for (const controller of abortControllers.current) controller.abort();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function handleToTrubki() {
     if (!contact) return;

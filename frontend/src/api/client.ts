@@ -135,14 +135,14 @@ async function download(path: string, filename: string): Promise<void> {
 }
 
 export const api = {
-  get: <T>(path: string) => request<T>(path),
-  post: <T>(path: string, data?: unknown) =>
-    request<T>(path, { method: "POST", body: data ? JSON.stringify(data) : undefined }),
-  patch: <T>(path: string, data?: unknown) =>
-    request<T>(path, { method: "PATCH", body: data ? JSON.stringify(data) : undefined }),
-  put: <T>(path: string, data?: unknown) =>
-    request<T>(path, { method: "PUT", body: data ? JSON.stringify(data) : undefined }),
-  delete: <T>(path: string) => request<T>(path, { method: "DELETE" }),
+  get: <T>(path: string, options?: RequestInit) => request<T>(path, options),
+  post: <T>(path: string, data?: unknown, options?: RequestInit) =>
+    request<T>(path, { ...options, method: "POST", body: data ? JSON.stringify(data) : undefined }),
+  patch: <T>(path: string, data?: unknown, options?: RequestInit) =>
+    request<T>(path, { ...options, method: "PATCH", body: data ? JSON.stringify(data) : undefined }),
+  put: <T>(path: string, data?: unknown, options?: RequestInit) =>
+    request<T>(path, { ...options, method: "PUT", body: data ? JSON.stringify(data) : undefined }),
+  delete: <T>(path: string, options?: RequestInit) => request<T>(path, { ...options, method: "DELETE" }),
   upload,
   download,
 };
