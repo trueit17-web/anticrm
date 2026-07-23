@@ -123,7 +123,7 @@ export async function claimNextHandler(req: Request, res: Response) {
 }
 
 const outcomeSchema = z.object({
-  status: z.enum(["NOT_REACHED", "DECLINED", "CALLBACK"]),
+  status: z.enum(["NOT_REACHED", "DECLINED", "CALLBACK", "ANSWERING_MACHINE", "NOT_PUSHED", "SKIP_ON_CODE"]),
   resultNote: z.string().nullable().optional(),
 });
 
@@ -173,6 +173,8 @@ const convertSchema = z.object({
   description: z.string().optional(),
   orgName: z.string().optional(),
   managerName: z.string().optional(),
+  // "код в:" field on the call card → the appeal's reportedTime.
+  reportedTime: z.string().optional(),
 });
 
 export async function convertToAppealHandler(req: Request, res: Response) {
@@ -195,7 +197,8 @@ export async function convertToAppealHandler(req: Request, res: Response) {
     parsed.data.phone,
     parsed.data.description,
     parsed.data.orgName,
-    parsed.data.managerName
+    parsed.data.managerName,
+    parsed.data.reportedTime
   );
   if ("error" in result) {
     if (result.error === "not_found") return res.status(404).json({ error: "Контакт не найден" });
@@ -233,6 +236,9 @@ export async function getContactStatsHandler(req: Request, res: Response) {
       notReached: 0,
       declined: 0,
       callback: 0,
+      answeringMachine: 0,
+      notPushed: 0,
+      skipOnCode: 0,
       handled: 0,
       byManager: [],
     });

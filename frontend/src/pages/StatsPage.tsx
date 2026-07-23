@@ -353,34 +353,53 @@ function Kpi({
   );
 }
 
-// Horizontal proportion bar of the period's final outcomes (дозвон / недозвон
-// / отказ) — a quick read on the shape of the calling before diving into the
-// per-manager numbers.
-function ConversionBar({ reached, notReached, declined }: { reached: number; notReached: number; declined: number }) {
-  const total = reached + notReached + declined;
+// Horizontal proportion bar of the period's final dispositions — a quick read
+// on the shape of the calling before diving into the per-manager numbers. The
+// conversion % is дозвон over all handled contacts.
+function ConversionBar({ stats }: { stats: ContactRangeStats }) {
+  const segments = [
+    { key: "reached", label: "Дозвон", value: stats.reached },
+    { key: "notReached", label: "Недозвон", value: stats.notReached },
+    { key: "declined", label: "Отказ", value: stats.declined },
+    { key: "answeringMachine", label: "АО", value: stats.answeringMachine },
+    { key: "notPushed", label: "Недожал", value: stats.notPushed },
+    { key: "skipOnCode", label: "Скип на коде", value: stats.skipOnCode },
+  ] as const;
+
+  const total = stats.handled;
   if (total === 0) {
     return <p className="empty-state">За выбранный период обработанных контактов нет.</p>;
   }
-  const pct = (n: number) => `${(n / total) * 100}%`;
-  const conversion = Math.round((reached / total) * 100);
+  const conversion = Math.round((stats.reached / total) * 100);
 
   return (
     <div className="conv">
       <div className="conv-head">
         <span className="conv-rate">{conversion}%</span>
-        <span className="muted">конверсия в дозвон ({reached} из {total} обработанных)</span>
+        <span className="muted">
+          конверсия в дозвон ({stats.reached} из {total} обработанных)
+        </span>
       </div>
-      <div className="conv-bar" role="img" aria-label={`Дозвон ${reached}, недозвон ${notReached}, отказ ${declined}`}>
-        {reached > 0 && <div className="conv-seg conv-seg--reached" style={{ width: pct(reached) }} title={`Дозвон: ${reached}`} />}
-        {notReached > 0 && (
-          <div className="conv-seg conv-seg--notReached" style={{ width: pct(notReached) }} title={`Недозвон: ${notReached}`} />
+      <div className="conv-bar" role="img" aria-label={segments.map((s) => `${s.label} ${s.value}`).join(", ")}>
+        {segments.map(
+          (s) =>
+            s.value > 0 && (
+              <div
+                key={s.key}
+                className={`conv-seg conv-seg--${s.key}`}
+                style={{ width: `${(s.value / total) * 100}%` }}
+                title={`${s.label}: ${s.value}`}
+              />
+            )
         )}
-        {declined > 0 && <div className="conv-seg conv-seg--declined" style={{ width: pct(declined) }} title={`Отказ: ${declined}`} />}
       </div>
       <div className="conv-legend">
-        <span><i className="conv-dot conv-dot--reached" />Дозвон {reached}</span>
-        <span><i className="conv-dot conv-dot--notReached" />Недозвон {notReached}</span>
-        <span><i className="conv-dot conv-dot--declined" />Отказ {declined}</span>
+        {segments.map((s) => (
+          <span key={s.key}>
+            <i className={`conv-dot conv-dot--${s.key}`} />
+            {s.label} {s.value}
+          </span>
+        ))}
       </div>
     </div>
   );
@@ -398,8 +417,11 @@ function ManagerCallTable({ rows }: { rows: ContactManagerStat[] }) {
             <th>Менеджер</th>
             <th className="col-num" title="Переведено в трубку">Дозвон</th>
             <th className="col-num">Недозвон</th>
+            <th className="col-num">АО</th>
+            <th className="col-num" title="Недожал">Недож.</th>
+            <th className="col-num" title="Скип на коде">Скип</th>
             <th className="col-num">Отказ</th>
-            <th className="col-num" title="Отмечено «Перезвонить»">Перезвон</th>
+            <th className="col-num" title="Отмечено «Перезвонить»">Перезв.</th>
             <th className="col-num" title="Всего взято в работу за период">Всего</th>
           </tr>
         </thead>
@@ -411,6 +433,9 @@ function ManagerCallTable({ rows }: { rows: ContactManagerStat[] }) {
               </td>
               <td className="col-num stat-reached">{r.reached || "—"}</td>
               <td className="col-num">{r.notReached || "—"}</td>
+              <td className="col-num">{r.answeringMachine || "—"}</td>
+              <td className="col-num">{r.notPushed || "—"}</td>
+              <td className="col-num">{r.skipOnCode || "—"}</td>
               <td className="col-num">{r.declined || "—"}</td>
               <td className="col-num">{r.callback || "—"}</td>
               <td className="col-num stat-total">{r.total}</td>
@@ -432,6 +457,9 @@ function CallStatsSection({ stats }: { stats: ContactRangeStats }) {
         <Kpi value={stats.queueInWork} label="в работе" sub="взяты, не обработаны" accent="muted" />
         <Kpi value={stats.reached} label="дозвонов" sub="за период → трубки" accent="success" />
         <Kpi value={stats.notReached} label="недозвонов" sub="за период" accent="muted" />
+        <Kpi value={stats.answeringMachine} label="АО" sub="автоответчик" accent="muted" />
+        <Kpi value={stats.notPushed} label="недожал" sub="за период" accent="muted" />
+        <Kpi value={stats.skipOnCode} label="скип на коде" sub="за период" accent="muted" />
         <Kpi value={stats.declined} label="отказов" sub="за период" accent="danger" />
         <Kpi value={stats.queueTotal} label="всего в базе" sub="контактов филиала" accent="gold" />
       </div>
@@ -440,7 +468,7 @@ function CallStatsSection({ stats }: { stats: ContactRangeStats }) {
         <div className="stats-panel">
           <div className="stats-subtable">
             <h3>Итог обзвона за период</h3>
-            <ConversionBar reached={stats.reached} notReached={stats.notReached} declined={stats.declined} />
+            <ConversionBar stats={stats} />
           </div>
         </div>
         <div className="stats-panel">

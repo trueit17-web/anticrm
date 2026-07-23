@@ -229,7 +229,14 @@ function appendDadataInfo(extraInfo: string | null, orgName?: string, managerNam
   return [extraInfo, ...additions].filter(Boolean).join("; ");
 }
 
-const OUTCOME_STATUSES: ContactStatus[] = [ContactStatus.NOT_REACHED, ContactStatus.DECLINED, ContactStatus.CALLBACK];
+const OUTCOME_STATUSES: ContactStatus[] = [
+  ContactStatus.NOT_REACHED,
+  ContactStatus.DECLINED,
+  ContactStatus.CALLBACK,
+  ContactStatus.ANSWERING_MACHINE,
+  ContactStatus.NOT_PUSHED,
+  ContactStatus.SKIP_ON_CODE,
+];
 
 // Serializes concurrent setOutcome/convertToAppeal calls on the same
 // contact: without this, two nearly-simultaneous requests (e.g. a double
@@ -313,8 +320,11 @@ export interface ContactManagerStat {
   notReached: number;
   declined: number;
   callback: number;
+  answeringMachine: number;
+  notPushed: number;
+  skipOnCode: number;
   // Every contact this manager took into work during the period, including
-  // ones still IN_PROGRESS — reached+notReached+declined+callback+inProgress.
+  // ones still IN_PROGRESS — sum of all dispositions plus in-progress.
   total: number;
 }
 
@@ -331,7 +341,12 @@ export interface ContactRangeStats {
   notReached: number;
   declined: number;
   callback: number;
-  handled: number; // reached + notReached + declined (contacts with a final outcome)
+  answeringMachine: number;
+  notPushed: number;
+  skipOnCode: number;
+  // Contacts with a final disposition (everything except NEW/IN_PROGRESS/
+  // CALLBACK, which aren't "done"). Denominator of the conversion rate.
+  handled: number;
   byManager: ContactManagerStat[];
 }
 
@@ -355,6 +370,9 @@ export async function getContactStatsForRange(
   const notReached = rangeCount(ContactStatus.NOT_REACHED);
   const declined = rangeCount(ContactStatus.DECLINED);
   const callback = rangeCount(ContactStatus.CALLBACK);
+  const answeringMachine = rangeCount(ContactStatus.ANSWERING_MACHINE);
+  const notPushed = rangeCount(ContactStatus.NOT_PUSHED);
+  const skipOnCode = rangeCount(ContactStatus.SKIP_ON_CODE);
 
   const liveCount = (s: ContactStatus) => liveGroups.find((g) => g.status === s)?._count._all ?? 0;
   const queueTotal = liveGroups.reduce((sum, g) => sum + g._count._all, 0);
@@ -384,6 +402,9 @@ export async function getContactStatsForRange(
         notReached: 0,
         declined: 0,
         callback: 0,
+        answeringMachine: 0,
+        notPushed: 0,
+        skipOnCode: 0,
         total: 0,
       };
     const c = g._count._all;
@@ -391,6 +412,9 @@ export async function getContactStatsForRange(
     else if (g.status === ContactStatus.NOT_REACHED) stat.notReached += c;
     else if (g.status === ContactStatus.DECLINED) stat.declined += c;
     else if (g.status === ContactStatus.CALLBACK) stat.callback += c;
+    else if (g.status === ContactStatus.ANSWERING_MACHINE) stat.answeringMachine += c;
+    else if (g.status === ContactStatus.NOT_PUSHED) stat.notPushed += c;
+    else if (g.status === ContactStatus.SKIP_ON_CODE) stat.skipOnCode += c;
     // IN_PROGRESS contacts claimed in the period count toward `total` only.
     stat.total += c;
     statByManager.set(g.claimedById, stat);
@@ -408,7 +432,10 @@ export async function getContactStatsForRange(
     notReached,
     declined,
     callback,
-    handled: reached + notReached + declined,
+    answeringMachine,
+    notPushed,
+    skipOnCode,
+    handled: reached + notReached + declined + answeringMachine + notPushed + skipOnCode,
     byManager,
   };
 }
@@ -422,7 +449,10 @@ export async function convertToAppeal(
   phone?: string,
   description?: string,
   orgName?: string,
-  managerName?: string
+  managerName?: string,
+  // "код в:" from the call card → the appeal's reportedTime ("Время кода")
+  // field, the same one the trubka edit window exposes.
+  reportedTime?: string
 ) {
   return prisma.$transaction(async (tx) => {
     await lockContact(tx, id);
@@ -449,6 +479,7 @@ export async function convertToAppeal(
         phone: phone?.trim() || contact.phone,
         clientData,
         dep: dep || undefined,
+        reportedTime: reportedTime?.trim() || undefined,
         description: description?.trim() || undefined,
         status,
       },

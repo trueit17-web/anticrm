@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { api, ApiError } from "../api/client";
-import { Contact } from "../types";
+import { Contact, ContactStatus } from "../types";
 import { detectMobileOperator } from "../lib/mobileOperator";
 import { fullNameIncludesBirthDate, parseExtraInfo } from "../lib/contactExtraInfo";
-import { IconPhone } from "./icons";
+import { IconPhone, IconX } from "./icons";
 
 // "Звонить!" — grabs the next contact off the shared queue and shows it as
 // a single-contact card instead of sending the manager to the queue list.
@@ -19,6 +19,8 @@ export function CallCardModal({ onClose }: { onClose: () => void }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dep, setDep] = useState("");
+  // "код в:" — persisted onto the created trubka's reportedTime ("Время кода").
+  const [codeIn, setCodeIn] = useState("");
   const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [minimized, setMinimized] = useState(false);
@@ -104,6 +106,7 @@ export function CallCardModal({ onClose }: { onClose: () => void }) {
     setLoading(true);
     setError(null);
     setDep("");
+    setCodeIn("");
     setDescription("");
     setOrgName(null);
     setOrgManagerName(null);
@@ -149,6 +152,7 @@ export function CallCardModal({ onClose }: { onClose: () => void }) {
     try {
       await api.post(`/contacts/${contact.id}/convert`, {
         dep: dep.trim() || undefined,
+        reportedTime: codeIn.trim() || undefined,
         phone: calledPhone || contact.phone,
         description: description.trim() || undefined,
         orgName: orgName ?? undefined,
@@ -162,12 +166,15 @@ export function CallCardModal({ onClose }: { onClose: () => void }) {
     }
   }
 
-  async function handleNotReached() {
+  // НДЗ / АО / Недожал / Скип на коде — records the disposition and moves on
+  // to the next queued contact. Each is a distinct status counted separately
+  // in the Прозвон statistics.
+  async function handleOutcome(status: ContactStatus) {
     if (!contact) return;
     setSubmitting(true);
     setError(null);
     try {
-      await api.patch(`/contacts/${contact.id}/outcome`, { status: "NOT_REACHED" });
+      await api.patch(`/contacts/${contact.id}/outcome`, { status });
       loadNext();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Не удалось сохранить результат");
@@ -176,23 +183,21 @@ export function CallCardModal({ onClose }: { onClose: () => void }) {
     }
   }
 
-  // Puts the contact back in the shared queue for someone else instead of
-  // leaving it claimed under this manager indefinitely — for when it's
-  // genuinely not theirs to work (wrong number, duplicate, etc.). Just
-  // clicking "Закрыть" without this is also safe now: reopening the card
-  // resurfaces the same still-claimed contact rather than claiming another.
-  async function handleRelease() {
-    if (!contact) return;
-    setSubmitting(true);
-    setError(null);
-    try {
-      await api.post(`/contacts/${contact.id}/release`);
-      loadNext();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Не удалось освободить контакт");
-    } finally {
-      setSubmitting(false);
+  // The ✕ in the corner closes the card and, if a contact is on screen,
+  // returns it to the shared queue (the former "Отпустить" action) so it
+  // isn't left claimed under this manager indefinitely. Closing still works
+  // even if the release call fails — the contact just stays claimed and
+  // resurfaces on reopen, same as before.
+  async function handleCloseWithRelease() {
+    if (contact) {
+      try {
+        await api.post(`/contacts/${contact.id}/release`);
+      } catch {
+        // Ignore — closing is the primary intent; a still-claimed contact
+        // reappears next time the card is opened.
+      }
     }
+    onClose();
   }
 
   if (minimized) {
@@ -213,6 +218,16 @@ export function CallCardModal({ onClose }: { onClose: () => void }) {
   return (
     <div className="modal-overlay" onClick={() => setMinimized(true)}>
       <div className="modal-card call-card" onClick={(e) => e.stopPropagation()}>
+        <button
+          type="button"
+          className="call-card-close"
+          onClick={handleCloseWithRelease}
+          disabled={submitting}
+          title="Закрыть и отпустить контакт в очередь"
+          aria-label="Закрыть"
+        >
+          <IconX width={18} height={18} />
+        </button>
         <h2>{title}</h2>
 
         {loading && <p className="muted">Ищем контакт...</p>}
@@ -288,12 +303,20 @@ export function CallCardModal({ onClose }: { onClose: () => void }) {
                 </div>
               </label>
 
-              <label className="span-2">
-                Деп.
+              <label className="no-caption">
                 <input
                   value={dep}
                   onChange={(e) => setDep(e.target.value)}
                   placeholder="Деп."
+                  disabled={submitting}
+                />
+              </label>
+
+              <label className="no-caption">
+                <input
+                  value={codeIn}
+                  onChange={(e) => setCodeIn(e.target.value)}
+                  placeholder="код в:"
                   disabled={submitting}
                 />
               </label>
@@ -312,35 +335,26 @@ export function CallCardModal({ onClose }: { onClose: () => void }) {
 
             {error && <p className="error-text">{error}</p>}
 
-            <div className="modal-actions">
-              <button type="button" className="secondary" onClick={onClose} disabled={submitting}>
-                Закрыть
-              </button>
-              <button
-                type="button"
-                className="secondary"
-                onClick={handleRelease}
-                disabled={submitting}
-                title="Вернуть контакт в общую очередь, не сохраняя результат"
-              >
-                {submitting ? "..." : "Отпустить"}
-              </button>
-              <button type="button" className="secondary" onClick={handleNotReached} disabled={submitting}>
-                {submitting ? "..." : "НДЗ"}
-              </button>
-              <button type="button" onClick={handleToTrubki} disabled={submitting}>
-                {submitting ? "..." : "В трубки"}
+            <div className="modal-actions call-card-actions">
+              <div className="call-card-outcomes">
+                <button type="button" className="secondary" onClick={() => handleOutcome("NOT_REACHED")} disabled={submitting}>
+                  НДЗ
+                </button>
+                <button type="button" className="secondary" onClick={() => handleOutcome("ANSWERING_MACHINE")} disabled={submitting}>
+                  АО
+                </button>
+                <button type="button" className="secondary" onClick={() => handleOutcome("NOT_PUSHED")} disabled={submitting}>
+                  Недожал
+                </button>
+                <button type="button" className="secondary" onClick={() => handleOutcome("SKIP_ON_CODE")} disabled={submitting}>
+                  Скип на коде
+                </button>
+              </div>
+              <button type="button" className="btn-save call-card-transfer" onClick={handleToTrubki} disabled={submitting}>
+                {submitting ? "..." : "Передать"}
               </button>
             </div>
           </>
-        )}
-
-        {!loading && !contact && (
-          <div className="modal-actions">
-            <button type="button" className="secondary" onClick={onClose}>
-              Закрыть
-            </button>
-          </div>
         )}
       </div>
     </div>

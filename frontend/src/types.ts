@@ -160,7 +160,16 @@ export interface HistoryEntry {
   changedBy: { id: number; fullName: string };
 }
 
-export type ContactStatus = "NEW" | "IN_PROGRESS" | "REACHED" | "NOT_REACHED" | "DECLINED" | "CALLBACK";
+export type ContactStatus =
+  | "NEW"
+  | "IN_PROGRESS"
+  | "REACHED"
+  | "NOT_REACHED"
+  | "DECLINED"
+  | "CALLBACK"
+  | "ANSWERING_MACHINE"
+  | "NOT_PUSHED"
+  | "SKIP_ON_CODE";
 
 export const CONTACT_STATUS_LABELS: Record<ContactStatus, string> = {
   NEW: "Новый",
@@ -169,6 +178,9 @@ export const CONTACT_STATUS_LABELS: Record<ContactStatus, string> = {
   NOT_REACHED: "Недозвон",
   DECLINED: "Отказ",
   CALLBACK: "Перезвонить",
+  ANSWERING_MACHINE: "АО",
+  NOT_PUSHED: "Недожал",
+  SKIP_ON_CODE: "Скип на коде",
 };
 
 export interface Contact {
@@ -200,6 +212,9 @@ export interface ContactManagerStat {
   notReached: number;
   declined: number;
   callback: number;
+  answeringMachine: number;
+  notPushed: number;
+  skipOnCode: number;
   total: number;
 }
 
@@ -211,6 +226,9 @@ export interface ContactRangeStats {
   notReached: number;
   declined: number;
   callback: number;
+  answeringMachine: number;
+  notPushed: number;
+  skipOnCode: number;
   handled: number;
   byManager: ContactManagerStat[];
 }

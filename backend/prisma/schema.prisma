@@ -34,6 +34,9 @@ enum ContactStatus {
   NOT_REACHED // Недозвон
   DECLINED // Отказ
   CALLBACK // Перезвонить — stays with the same manager, doesn't return to the queue
+  ANSWERING_MACHINE // АО — автоответчик
+  NOT_PUSHED // Недожал — не довёл до результата
+  SKIP_ON_CODE // Скип на коде — сорвался на этапе кода
 }
 
 model Branch {

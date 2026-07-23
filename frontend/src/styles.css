@@ -623,6 +623,59 @@ a {
   margin: 2px 0 18px;
 }
 
+/* The card is a positioning context for the corner ✕ close button. */
+.call-card {
+  position: relative;
+}
+
+.call-card h2 {
+  /* Keep a long contact name clear of the corner ✕. */
+  padding-right: 40px;
+}
+
+.call-card-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+}
+
+.call-card-close:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--danger) 14%, transparent);
+  color: var(--danger);
+}
+
+/* Outcome buttons (НДЗ / АО / Недожал / Скип на коде) sit as one group on
+   the left; the green "Передать" is pushed to the far right. */
+.call-card-actions {
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 10px;
+}
+
+.call-card-outcomes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.call-card-outcomes button {
+  padding: 8px 12px;
+}
+
+.call-card-transfer {
+  margin-left: auto;
+}
+
 .inline-form {
   display: flex;
   gap: 10px;
@@ -974,6 +1027,15 @@ a {
 .conv-seg--declined {
   background: var(--danger);
 }
+.conv-seg--answeringMachine {
+  background: #7f93a8;
+}
+.conv-seg--notPushed {
+  background: #d08a4e;
+}
+.conv-seg--skipOnCode {
+  background: #9a7fa8;
+}
 
 .conv-legend {
   display: flex;
@@ -1005,6 +1067,15 @@ a {
 }
 .conv-dot--declined {
   background: var(--danger);
+}
+.conv-dot--answeringMachine {
+  background: #7f93a8;
+}
+.conv-dot--notPushed {
+  background: #d08a4e;
+}
+.conv-dot--skipOnCode {
+  background: #9a7fa8;
 }
 
 .admin-option-list {
