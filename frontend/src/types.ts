@@ -76,6 +76,10 @@ export interface Appeal {
   // Set only when this appeal was created via "В трубки" on a Прозвон call
   // card — carries the original uploaded contact's full extraInfo.
   contact: { id: number; extraInfo: string | null } | null;
+  // Optimistic-lock counter — sent back as expectedVersion when saving the
+  // multi-field edit form, so a conflicting concurrent save is rejected
+  // (409) instead of silently overwritten. See HI-10.
+  version: number;
 }
 
 export interface OperatorStat {

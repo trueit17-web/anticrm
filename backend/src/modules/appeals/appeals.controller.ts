@@ -106,6 +106,10 @@ const updateSchema = z.object({
   fsb: tagField,
   closer: tagField,
   tf: tagField,
+  // Sent by the multi-field edit form (loaded together with the rest of
+  // the appeal); omitted by the table's quick single-field inline edits,
+  // which stay unconditional. See updateAppealWithHistory.
+  expectedVersion: z.number().int().nonnegative().optional(),
 });
 
 // Госы/ЦБ/ФСБ/Закрыв/ТФ/Статус are classification fields — only manager/admin
@@ -134,7 +138,7 @@ export async function updateAppealHandler(req: Request, res: Response) {
     return res.status(400).json({ error: "Проверьте поля формы", details: parsed.error.flatten() });
   }
 
-  const data = { ...parsed.data };
+  const { expectedVersion, ...data } = parsed.data;
 
   // Only manager/admin may set Госы/ЦБ/ФСБ/Закрыв, regardless of who owns the appeal.
   if (!isManagerOrAdmin) {
@@ -143,8 +147,14 @@ export async function updateAppealHandler(req: Request, res: Response) {
     }
   }
 
-  const appeal = await updateAppealWithHistory(id, branchId, data, req.user!.id);
-  res.json({ appeal });
+  const result = await updateAppealWithHistory(id, branchId, data, req.user!.id, expectedVersion);
+  if (!result.ok) {
+    if (result.error === "not_found") return res.status(404).json({ error: "Трубка не найдена" });
+    return res
+      .status(409)
+      .json({ error: "Трубку кто-то уже изменил — обновите страницу и попробуйте снова" });
+  }
+  res.json({ appeal: result.appeal });
 }
 
 export async function deleteAppealHandler(req: Request, res: Response) {

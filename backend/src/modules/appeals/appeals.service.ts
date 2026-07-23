@@ -105,47 +105,73 @@ function resolveDisplayValue(field: keyof UpdateAppealInput, value: unknown): st
   return String(value);
 }
 
+export type UpdateAppealResult =
+  | { ok: true; appeal: Prisma.AppealGetPayload<{ include: typeof appealInclude }> }
+  | { ok: false; error: "not_found" | "conflict" };
+
+// expectedVersion is optional: the multi-field edit form sends it (loaded
+// alongside the rest of the appeal, so a conflicting save in between is
+// rejected with 409 rather than silently overwritten — see HI-10). Quick
+// single-field inline edits from the table (status/tag dropdowns, intake
+// checkbox) don't track a loaded version and stay unconditional, same as
+// before; they still get the atomicity fix below regardless.
 export async function updateAppealWithHistory(
   id: number,
   branchId: number,
   changes: UpdateAppealInput,
-  changedById: number
-) {
-  const before = await prisma.appeal.findFirst({ where: { id, branchId, deletedAt: null } });
-  if (!before) return null;
+  changedById: number,
+  expectedVersion?: number
+): Promise<UpdateAppealResult> {
+  return prisma.$transaction(async (tx) => {
+    const before = await tx.appeal.findFirst({ where: { id, branchId, deletedAt: null } });
+    if (!before) return { ok: false, error: "not_found" };
+    if (expectedVersion !== undefined && before.version !== expectedVersion) {
+      return { ok: false, error: "conflict" };
+    }
 
-  const updated = await prisma.appeal.update({
-    where: { id },
-    data: changes,
-    include: appealInclude,
-  });
-
-  const historyRows: Prisma.AppealHistoryCreateManyInput[] = [];
-  for (const key of Object.keys(changes) as (keyof UpdateAppealInput)[]) {
-    const oldRaw = (before as Record<string, unknown>)[key];
-    const newRaw = changes[key];
-    const oldComparable = oldRaw instanceof Date ? oldRaw.toISOString() : oldRaw;
-    const newComparable = newRaw instanceof Date ? newRaw.toISOString() : newRaw;
-    if (oldComparable === newComparable) continue;
-
-    const oldValue = resolveDisplayValue(key, oldRaw);
-    const newValue = resolveDisplayValue(key, newRaw);
-
-    historyRows.push({
-      appealId: id,
-      changedById,
-      field: key,
-      fieldLabel: FIELD_LABELS[key],
-      oldValue,
-      newValue,
+    // The version check above is only safe against a concurrent writer
+    // because it's re-enforced here, inside the same WHERE as the actual
+    // write: two overlapping transactions can both pass the check above
+    // (neither has committed yet), but only the one whose update's WHERE
+    // still matches the row's *current* version at write time succeeds —
+    // Postgres serializes the two via the row lock this UPDATE takes.
+    const versionWhere = expectedVersion !== undefined ? { version: expectedVersion } : {};
+    const result = await tx.appeal.updateMany({
+      where: { id, branchId, deletedAt: null, ...versionWhere },
+      data: { ...changes, version: { increment: 1 } },
     });
-  }
+    if (result.count === 0) {
+      return { ok: false, error: expectedVersion !== undefined ? "conflict" : "not_found" };
+    }
 
-  if (historyRows.length > 0) {
-    await prisma.appealHistory.createMany({ data: historyRows });
-  }
+    const historyRows: Prisma.AppealHistoryCreateManyInput[] = [];
+    for (const key of Object.keys(changes) as (keyof UpdateAppealInput)[]) {
+      const oldRaw = (before as Record<string, unknown>)[key];
+      const newRaw = changes[key];
+      const oldComparable = oldRaw instanceof Date ? oldRaw.toISOString() : oldRaw;
+      const newComparable = newRaw instanceof Date ? newRaw.toISOString() : newRaw;
+      if (oldComparable === newComparable) continue;
 
-  return updated;
+      const oldValue = resolveDisplayValue(key, oldRaw);
+      const newValue = resolveDisplayValue(key, newRaw);
+
+      historyRows.push({
+        appealId: id,
+        changedById,
+        field: key,
+        fieldLabel: FIELD_LABELS[key],
+        oldValue,
+        newValue,
+      });
+    }
+
+    if (historyRows.length > 0) {
+      await tx.appealHistory.createMany({ data: historyRows });
+    }
+
+    const updated = await tx.appeal.findUniqueOrThrow({ where: { id }, include: appealInclude });
+    return { ok: true, appeal: updated };
+  });
 }
 
 export async function deleteAppeal(id: number, branchId: number) {
@@ -165,29 +191,31 @@ export async function restoreAppeal(id: number, branchId: number) {
 }
 
 export async function setSmsSent(id: number, branchId: number, sent: boolean, userId: number) {
-  const before = await prisma.appeal.findFirst({ where: { id, branchId, deletedAt: null } });
-  if (!before) return null;
+  return prisma.$transaction(async (tx) => {
+    const before = await tx.appeal.findFirst({ where: { id, branchId, deletedAt: null } });
+    if (!before) return null;
 
-  const updated = await prisma.appeal.update({
-    where: { id },
-    data: sent
-      ? { smsSentById: userId, smsSentAt: new Date() }
-      : { smsSentById: null, smsSentAt: null },
-    include: appealInclude,
+    const updated = await tx.appeal.update({
+      where: { id },
+      data: sent
+        ? { smsSentById: userId, smsSentAt: new Date(), version: { increment: 1 } }
+        : { smsSentById: null, smsSentAt: null, version: { increment: 1 } },
+      include: appealInclude,
+    });
+
+    await tx.appealHistory.create({
+      data: {
+        appealId: id,
+        changedById: userId,
+        field: "sms",
+        fieldLabel: "СМС",
+        oldValue: before.smsSentById ? "Отправлено" : "Не отправлено",
+        newValue: sent ? "Отправлено" : "Не отправлено",
+      },
+    });
+
+    return updated;
   });
-
-  await prisma.appealHistory.create({
-    data: {
-      appealId: id,
-      changedById: userId,
-      field: "sms",
-      fieldLabel: "СМС",
-      oldValue: before.smsSentById ? "Отправлено" : "Не отправлено",
-      newValue: sent ? "Отправлено" : "Не отправлено",
-    },
-  });
-
-  return updated;
 }
 
 export async function getAppealHistory(appealId: number, branchId: number, canSeeDeleted: boolean) {

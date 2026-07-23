@@ -269,8 +269,8 @@ export function AppealsPage() {
     await loadAppeals();
   }
 
-  async function handleUpdate(id: number, values: AppealFormValues) {
-    await api.patch(`/appeals/${id}`, values);
+  async function handleUpdate(id: number, expectedVersion: number, values: AppealFormValues) {
+    await api.patch(`/appeals/${id}`, { ...values, expectedVersion });
     await loadAppeals();
   }
 
@@ -449,7 +449,7 @@ export function AppealsPage() {
         <AppealFormModal
           appeal={editing}
           onClose={() => setEditing(null)}
-          onSubmit={(values) => handleUpdate(editing.id, values)}
+          onSubmit={(values) => handleUpdate(editing.id, editing.version, values)}
         />
       )}
     </div>

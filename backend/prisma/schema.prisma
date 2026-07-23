@@ -184,6 +184,14 @@ model Appeal {
   smsSentBy   User?     @relation("SmsSender", fields: [smsSentById], references: [id])
   smsSentAt   DateTime?
 
+  // Optimistic-lock counter, incremented on every update. The edit form
+  // sends back the version it loaded; a mismatch (someone else saved in
+  // the meantime) is rejected with 409 instead of silently overwriting
+  // their change and recording a history row with the wrong "before"
+  // value. Quick single-field inline edits (status/tag dropdowns, intake
+  // checkbox) don't send a version and stay unconditional, as before.
+  version Int @default(0)
+
   history AppealHistory[]
 
   createdAt DateTime @default(now())
