@@ -47,7 +47,9 @@ export interface Branch {
   name: string;
   createdAt: string;
   contactsEnabled: boolean;
-  dadataApiKey: string | null;
+  // The actual key is never sent to the client (write-only) — only whether
+  // one is currently set.
+  hasDadataApiKey: boolean;
 }
 
 export interface Appeal {

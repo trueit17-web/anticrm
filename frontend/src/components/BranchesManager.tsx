@@ -13,7 +13,12 @@ function BranchRow({
   onSaved: () => void;
 }) {
   const [name, setName] = useState(branch.name);
-  const [dadataApiKey, setDadataApiKey] = useState(branch.dadataApiKey ?? "");
+  // Write-only: the server never sends the actual key back, so this always
+  // starts empty. Left empty on save, the existing key (if any) is
+  // untouched — only a non-empty value or the "Удалить ключ" checkbox
+  // change it.
+  const [dadataApiKey, setDadataApiKey] = useState("");
+  const [clearApiKey, setClearApiKey] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -22,7 +27,10 @@ function BranchRow({
     setError(null);
     setSaving(true);
     try {
-      await api.patch(`/branches/${branch.id}`, { name, dadataApiKey: dadataApiKey.trim() || null });
+      const payload: { name: string; dadataApiKey?: string | null } = { name };
+      if (clearApiKey) payload.dadataApiKey = null;
+      else if (dadataApiKey.trim()) payload.dadataApiKey = dadataApiKey.trim();
+      await api.patch(`/branches/${branch.id}`, payload);
       onSaved();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Не удалось сохранить");
@@ -38,8 +46,17 @@ function BranchRow({
         <input
           value={dadataApiKey}
           onChange={(e) => setDadataApiKey(e.target.value)}
-          placeholder="DaData API-ключ (необязательно)"
+          placeholder={
+            branch.hasDadataApiKey ? "Ключ задан — оставьте пустым, чтобы не менять" : "DaData API-ключ (необязательно)"
+          }
+          disabled={clearApiKey}
         />
+        {branch.hasDadataApiKey && (
+          <label className="toggle-inline" title="Убрать ключ этого филиала — будет использован общий ключ сервера">
+            <input type="checkbox" checked={clearApiKey} onChange={(e) => setClearApiKey(e.target.checked)} />
+            Удалить ключ
+          </label>
+        )}
         <button type="submit" disabled={saving}>
           {saving ? "Сохранение..." : "Сохранить"}
         </button>
@@ -48,11 +65,12 @@ function BranchRow({
         </button>
       </form>
       <p className="muted">
+        {branch.hasDadataApiKey ? "Ключ задан. " : "Ключ не задан — используется общий ключ сервера, если он есть. "}
         Ключ для поиска организации по «ИНН ЮЛ» в карточке звонка. Бесплатный ключ —{" "}
         <a href="https://dadata.ru/api/find-party/" target="_blank" rel="noreferrer">
           dadata.ru/api/find-party
         </a>
-        . Пусто — используется общий ключ сервера, если он задан.
+        .
       </p>
       {error && <p className="error-text">{error}</p>}
     </li>
