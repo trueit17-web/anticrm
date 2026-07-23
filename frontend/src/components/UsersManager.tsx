@@ -197,6 +197,72 @@ function BranchAccessRow({
   );
 }
 
+// Backend requires a destination branch whenever a SUPERADMIN (branchId ===
+// null) is demoted to any other role — shown instead of the normal role
+// <select> so the operator picks that branch in the same action, rather
+// than the request just failing with "выберите филиал".
+function DemoteSuperadminRow({
+  user,
+  newRole,
+  branches,
+  colSpan,
+  onCancel,
+  onSaved,
+}: {
+  user: UserSummary;
+  newRole: Role;
+  branches: Branch[];
+  colSpan: number;
+  onCancel: () => void;
+  onSaved: () => void;
+}) {
+  const [branchId, setBranchId] = useState<number | "">(branches[0]?.id ?? "");
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  async function handleConfirm() {
+    if (branchId === "") return;
+    setError(null);
+    setSaving(true);
+    try {
+      await api.patch(`/users/${user.id}`, { role: newRole, branchId });
+      onSaved();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Не удалось сохранить");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <tr>
+      <td>{user.username}</td>
+      <td colSpan={colSpan}>
+        <p className="muted">
+          Супер-администратор не привязан к филиалу — при снятии этой роли у {user.fullName} нужно
+          сразу выбрать филиал, в который он перейдёт:
+        </p>
+        <div className="inline-form">
+          <select value={branchId} onChange={(e) => setBranchId(Number(e.target.value))}>
+            {branches.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.name}
+              </option>
+            ))}
+          </select>
+          <button onClick={handleConfirm} disabled={saving || branchId === ""}>
+            {saving ? "Сохранение..." : "Подтвердить"}
+          </button>
+          <button className="secondary" onClick={onCancel}>
+            Отмена
+          </button>
+        </div>
+        {error && <p className="error-text">{error}</p>}
+      </td>
+    </tr>
+  );
+}
+
 function LoginHistoryRow({
   userId,
   colSpan,
@@ -264,6 +330,7 @@ export function UsersManager() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [accessEditingId, setAccessEditingId] = useState<number | null>(null);
   const [loginHistoryId, setLoginHistoryId] = useState<number | null>(null);
+  const [demoteTarget, setDemoteTarget] = useState<{ id: number; role: Role } | null>(null);
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -320,6 +387,10 @@ export function UsersManager() {
   }
 
   async function changeRole(u: UserSummary, newRole: Role) {
+    if (u.role === "SUPERADMIN" && newRole !== "SUPERADMIN") {
+      setDemoteTarget({ id: u.id, role: newRole });
+      return;
+    }
     await api.patch(`/users/${u.id}`, { role: newRole });
     await loadUsers();
   }
@@ -399,6 +470,22 @@ export function UsersManager() {
                       onCancel={() => setEditingId(null)}
                       onSaved={() => {
                         setEditingId(null);
+                        loadUsers();
+                      }}
+                    />
+                  );
+                }
+                if (demoteTarget?.id === u.id) {
+                  return (
+                    <DemoteSuperadminRow
+                      key={u.id}
+                      user={u}
+                      newRole={demoteTarget.role}
+                      branches={branches}
+                      colSpan={editColSpan}
+                      onCancel={() => setDemoteTarget(null)}
+                      onSaved={() => {
+                        setDemoteTarget(null);
                         loadUsers();
                       }}
                     />

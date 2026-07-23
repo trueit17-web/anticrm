@@ -66,11 +66,26 @@ export async function createUserHandler(req: Request, res: Response) {
 const updateUserSchema = z.object({
   fullName: z.string().min(1).optional(),
   role: z.nativeEnum(Role).optional(),
+  branchId: z.number().int().positive().nullable().optional(),
   active: z.boolean().optional(),
   password: z.string().min(6).optional(),
   telegram: z.string().nullable().optional(),
   bio: z.string().nullable().optional(),
 });
+
+const UPDATE_USER_ERROR_STATUS: Record<string, number> = {
+  not_found: 404,
+  branch_required: 422,
+  invalid_branch: 422,
+  last_superadmin: 409,
+};
+
+const UPDATE_USER_ERROR_MESSAGE: Record<string, string> = {
+  not_found: "Пользователь не найден",
+  branch_required: "Для этой роли нужно выбрать филиал",
+  invalid_branch: "Филиал не найден",
+  last_superadmin: "Нельзя убрать последнего активного супер-администратора",
+};
 
 export async function updateUserHandler(req: Request, res: Response) {
   const id = Number(req.params.id);
@@ -82,6 +97,11 @@ export async function updateUserHandler(req: Request, res: Response) {
   if (parsed.data.role === Role.SUPERADMIN && req.user!.role !== Role.SUPERADMIN) {
     return res.status(403).json({ error: "Недостаточно прав" });
   }
+  // Reassigning someone to a different branch is a SUPERADMIN-only action —
+  // silently dropped for anyone else rather than erroring, since no current
+  // UI surface for a non-SUPERADMIN ever sends this field.
+  const { branchId: requestedBranchId, ...rest } = parsed.data;
+  const input = req.user!.role === Role.SUPERADMIN ? parsed.data : rest;
 
   const branchId = await resolveBranchId(req);
 
@@ -89,10 +109,11 @@ export async function updateUserHandler(req: Request, res: Response) {
   // the handle is actually being added/changed, not on every unrelated save.
   const previousTelegram = parsed.data.telegram !== undefined ? await getUserTelegram(id, branchId) : undefined;
 
-  const user = await updateUser(id, branchId, parsed.data);
-  if (!user) {
-    return res.status(404).json({ error: "Пользователь не найден" });
+  const result = await updateUser({ role: req.user!.role, branchId: req.user!.branchId }, id, branchId, input);
+  if (!result.ok) {
+    return res.status(UPDATE_USER_ERROR_STATUS[result.error]).json({ error: UPDATE_USER_ERROR_MESSAGE[result.error] });
   }
+  const user = result.user;
 
   const newTelegram = parsed.data.telegram?.trim();
   if (newTelegram && newTelegram !== previousTelegram) {
