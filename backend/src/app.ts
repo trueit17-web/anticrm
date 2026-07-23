@@ -3,6 +3,7 @@ import express, { NextFunction, Request, Response } from "express";
 import multer from "multer";
 import { env } from "./config/env";
 import { UPLOADS_DIR } from "./config/uploads";
+import { DomainError } from "./utils/DomainError";
 import { authRouter } from "./modules/auth/auth.routes";
 import { usersRouter } from "./modules/users/users.routes";
 import { appealsRouter } from "./modules/appeals/appeals.routes";
@@ -49,6 +50,9 @@ app.use((req: Request, res: Response) => {
 
 // Centralized error handler keeps stack traces out of API responses.
 app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
+  if (err instanceof DomainError) {
+    return res.status(err.status).json({ error: err.message });
+  }
   if (err instanceof multer.MulterError) {
     const message = err.code === "LIMIT_FILE_SIZE" ? "Файл слишком большой" : err.message;
     return res.status(400).json({ error: message });

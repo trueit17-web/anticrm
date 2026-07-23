@@ -67,11 +67,19 @@ export async function createAppealHandler(req: Request, res: Response) {
     return res.status(400).json({ error: "Проверьте поля формы", details: parsed.error.flatten() });
   }
 
+  // Same classification-field policy as updateAppealHandler's
+  // RESTRICTED_FIELDS: only manager/admin may set an explicit status.
+  // Without this, PATCH already stripped status for USER, but POST let any
+  // authenticated role hand in an arbitrary string here.
+  const isManagerOrAdmin =
+    req.user!.role === Role.MANAGER || req.user!.role === Role.ADMIN || req.user!.role === Role.SUPERADMIN;
+  const requestedStatus = isManagerOrAdmin ? parsed.data.status : undefined;
+
   // An explicit status in the request wins; otherwise fall back to whichever
   // STATUS option the branch has marked as default (Админка), and if none
   // is configured, omit the key entirely so Prisma's own column default
   // ("Новое") applies.
-  const status = parsed.data.status ?? (await getDefaultOptionValue(branchId, OptionField.STATUS));
+  const status = requestedStatus ?? (await getDefaultOptionValue(branchId, OptionField.STATUS));
 
   const appeal = await createAppeal({
     ...parsed.data,
