@@ -9,8 +9,12 @@ export function fileUrl(path: string | null | undefined): string | null {
   return `${FILE_ORIGIN}${path}`;
 }
 
-const TOKEN_KEY = "crm_token";
-const BRANCH_KEY = "crm_branch_id";
+// Exported so AuthContext can listen for cross-tab changes to either —
+// localStorage is shared across every tab on this origin, so logging
+// in/out or switching branch in one tab silently changes what every other
+// open tab's next request will actually be scoped to (see HI-05).
+export const TOKEN_KEY = "crm_token";
+export const BRANCH_KEY = "crm_branch_id";
 const SELECTED_DATE_KEY = "crm_selected_date";
 
 export function getToken(): string | null {
@@ -31,7 +35,12 @@ export function clearToken(): void {
 // else, so it's safe to always send it.
 export function getActiveBranchId(): number | null {
   const v = localStorage.getItem(BRANCH_KEY);
-  return v ? Number(v) : null;
+  if (!v) return null;
+  // Guards against a corrupted/hand-edited localStorage value — the backend
+  // would reject a malformed branchId anyway (see HI-11), but failing that
+  // fast here avoids ever sending "NaN" or similar as a query param.
+  const n = Number(v);
+  return Number.isInteger(n) && n > 0 ? n : null;
 }
 
 export function setActiveBranchId(id: number | null): void {

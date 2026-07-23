@@ -1,5 +1,5 @@
 import { createContext, ReactNode, useContext, useEffect, useRef, useState } from "react";
-import { api, ApiError, clearToken, getToken, setActiveBranchId, setToken } from "../api/client";
+import { api, ApiError, BRANCH_KEY, clearToken, getToken, setActiveBranchId, setToken, TOKEN_KEY } from "../api/client";
 import { AuthUser } from "../types";
 
 interface AuthContextValue {
@@ -47,6 +47,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => {
         if (generation === authGeneration.current) setLoading(false);
       });
+  }, []);
+
+  // localStorage is shared across every tab on this origin — every request
+  // already reads the token/branch fresh from it, so logging in/out or
+  // switching branch in one tab silently changes what *this* tab's next
+  // request will actually be scoped to, even though its UI still shows the
+  // old identity/branch. `storage` only fires in tabs other than the one
+  // that made the change, so this can't loop with BranchSwitcher's own
+  // same-tab reload. Reloading is the same recovery this app already uses
+  // for a same-tab branch switch (see useBranchSwitcher's step()) — simplest
+  // way to fully re-sync everything at once rather than trying to patch
+  // every open page's in-flight state individually.
+  useEffect(() => {
+    function onStorage(e: StorageEvent) {
+      if (e.key === TOKEN_KEY || e.key === BRANCH_KEY) {
+        window.location.reload();
+      }
+    }
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
   }, []);
 
   async function login(username: string, password: string) {
