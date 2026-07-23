@@ -23,8 +23,16 @@ app.use(cors({ origin: env.corsOrigin }));
 app.use(express.json());
 
 // Avatar images etc. — served directly, not behind /api, so they can be
-// used as plain <img src> URLs.
-app.use("/uploads", express.static(UPLOADS_DIR));
+// used as plain <img src> URLs. nosniff stops a browser from ever executing
+// a served file as HTML/script even if its declared content-type were ever
+// wrong — defense in depth on top of the upload pipeline's own image
+// re-encoding (see utils/reencodeImage.ts).
+app.use(
+  "/uploads",
+  express.static(UPLOADS_DIR, {
+    setHeaders: (res) => res.setHeader("X-Content-Type-Options", "nosniff"),
+  })
+);
 
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
 

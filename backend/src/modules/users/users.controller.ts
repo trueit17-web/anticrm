@@ -3,10 +3,12 @@ import { Prisma, Role } from "@prisma/client";
 import { z } from "zod";
 import path from "path";
 import fs from "fs";
+import { randomUUID } from "crypto";
 import { resolveBranchId } from "../../utils/branchScope";
 import { AVATARS_DIR } from "../../config/uploads";
 import { getUserBranchAccess, setUserBranchAccess } from "../branches/branches.service";
 import { fetchTelegramAvatar } from "../../utils/telegramAvatar";
+import { reencodeToWebp } from "../../utils/reencodeImage";
 import {
   applyFetchedAvatar,
   createUser,
@@ -149,20 +151,34 @@ export async function getUserCardHandler(req: Request, res: Response) {
 }
 
 export async function uploadAvatarHandler(req: Request, res: Response) {
+  // :id is validated as a plain integer by requireIntegerId before this
+  // handler runs, so it's safe to use — but it never touches a filename or
+  // path anymore anyway (see the randomUUID() below).
   const id = Number(req.params.id);
   const file = req.file;
   if (!file) {
     return res.status(400).json({ error: "Файл не получен" });
   }
 
+  // Decoding + re-encoding is the actual proof this is an image, not the
+  // client-declared MIME type multer already checked (which is spoofable).
+  const webp = await reencodeToWebp(file.buffer);
+  if (!webp) {
+    return res.status(400).json({ error: "Файл повреждён или не является изображением" });
+  }
+
   const branchId = await resolveBranchId(req);
   const previousAvatarUrl = await getUserAvatarUrl(id);
 
-  const avatarUrl = `/uploads/avatars/${file.filename}`;
+  const filename = `${randomUUID()}.webp`;
+  const filePath = path.join(AVATARS_DIR, filename);
+  await fs.promises.writeFile(filePath, webp);
+
+  const avatarUrl = `/uploads/avatars/${filename}`;
   const updated = await setUserAvatar(id, branchId, avatarUrl);
   if (!updated) {
     // Roll back the file we just wrote — the user wasn't found/accessible.
-    fs.unlink(file.path, () => {});
+    fs.unlink(filePath, () => {});
     return res.status(404).json({ error: "Пользователь не найден" });
   }
 

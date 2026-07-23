@@ -1,10 +1,12 @@
 import fs from "fs/promises";
 import path from "path";
+import { randomUUID } from "crypto";
 import { Role } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { hashPassword } from "../../utils/password";
 import { AVATARS_DIR } from "../../config/uploads";
 import { FetchedAvatar } from "../../utils/telegramAvatar";
+import { reencodeToWebp } from "../../utils/reencodeImage";
 
 const publicUserSelect = {
   id: true,
@@ -180,11 +182,16 @@ export async function applyFetchedAvatar(
   branchId: number | null,
   avatar: FetchedAvatar
 ): Promise<string | null> {
+  // Same treatment as a direct upload: decode/re-encode rather than trust
+  // whatever Content-Type the remote server declared for the fetched image.
+  const webp = await reencodeToWebp(avatar.buffer);
+  if (!webp) return null;
+
   const previousAvatarUrl = await getUserAvatarUrl(id);
 
-  const filename = `${id}-${Date.now()}${avatar.ext}`;
+  const filename = `${randomUUID()}.webp`;
   const filePath = path.join(AVATARS_DIR, filename);
-  await fs.writeFile(filePath, avatar.buffer);
+  await fs.writeFile(filePath, webp);
 
   const avatarUrl = `/uploads/avatars/${filename}`;
   const updated = await setUserAvatar(id, branchId, avatarUrl);

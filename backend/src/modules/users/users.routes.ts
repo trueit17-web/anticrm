@@ -13,6 +13,7 @@ import {
 } from "./users.controller";
 import { asyncHandler } from "../../utils/asyncHandler";
 import { avatarUpload } from "../../middleware/avatarUpload";
+import { requireIntegerId } from "../../middleware/requireIntegerId";
 
 export const usersRouter = Router();
 
@@ -32,6 +33,7 @@ usersRouter.patch("/:id", requireRole(Role.ADMIN, Role.SUPERADMIN), asyncHandler
 usersRouter.post(
   "/:id/avatar",
   requireRole(Role.ADMIN, Role.SUPERADMIN),
+  requireIntegerId,
   avatarUpload.single("avatar"),
   asyncHandler(uploadAvatarHandler)
 );

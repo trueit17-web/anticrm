@@ -1,13 +1,30 @@
-const EXT_BY_CONTENT_TYPE: Record<string, string> = {
-  "image/jpeg": ".jpg",
-  "image/png": ".png",
-  "image/webp": ".webp",
-  "image/gif": ".gif",
-};
+const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
 
 export interface FetchedAvatar {
   buffer: Buffer;
-  ext: string;
+}
+
+// Reads the response body with a hard byte cap enforced during the read
+// itself (not just checked after the fact) — a malicious or misbehaving
+// server can't make this hold an unbounded amount of memory by sending more
+// bytes than advertised, or lying about Content-Length.
+async function readCapped(res: Response, maxBytes: number): Promise<Buffer | null> {
+  const reader = res.body?.getReader();
+  if (!reader) return null;
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    if (!value) continue;
+    total += value.byteLength;
+    if (total > maxBytes) {
+      await reader.cancel().catch(() => {});
+      return null;
+    }
+    chunks.push(value);
+  }
+  return Buffer.concat(chunks);
 }
 
 // Telegram has no public API for "get a user's avatar by @handle" — the
@@ -30,12 +47,14 @@ export async function fetchTelegramAvatar(handle: string): Promise<FetchedAvatar
 
     const imageRes = await fetch(match[1], { signal: AbortSignal.timeout(5000) });
     if (!imageRes.ok) return null;
-    const contentType = imageRes.headers.get("content-type") ?? "";
-    const ext = EXT_BY_CONTENT_TYPE[contentType];
-    if (!ext) return null;
+    // Coarse pre-filter only — the caller (applyFetchedAvatar) decodes the
+    // buffer as an actual image before trusting it, same reasoning as the
+    // direct upload path.
+    if (!(imageRes.headers.get("content-type") ?? "").startsWith("image/")) return null;
 
-    const arrayBuffer = await imageRes.arrayBuffer();
-    return { buffer: Buffer.from(arrayBuffer), ext };
+    const buffer = await readCapped(imageRes, MAX_AVATAR_BYTES);
+    if (!buffer) return null;
+    return { buffer };
   } catch {
     return null;
   }
