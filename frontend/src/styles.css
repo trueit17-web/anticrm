@@ -1,15 +1,27 @@
 :root {
   color-scheme: light;
-  font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --bg: #3a3d42;
-  --card: #f6f7f9;
-  --border: #dde1e6;
-  --text: #1f2228;
-  --muted: #6b7280;
-  --text-on-dark: #eef0f3;
-  --primary: #c39a4f;
-  --primary-dark: #a17f3d;
-  --danger: #d6493c;
+
+  /* Yeseva One carries the brand moments (login, page titles) — it's a
+     warm, editorial serif with real character instead of the generic
+     system-font stack this used to ship with. Golos Text (Cyrillic-native)
+     does the actual work everywhere text-dense: tables, forms, buttons. */
+  --font-display: "Yeseva One", Georgia, "Times New Roman", serif;
+  --font-body: "Golos Text", -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-body);
+
+  --bg: #12141b;
+  --card: rgba(250, 248, 242, 0.97);
+  --border: #d8d5c9;
+  --text: #211e17;
+  --muted: #6f6c5f;
+  --text-on-dark: #f2efe6;
+  --primary: #cf9a44;
+  --primary-dark: #93691f;
+  --danger: #c8493c;
+  --success: #3f8f68;
+  --surface-soft: #efece1;
+  --focus-ring: rgba(207, 154, 68, 0.36);
+  --shadow-card: 0 18px 42px rgba(7, 8, 11, 0.4);
 }
 
 * {
@@ -20,10 +32,33 @@ body {
   margin: 0;
   min-height: 100vh;
   color: var(--text-on-dark);
-  /* Dark tint over the photo keeps the light page-chrome text readable
-     while still showing the columns/banknotes motif through clearly. */
-  background: linear-gradient(180deg, rgba(18, 20, 24, 0.6), rgba(18, 20, 24, 0.72)),
-    url("/bg-money.jpg") center/cover fixed no-repeat;
+  background-color: var(--bg);
+  /* A designed backdrop instead of a stock photo: two soft beacons of
+     warm light rising out of deep ink-navy, plus a fine grain so the
+     dark field doesn't read as flat digital black. Fixed so it stays
+     put as long pages scroll. */
+  background-image: radial-gradient(ellipse 900px 620px at 14% -8%, rgba(207, 154, 68, 0.16), transparent 60%),
+    radial-gradient(ellipse 760px 560px at 96% 8%, rgba(76, 110, 130, 0.16), transparent 62%),
+    radial-gradient(ellipse 1100px 800px at 50% 112%, rgba(207, 154, 68, 0.08), transparent 65%),
+    linear-gradient(165deg, #171a23 0%, #12141b 46%, #0e1016 100%);
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.5;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+#root {
+  position: relative;
+  z-index: 1;
 }
 
 /* Card-like surfaces sit on the light "washi paper" tone regardless of the
@@ -36,6 +71,15 @@ body {
 .inline-form,
 .appeals-table {
   color: var(--text);
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  margin: 0 0 4px;
 }
 
 button {
@@ -123,7 +167,7 @@ a {
 
 .page-header h1 {
   margin: 0;
-  font-weight: 600;
+  font-weight: 400;
   letter-spacing: 0.2px;
   color: var(--text-on-dark);
 }
@@ -1144,20 +1188,6 @@ a {
   }
 }
 
-/* 2026 UI refresh — the body wallpaper above is intentionally preserved. */
-:root {
-  --card: rgba(250, 250, 248, 0.96);
-  --border: #d8d7d1;
-  --text: #20221f;
-  --muted: #73766f;
-  --primary: #b88a3b;
-  --primary-dark: #87621f;
-  --danger: #c33e35;
-  --surface-soft: #f0efe9;
-  --focus-ring: rgba(195, 154, 79, 0.34);
-  --shadow-card: 0 16px 40px rgba(12, 15, 12, 0.16);
-}
-
 body {
   font-size: 14px;
   line-height: 1.45;
@@ -1186,6 +1216,7 @@ button {
   border-radius: 9px;
   padding: 9px 16px;
   font-weight: 650;
+  letter-spacing: 0.005em;
 }
 
 button:active:not(:disabled) {
@@ -1489,12 +1520,39 @@ textarea:hover {
   border-radius: 20px;
   box-shadow: 0 28px 70px rgba(0, 0, 0, 0.34);
   backdrop-filter: blur(18px);
+  animation: auth-card-rise 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes auth-card-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .auth-card h1 {
-  margin: 0 0 8px;
-  font-size: 27px;
-  letter-spacing: -0.02em;
+  position: relative;
+  margin: 0 0 20px;
+  padding-bottom: 16px;
+  font-size: 30px;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  color: var(--primary-dark);
+}
+
+.auth-card h1::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 46px;
+  height: 3px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--primary), transparent);
 }
 
 .auth-card button[type="submit"] {
