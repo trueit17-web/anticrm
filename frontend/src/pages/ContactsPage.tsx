@@ -77,11 +77,21 @@ function BatchesSection({ batches, loading, error, onDeleted }: {
   error: string | null;
   onDeleted: () => void;
 }) {
+  const [confirmingId, setConfirmingId] = useState<number | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
   async function handleDelete(id: number) {
+    setDeleteError(null);
+    setDeleting(true);
     try {
       await api.delete(`/contacts/batches/${id}`);
-    } finally {
+      setConfirmingId(null);
       onDeleted();
+    } catch (err) {
+      setDeleteError(err instanceof ApiError ? err.message : "Не удалось удалить базу");
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -111,15 +121,34 @@ function BatchesSection({ batches, loading, error, onDeleted }: {
                     в очереди: {remaining}, в работе: {inProgress}, дозвон: {reached}, недозвон:{" "}
                     {notReached}, отказ: {declined}, перезвонить: {callback}
                   </span>
+                  {confirmingId === b.id && deleteError && <p className="error-text">{deleteError}</p>}
                 </span>
-                <button
-                  className="delete-x"
-                  title="Удалить базу"
-                  aria-label="Удалить базу"
-                  onClick={() => handleDelete(b.id)}
-                >
-                  <IconTrash width={13} height={13} />
-                </button>
+                {confirmingId === b.id ? (
+                  <span className="admin-option-actions">
+                    <span className="muted">Удалить базу «{b.fileName}» ({b.totalCount} шт.)?</span>
+                    <button className="secondary" disabled={deleting} onClick={() => handleDelete(b.id)}>
+                      {deleting ? "Удаление..." : "Да, удалить"}
+                    </button>
+                    <button
+                      className="secondary"
+                      onClick={() => {
+                        setConfirmingId(null);
+                        setDeleteError(null);
+                      }}
+                    >
+                      Отмена
+                    </button>
+                  </span>
+                ) : (
+                  <button
+                    className="delete-x"
+                    title="Удалить базу"
+                    aria-label="Удалить базу"
+                    onClick={() => setConfirmingId(b.id)}
+                  >
+                    <IconTrash width={13} height={13} />
+                  </button>
+                )}
               </li>
             );
           })}

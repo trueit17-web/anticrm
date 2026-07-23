@@ -65,9 +65,15 @@ export async function deleteBatchHandler(req: Request, res: Response) {
     return res.status(400).json({ error: "Выберите филиал" });
   }
   const id = Number(req.params.id);
-  const deleted = await deleteBatch(id, branchId);
-  if (!deleted) {
-    return res.status(404).json({ error: "База не найдена" });
+  const result = await deleteBatch(id, branchId);
+  if (!result.ok) {
+    if (result.error === "not_found") {
+      return res.status(404).json({ error: "База не найдена" });
+    }
+    return res.status(409).json({
+      error: `В базе есть ${result.activeCount} контакт(ов) в работе или уже обработанных — удаление отменено`,
+      activeCount: result.activeCount,
+    });
   }
   res.status(204).send();
 }

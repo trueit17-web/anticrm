@@ -60,9 +60,34 @@ export async function listBatches(branchId: number) {
   return batches.map((b) => ({ ...b, counts: countsByBatch.get(b.id) ?? {} }));
 }
 
-export async function deleteBatch(id: number, branchId: number) {
-  const result = await prisma.contactBatch.deleteMany({ where: { id, branchId } });
-  return result.count > 0;
+// Shared with claimContact/claimNext below — a delete and a claim on the
+// same batch must never interleave. Without this, deleteBatch could count
+// zero active contacts, then a concurrent claim flips one to IN_PROGRESS,
+// and the cascade delete removes it anyway — silently destroying a contact
+// someone is actively working, the exact thing the active-contact check
+// below exists to prevent.
+const BATCH_LOCK_NAMESPACE = 0x42415443; // "BATC"
+
+async function lockBatch(tx: Prisma.TransactionClient, batchId: number) {
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(${BATCH_LOCK_NAMESPACE}::int, ${batchId}::int)`;
+}
+
+export type DeleteBatchResult =
+  | { ok: true }
+  | { ok: false; error: "not_found" | "has_active_contacts"; activeCount?: number };
+
+export async function deleteBatch(id: number, branchId: number): Promise<DeleteBatchResult> {
+  return prisma.$transaction(async (tx) => {
+    await lockBatch(tx, id);
+    const batch = await tx.contactBatch.findFirst({ where: { id, branchId }, select: { id: true } });
+    if (!batch) return { ok: false, error: "not_found" };
+
+    const activeCount = await tx.contact.count({ where: { batchId: id, status: { not: ContactStatus.NEW } } });
+    if (activeCount > 0) return { ok: false, error: "has_active_contacts", activeCount };
+
+    await tx.contactBatch.delete({ where: { id } });
+    return { ok: true };
+  });
 }
 
 // A batch uploaded by an admin/superadmin is shared — any manager can pull
@@ -103,13 +128,21 @@ export function listMine(branchId: number, userId: number) {
 // Must apply the same visibility rule as the queue listing — otherwise a
 // manager could claim straight off another manager's private batch by ID,
 // bypassing the filter that keeps it out of their /contacts/queue view.
+// Takes the same batch lock deleteBatch does, so a claim can't land in the
+// gap between deleteBatch's active-contact check and its actual delete.
 export async function claimContact(id: number, branchId: number, userId: number) {
-  const result = await prisma.contact.updateMany({
-    where: { id, ...visibleQueueWhere(branchId, userId) },
-    data: { status: ContactStatus.IN_PROGRESS, claimedById: userId, claimedAt: new Date() },
+  return prisma.$transaction(async (tx) => {
+    const target = await tx.contact.findFirst({ where: { id, branchId }, select: { batchId: true } });
+    if (!target) return null;
+    await lockBatch(tx, target.batchId);
+
+    const result = await tx.contact.updateMany({
+      where: { id, ...visibleQueueWhere(branchId, userId) },
+      data: { status: ContactStatus.IN_PROGRESS, claimedById: userId, claimedAt: new Date() },
+    });
+    if (result.count === 0) return null;
+    return tx.contact.findUnique({ where: { id }, include: contactInclude });
   });
-  if (result.count === 0) return null;
-  return prisma.contact.findUnique({ where: { id }, include: contactInclude });
 }
 
 // Powers the "Звонить!" button — grabs the oldest unclaimed contact instead
@@ -117,23 +150,26 @@ export async function claimContact(id: number, branchId: number, userId: number)
 // the race where two managers hit the button at the same instant; each
 // retry just moves on to the next-oldest still-NEW contact.
 export async function claimNext(branchId: number, userId: number) {
-  for (let attempt = 0; attempt < 5; attempt++) {
-    const next = await prisma.contact.findFirst({
-      where: visibleQueueWhere(branchId, userId),
-      orderBy: { createdAt: "asc" },
-    });
-    if (!next) return null;
+  return prisma.$transaction(async (tx) => {
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const next = await tx.contact.findFirst({
+        where: visibleQueueWhere(branchId, userId),
+        orderBy: { createdAt: "asc" },
+      });
+      if (!next) return null;
+      await lockBatch(tx, next.batchId);
 
-    const result = await prisma.contact.updateMany({
-      where: { id: next.id, branchId, status: ContactStatus.NEW },
-      data: { status: ContactStatus.IN_PROGRESS, claimedById: userId, claimedAt: new Date() },
-    });
-    if (result.count > 0) {
-      return prisma.contact.findUnique({ where: { id: next.id }, include: contactInclude });
+      const result = await tx.contact.updateMany({
+        where: { id: next.id, branchId, status: ContactStatus.NEW },
+        data: { status: ContactStatus.IN_PROGRESS, claimedById: userId, claimedAt: new Date() },
+      });
+      if (result.count > 0) {
+        return tx.contact.findUnique({ where: { id: next.id }, include: contactInclude });
+      }
+      // Someone else claimed `next` between the read and the write — retry.
     }
-    // Someone else claimed `next` between the read and the write — retry.
-  }
-  return null;
+    return null;
+  });
 }
 
 // Mirrors the frontend's frontend/src/lib/contactExtraInfo.ts label list —
