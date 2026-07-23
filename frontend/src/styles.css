@@ -32,33 +32,10 @@ body {
   margin: 0;
   min-height: 100vh;
   color: var(--text-on-dark);
-  background-color: var(--bg);
-  /* A designed backdrop instead of a stock photo: two soft beacons of
-     warm light rising out of deep ink-navy, plus a fine grain so the
-     dark field doesn't read as flat digital black. Fixed so it stays
-     put as long pages scroll. */
-  background-image: radial-gradient(ellipse 900px 620px at 14% -8%, rgba(207, 154, 68, 0.16), transparent 60%),
-    radial-gradient(ellipse 760px 560px at 96% 8%, rgba(76, 110, 130, 0.16), transparent 62%),
-    radial-gradient(ellipse 1100px 800px at 50% 112%, rgba(207, 154, 68, 0.08), transparent 65%),
-    linear-gradient(165deg, #171a23 0%, #12141b 46%, #0e1016 100%);
-  background-attachment: fixed;
-  background-repeat: no-repeat;
-}
-
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  opacity: 0.5;
-  mix-blend-mode: overlay;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-}
-
-#root {
-  position: relative;
-  z-index: 1;
+  /* Dark tint over the photo keeps the light page-chrome text readable
+     while still showing the columns/banknotes motif through clearly. */
+  background: linear-gradient(180deg, rgba(18, 20, 24, 0.6), rgba(18, 20, 24, 0.72)),
+    url("/bg-money.jpg") center/cover fixed no-repeat;
 }
 
 /* Card-like surfaces sit on the light "washi paper" tone regardless of the
@@ -104,6 +81,48 @@ button.secondary {
 
 button.secondary:hover {
   background: #eef1f5;
+}
+
+/* Save/cancel get their own unmistakable colors + icon instead of relying
+   on position or the default gold to signal which is which. */
+.btn-save,
+.btn-cancel {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-save {
+  background: var(--success);
+  color: white;
+}
+
+.btn-save:hover:not(:disabled) {
+  background: #327157;
+}
+
+.btn-cancel {
+  background: transparent;
+  color: var(--danger);
+  border: 1px solid color-mix(in srgb, var(--danger) 45%, transparent);
+}
+
+.btn-cancel:hover:not(:disabled) {
+  background: var(--danger);
+  color: white;
+  border-color: var(--danger);
+}
+
+/* Compact icon-only variant for tight table cells (inline row creation). */
+.btn-icon-only {
+  padding: 5px;
+  min-height: 0;
+  gap: 0;
+}
+
+.inline-row-actions {
+  display: inline-flex;
+  gap: 5px;
 }
 
 button:disabled {

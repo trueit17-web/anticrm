@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { api, ApiError } from "../api/client";
 import { Branch } from "../types";
-import { IconEdit } from "./icons";
+import { IconCheck, IconEdit, IconX } from "./icons";
 
 function BranchRow({
   branch,
@@ -57,10 +57,12 @@ function BranchRow({
             Удалить ключ
           </label>
         )}
-        <button type="submit" disabled={saving}>
+        <button type="submit" className="btn-save" disabled={saving}>
+          <IconCheck width={15} height={15} />
           {saving ? "Сохранение..." : "Сохранить"}
         </button>
-        <button type="button" className="secondary" onClick={onCancel}>
+        <button type="button" className="btn-cancel" onClick={onCancel}>
+          <IconX width={15} height={15} />
           Отмена
         </button>
       </form>

@@ -132,3 +132,21 @@ export function IconDatabase(props: IconProps) {
     </svg>
   );
 }
+
+// A checkmark — save/confirm buttons.
+export function IconCheck(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M4.5 12.5l5 5 10-11" />
+    </svg>
+  );
+}
+
+// A cross — cancel buttons.
+export function IconX(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M5.5 5.5l13 13M18.5 5.5l-13 13" />
+    </svg>
+  );
+}

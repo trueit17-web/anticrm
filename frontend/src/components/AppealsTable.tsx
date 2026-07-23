@@ -4,7 +4,7 @@ import { AuthUser } from "../types";
 import { canEditAppeal, canEditAssignments } from "../lib/permissions";
 import { detectMobileOperator } from "../lib/mobileOperator";
 import { useEdgeAutoScroll } from "../hooks/useEdgeAutoScroll";
-import { IconEdit, IconTrash } from "./icons";
+import { IconCheck, IconEdit, IconTrash, IconX } from "./icons";
 import { EmployeeNameButton } from "./EmployeeCard";
 
 function formatTime(iso: string): string {
@@ -119,12 +119,26 @@ function NewAppealRow({
           —
         </td>
         <td>
-          <button onClick={handleSubmit} disabled={submitting || !values.phone.trim()}>
-            {submitting ? "..." : "Сохранить"}
-          </button>{" "}
-          <button className="secondary" onClick={onCancel} disabled={submitting}>
-            Отмена
-          </button>
+          <div className="inline-row-actions">
+            <button
+              className="btn-save btn-icon-only"
+              onClick={handleSubmit}
+              disabled={submitting || !values.phone.trim()}
+              title="Сохранить"
+              aria-label="Сохранить"
+            >
+              <IconCheck width={16} height={16} />
+            </button>
+            <button
+              className="btn-cancel btn-icon-only"
+              onClick={onCancel}
+              disabled={submitting}
+              title="Отмена"
+              aria-label="Отмена"
+            >
+              <IconX width={16} height={16} />
+            </button>
+          </div>
         </td>
       </tr>
       {error && (

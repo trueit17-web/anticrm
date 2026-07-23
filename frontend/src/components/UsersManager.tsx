@@ -2,7 +2,7 @@ import { Fragment, FormEvent, useEffect, useState } from "react";
 import { api, ApiError, fileUrl } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import { Branch, LoginEvent, ROLE_LABELS, Role, UserSummary } from "../types";
-import { IconEdit, IconKey } from "./icons";
+import { IconCheck, IconEdit, IconKey, IconX } from "./icons";
 import { EmployeeNameButton } from "./EmployeeCard";
 
 function formatEventTime(iso: string): string {
@@ -99,10 +99,12 @@ function EditUserRow({
             onChange={(e) => setBio(e.target.value)}
             rows={2}
           />
-          <button type="submit" disabled={saving}>
+          <button type="submit" className="btn-save" disabled={saving}>
+            <IconCheck width={15} height={15} />
             {saving ? "Сохранение..." : "Сохранить"}
           </button>
-          <button type="button" className="secondary" onClick={onCancel}>
+          <button type="button" className="btn-cancel" onClick={onCancel}>
+            <IconX width={15} height={15} />
             Отмена
           </button>
         </form>
@@ -184,10 +186,12 @@ function BranchAccessRow({
           </div>
         )}
         <div className="inline-form">
-          <button onClick={handleSave} disabled={saving}>
+          <button className="btn-save" onClick={handleSave} disabled={saving}>
+            <IconCheck width={15} height={15} />
             {saving ? "Сохранение..." : "Сохранить"}
           </button>
-          <button className="secondary" onClick={onCancel}>
+          <button className="btn-cancel" onClick={onCancel}>
+            <IconX width={15} height={15} />
             Отмена
           </button>
         </div>
@@ -250,10 +254,12 @@ function DemoteSuperadminRow({
               </option>
             ))}
           </select>
-          <button onClick={handleConfirm} disabled={saving || branchId === ""}>
+          <button className="btn-save" onClick={handleConfirm} disabled={saving || branchId === ""}>
+            <IconCheck width={15} height={15} />
             {saving ? "Сохранение..." : "Подтвердить"}
           </button>
-          <button className="secondary" onClick={onCancel}>
+          <button className="btn-cancel" onClick={onCancel}>
+            <IconX width={15} height={15} />
             Отмена
           </button>
         </div>

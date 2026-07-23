@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { Appeal, HistoryEntry } from "../types";
 import { api, ApiError } from "../api/client";
 import { parseExtraInfo } from "../lib/contactExtraInfo";
+import { IconCheck, IconX } from "./icons";
 
 export interface AppealFormValues {
   date: string;
@@ -211,10 +212,12 @@ export function AppealFormModal({
           {error && <p className="error-text">{error}</p>}
 
           <div className="modal-actions">
-            <button type="button" className="secondary" onClick={onClose}>
+            <button type="button" className="btn-cancel" onClick={onClose}>
+              <IconX width={15} height={15} />
               Отмена
             </button>
-            <button type="submit" disabled={submitting}>
+            <button type="submit" className="btn-save" disabled={submitting}>
+              <IconCheck width={15} height={15} />
               {submitting ? "Сохранение..." : "Сохранить"}
             </button>
           </div>
