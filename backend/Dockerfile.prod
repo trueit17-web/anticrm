@@ -27,5 +27,11 @@ COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
 
 EXPOSE 4000
 
-# Migrations + idempotent admin seed run on every boot; safe to repeat.
-CMD ["sh", "-c", "npx prisma migrate deploy && npx prisma db seed && node dist/server.js"]
+# Migrations run on every boot (idempotent, safe to repeat). Seeding the
+# bootstrap admin/superadmin accounts is deliberately NOT part of normal
+# startup — it only ever needs to run once, and running it unattended on
+# every restart is how a missed .env var turns into a known
+# superadmin/superadmin account reachable on the internet. Run it by hand,
+# once, after first deploy:
+#   docker compose -f docker-compose.prod.yml run --rm backend npm run seed
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/server.js"]
