@@ -4,7 +4,15 @@
 # nginx refuses to start if the cert files referenced in nginx.conf.template
 # don't exist yet, but certbot needs nginx running to answer the HTTP-01
 # challenge — so we start nginx with a throwaway self-signed cert first,
-# swap in the real one, then reload. Re-running this script is safe.
+# swap in the real one, then reload.
+#
+# Re-running this script is safe ONLY because of the guard right below: if
+# a real (non-dummy) certificate for $DOMAIN already exists, it exits
+# immediately instead of repeating the dummy-cert dance, which used to
+# unconditionally delete the live certificate's archive/renewal metadata
+# before requesting a replacement — a failed re-request (rate limit,
+# transient network issue, etc.) left a previously-working HTTPS site
+# downgraded to a 1-day self-signed certificate.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -24,6 +32,20 @@ if [ -z "${DOMAIN:-}" ] || [ "$DOMAIN" = "crm.example.com" ]; then
 fi
 
 COMPOSE="docker compose -f docker-compose.prod.yml"
+DUMMY_MARKER="/etc/letsencrypt/.anticrm-dummy-$DOMAIN"
+
+if $COMPOSE run --rm --no-deps --entrypoint sh certbot -c "
+    test ! -e '$DUMMY_MARKER' && \
+    test -s /etc/letsencrypt/live/$DOMAIN/fullchain.pem && \
+    test -s /etc/letsencrypt/live/$DOMAIN/privkey.pem && \
+    test -s /etc/letsencrypt/renewal/$DOMAIN.conf
+  " 2>/dev/null \
+  && $COMPOSE run --rm --no-deps --entrypoint certbot certbot certificates --cert-name "$DOMAIN" 2>/dev/null | grep -q 'VALID'
+then
+  echo "A valid certificate for $DOMAIN already exists — bootstrap skipped."
+  echo "(Renewal is handled by scripts/renew-certificates.sh, not this script.)"
+  exit 0
+fi
 
 echo "### Creating dummy certificate for $DOMAIN ..."
 $COMPOSE run --rm --entrypoint sh certbot -c "
@@ -31,7 +53,8 @@ $COMPOSE run --rm --entrypoint sh certbot -c "
   openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
     -keyout /etc/letsencrypt/live/$DOMAIN/privkey.pem \
     -out /etc/letsencrypt/live/$DOMAIN/fullchain.pem \
-    -subj '/CN=localhost'
+    -subj '/CN=localhost' && \
+  touch '$DUMMY_MARKER'
 "
 
 echo "### Starting nginx (frontend) with the dummy certificate ..."
@@ -49,7 +72,8 @@ restore_dummy_cert() {
     openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
       -keyout /etc/letsencrypt/live/$DOMAIN/privkey.pem \
       -out /etc/letsencrypt/live/$DOMAIN/fullchain.pem \
-      -subj '/CN=localhost'
+      -subj '/CN=localhost' && \
+    touch '$DUMMY_MARKER'
   "
   $COMPOSE up -d frontend
 }
@@ -71,5 +95,11 @@ fi
 echo "### Reloading nginx with the real certificate ..."
 $COMPOSE exec frontend nginx -s reload
 
+# A real certificate is now live — clear the marker so a future re-run of
+# this script recognizes it and skips straight to "already valid" instead
+# of repeating the dummy-cert dance against a working certificate.
+$COMPOSE run --rm --no-deps --entrypoint sh certbot -c "rm -f '$DUMMY_MARKER'"
+
 echo "Done. https://$DOMAIN should now be serving a valid certificate."
-echo "The 'certbot' service in docker-compose.prod.yml will keep it renewed automatically."
+echo "Set up scripts/renew-certificates.sh on a cron/systemd timer to keep it renewed —"
+echo "it is not renewed automatically by anything running inside Docker."

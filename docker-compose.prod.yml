@@ -58,13 +58,22 @@ services:
       - certbot_certs:/etc/letsencrypt:ro
       - certbot_webroot:/var/www/certbot:ro
 
+  # Idle on purpose — it used to run its own `certbot renew` loop, but that
+  # loop had no way to reload nginx afterward (no Docker CLI/socket inside
+  # this container to reach the frontend service), so a successful renewal
+  # left nginx still serving the old, soon-to-expire certificate from
+  # memory until the next full restart. Renewal is now a host-side job
+  # (scripts/renew-certificates.sh, run via cron/systemd) that can run both
+  # `certbot renew` *and* the nginx reload. This service stays around so
+  # deploy/init-letsencrypt.sh and scripts/renew-certificates.sh have a
+  # container to `run`/`exec` certbot commands against.
   certbot:
     image: certbot/certbot
     restart: unless-stopped
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do sleep 1d & wait $$!; done;'"
     volumes:
       - certbot_certs:/etc/letsencrypt
       - certbot_webroot:/var/www/certbot
-    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot --quiet; sleep 12h & wait $$!; done;'"
 
 volumes:
   db_data:
