@@ -702,6 +702,34 @@ a {
   pointer-events: none;
 }
 
+/* Обновления tab */
+.update-uptodate {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--success);
+  font-weight: 600;
+}
+
+.update-available {
+  margin-top: 6px;
+  max-width: 560px;
+}
+
+.update-command {
+  background: #211e17;
+  color: #f0ede4;
+  padding: 11px 13px;
+  border-radius: 8px;
+  font-family: "Golos Text", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-size: 12.5px;
+  line-height: 1.4;
+  overflow-x: auto;
+  white-space: pre;
+  margin: 8px 0 12px;
+  user-select: all;
+}
+
 /* Top row: "Загрузить базу" and "Города — адреса СФР" each take half the
    width. The cards are normally fit-content — override so they fill their
    half. A lone card (manager without the СФР block) spans the full width. */

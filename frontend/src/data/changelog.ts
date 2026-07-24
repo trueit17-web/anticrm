@@ -10,6 +10,13 @@ export interface ChangelogEntry {
 // separately, so there's only one place to update.
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.18.0",
+    date: "2026-07-24",
+    changes: [
+      "Админка: вкладка «Обновления» (для суперадмина) — проверяет наличие новой версии на GitHub и, если она есть, показывает команду для обновления сервера",
+    ],
+  },
+  {
     version: "1.17.0",
     date: "2026-07-24",
     changes: [

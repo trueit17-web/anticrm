@@ -6,6 +6,7 @@ import { Appeal, OPTION_FIELD_LABELS, OptionField, SelectOption } from "../types
 import { BranchSwitcher } from "../components/BranchSwitcher";
 import { UsersManager } from "../components/UsersManager";
 import { BranchesManager } from "../components/BranchesManager";
+import { UpdatesManager } from "../components/UpdatesManager";
 import { IconBack, IconTrash } from "../components/icons";
 import { formatRuDate, todayInputValue } from "../lib/dateUtils";
 
@@ -205,7 +206,7 @@ function AppealsDeleteSection({ date }: { date: string }) {
   );
 }
 
-type AdminTab = "appeals" | OptionField | "users" | "branches";
+type AdminTab = "appeals" | OptionField | "users" | "branches" | "updates";
 
 export function AdminPage() {
   const { user } = useAuth();
@@ -290,13 +291,22 @@ export function AdminPage() {
               Пользователи
             </button>
             {user?.role === "SUPERADMIN" && (
-              <button
-                type="button"
-                className={`admin-tab${activeTab === "branches" ? " admin-tab-active" : ""}`}
-                onClick={() => setActiveTab("branches")}
-              >
-                Филиалы
-              </button>
+              <>
+                <button
+                  type="button"
+                  className={`admin-tab${activeTab === "branches" ? " admin-tab-active" : ""}`}
+                  onClick={() => setActiveTab("branches")}
+                >
+                  Филиалы
+                </button>
+                <button
+                  type="button"
+                  className={`admin-tab${activeTab === "updates" ? " admin-tab-active" : ""}`}
+                  onClick={() => setActiveTab("updates")}
+                >
+                  Обновления
+                </button>
+              </>
             )}
           </>
         )}
@@ -309,6 +319,8 @@ export function AdminPage() {
           <UsersManager />
         ) : activeTab === "branches" ? (
           <BranchesManager />
+        ) : activeTab === "updates" ? (
+          <UpdatesManager />
         ) : (
           <>
             {loading && <p>Загрузка...</p>}

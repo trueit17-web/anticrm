@@ -10,6 +10,7 @@ import { appealsRouter } from "./modules/appeals/appeals.routes";
 import { selectOptionsRouter } from "./modules/select-options/select-options.routes";
 import { branchesRouter } from "./modules/branches/branches.routes";
 import { contactsRouter } from "./modules/contacts/contacts.routes";
+import { systemRouter } from "./modules/system/system.routes";
 
 export const app = express();
 
@@ -43,6 +44,7 @@ app.use("/api/appeals", appealsRouter);
 app.use("/api/select-options", selectOptionsRouter);
 app.use("/api/branches", branchesRouter);
 app.use("/api/contacts", contactsRouter);
+app.use("/api/system", systemRouter);
 
 app.use((req: Request, res: Response) => {
   res.status(404).json({ error: "Не найдено" });
