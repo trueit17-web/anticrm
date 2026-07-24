@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { api, ApiError } from "../api/client";
 import { Contact, ContactStatus } from "../types";
 import { detectMobileOperator } from "../lib/mobileOperator";
-import { fullNameIncludesBirthDate, parseExtraInfo } from "../lib/contactExtraInfo";
+import { fullNameIncludesBirthDate, parseExtraInfo, REGION_LABELS } from "../lib/contactExtraInfo";
+import { regionLocalTime } from "../lib/regionTime";
 import { IconPhone, IconX } from "./icons";
 
 // "Звонить!" — grabs the next contact off the shared queue and shows it as
@@ -120,7 +121,10 @@ export function CallCardModal({ onClose }: { onClose: () => void }) {
         setContact(res.contact);
         setCalledPhone(res.contact?.phone ?? null);
         if (res.contact) {
-          const { inn, address, region } = parseExtraInfo(res.contact.extraInfo);
+          const { inn, address, region, depositTotal } = parseExtraInfo(res.contact.extraInfo);
+          // Pre-fill "Деп." from the uploaded deposit total; the manager can
+          // still overwrite it before pressing "Передать".
+          if (depositTotal) setDep(depositTotal);
           if (inn) lookupOrg(inn, generation);
           if (address || region) lookupSfr(address ?? "", region, generation);
         }
@@ -209,7 +213,11 @@ export function CallCardModal({ onClose }: { onClose: () => void }) {
     );
   }
 
-  const { birthDate, extraPhones, inn, address, rest } = parseExtraInfo(contact?.extraInfo);
+  const { birthDate, extraPhones, inn, address, region, rest } = parseExtraInfo(contact?.extraInfo);
+  // Region is shown on its own line first (with the local time), so drop the
+  // duplicate region entry from the generic list below.
+  const restNoRegion = rest.filter((f) => !(f.label && REGION_LABELS.includes(f.label.toLowerCase())));
+  const regionTime = regionLocalTime(region);
   const showBirthDateSeparately = birthDate && !fullNameIncludesBirthDate(contact?.fullName, birthDate);
   const title = contact
     ? [contact.fullName || "Без имени", showBirthDateSeparately ? birthDate : null].filter(Boolean).join(", ")
@@ -263,10 +271,17 @@ export function CallCardModal({ onClose }: { onClose: () => void }) {
               <label className="span-2">
                 Доп. инфа
                 <div className="call-card-extra-info">
-                  {rest.length === 0 && !inn && !address ? (
+                  {restNoRegion.length === 0 && !inn && !address && !region ? (
                     <span className="muted">—</span>
                   ) : (
                     <>
+                      {region && (
+                        <div>
+                          <strong>Регион: </strong>
+                          {region}
+                          {regionTime && ` (${regionTime})`}
+                        </div>
+                      )}
                       {address && (
                         <div>
                           <strong>Адрес: </strong>
@@ -274,10 +289,15 @@ export function CallCardModal({ onClose }: { onClose: () => void }) {
                         </div>
                       )}
                       {address && (
-                        <div>
-                          <strong>Соц. фонд (СФР): </strong>
-                          {sfrLoading ? "Поиск..." : sfrAddress || "Не найден"}
-                        </div>
+                        <>
+                          <div className="call-card-extra-gap" aria-hidden="true">
+                            &nbsp;
+                          </div>
+                          <div>
+                            <strong>Соц. фонд (СФР): </strong>
+                            {sfrLoading ? "Поиск..." : sfrAddress || "Не найден"}
+                          </div>
+                        </>
                       )}
                       {inn && (
                         <div>
@@ -292,7 +312,7 @@ export function CallCardModal({ onClose }: { onClose: () => void }) {
                           {orgManagerName}
                         </div>
                       )}
-                      {rest.map((f, i) => (
+                      {restNoRegion.map((f, i) => (
                         <div key={i}>
                           {f.label && <strong>{f.label}: </strong>}
                           {f.value}

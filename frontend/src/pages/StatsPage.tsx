@@ -358,7 +358,7 @@ function Kpi({
 // conversion % is дозвон over all handled contacts.
 function ConversionBar({ stats }: { stats: ContactRangeStats }) {
   const segments = [
-    { key: "reached", label: "Дозвон", value: stats.reached },
+    { key: "reached", label: "Передал", value: stats.reached },
     { key: "notReached", label: "Недозвон", value: stats.notReached },
     { key: "declined", label: "Отказ", value: stats.declined },
     { key: "answeringMachine", label: "АО", value: stats.answeringMachine },
@@ -377,7 +377,7 @@ function ConversionBar({ stats }: { stats: ContactRangeStats }) {
       <div className="conv-head">
         <span className="conv-rate">{conversion}%</span>
         <span className="muted">
-          конверсия в дозвон ({stats.reached} из {total} обработанных)
+          конверсия — передал ({stats.reached} из {total} обработанных)
         </span>
       </div>
       <div className="conv-bar" role="img" aria-label={segments.map((s) => `${s.label} ${s.value}`).join(", ")}>
@@ -415,7 +415,7 @@ function ManagerCallTable({ rows }: { rows: ContactManagerStat[] }) {
         <thead>
           <tr>
             <th>Менеджер</th>
-            <th className="col-num" title="Переведено в трубку">Дозвон</th>
+            <th className="col-num" title="Переведено в трубку">Передал</th>
             <th className="col-num">Недозвон</th>
             <th className="col-num">АО</th>
             <th className="col-num" title="Недожал">Недож.</th>
@@ -455,7 +455,7 @@ function CallStatsSection({ stats }: { stats: ContactRangeStats }) {
       <div className="kpi-grid kpi-grid--calls">
         <Kpi value={stats.queueNew} label="в очереди" sub="ждут звонка сейчас" accent="info" />
         <Kpi value={stats.queueInWork} label="в работе" sub="взяты, не обработаны" accent="muted" />
-        <Kpi value={stats.reached} label="дозвонов" sub="за период → трубки" accent="success" />
+        <Kpi value={stats.reached} label="передал" sub="за период → трубки" accent="success" />
         <Kpi value={stats.notReached} label="недозвонов" sub="за период" accent="muted" />
         <Kpi value={stats.answeringMachine} label="АО" sub="автоответчик" accent="muted" />
         <Kpi value={stats.notPushed} label="недожал" sub="за период" accent="muted" />

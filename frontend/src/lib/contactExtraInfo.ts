@@ -18,8 +18,21 @@ const INN_LABELS = ["инн юл", "инн (юл)", "инн юр.лица", "и�
 const ADDRESS_LABELS = ["адрес", "адрес клиента", "address"];
 // Not pulled out of `rest` (still shown generically like any other field)
 // — just also captured separately so the СФР lookup can fall back to the
-// region's capital office when the address's city isn't in that table.
-const REGION_LABELS = ["регион", "область", "region"];
+// region's capital office when the address's city isn't in that table, and
+// so the call card can show it first with the region's local time. Exported
+// so the call card can drop the duplicate region line from its generic list.
+export const REGION_LABELS = ["регион", "область", "region"];
+// Also captured-but-kept-in-`rest`: the call card pre-fills its "Деп." field
+// from this so the manager doesn't retype the deposit total by hand.
+const DEPOSIT_LABELS = [
+  "общая сумма депозитов",
+  "сумма депозитов",
+  "сумма депозита",
+  "депозиты",
+  "депозит",
+  "deposits",
+  "deposit",
+];
 
 export interface ExtraInfoField {
   label: string | null;
@@ -32,17 +45,20 @@ export interface ParsedExtraInfo {
   inn: string | null;
   address: string | null;
   region: string | null;
+  depositTotal: string | null;
   rest: ExtraInfoField[];
 }
 
 export function parseExtraInfo(extraInfo: string | null | undefined): ParsedExtraInfo {
-  if (!extraInfo) return { birthDate: null, extraPhones: [], inn: null, address: null, region: null, rest: [] };
+  if (!extraInfo)
+    return { birthDate: null, extraPhones: [], inn: null, address: null, region: null, depositTotal: null, rest: [] };
 
   let birthDate: string | null = null;
   let extraPhones: string[] = [];
   let inn: string | null = null;
   let address: string | null = null;
   let region: string | null = null;
+  let depositTotal: string | null = null;
   const rest: ExtraInfoField[] = [];
 
   for (const part of extraInfo.split(";").map((p) => p.trim())) {
@@ -55,7 +71,11 @@ export function parseExtraInfo(extraInfo: string | null | undefined): ParsedExtr
     const label = part.slice(0, sep).trim();
     const value = part.slice(sep + 1).trim();
     const labelLower = label.toLowerCase();
+    // Captured but NOT removed from `rest` (falls through to the else below)
+    // so it still shows in the generic list; the call card just also reads
+    // these off the parsed result directly.
     if (REGION_LABELS.includes(labelLower)) region = value;
+    if (DEPOSIT_LABELS.includes(labelLower)) depositTotal = value;
 
     if (BIRTH_DATE_LABELS.includes(labelLower)) {
       birthDate = value;
@@ -73,7 +93,7 @@ export function parseExtraInfo(extraInfo: string | null | undefined): ParsedExtr
     }
   }
 
-  return { birthDate, extraPhones, inn, address, region, rest };
+  return { birthDate, extraPhones, inn, address, region, depositTotal, rest };
 }
 
 // True if `fullName` already visibly contains the birth date (real-world
