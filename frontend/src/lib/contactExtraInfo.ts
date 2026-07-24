@@ -24,7 +24,7 @@ const ADDRESS_LABELS = ["адрес", "адрес клиента", "address"];
 export const REGION_LABELS = ["регион", "область", "region"];
 // Also captured-but-kept-in-`rest`: the call card pre-fills its "Деп." field
 // from this so the manager doesn't retype the deposit total by hand.
-const DEPOSIT_LABELS = [
+export const DEPOSIT_LABELS = [
   "общая сумма депозитов",
   "сумма депозитов",
   "сумма депозита",

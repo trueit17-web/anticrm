@@ -13,6 +13,7 @@ import {
   TfTimeBucket,
 } from "../types";
 import { detectMobileOperator } from "../lib/mobileOperator";
+import { formatMoney } from "../lib/money";
 import { BranchSwitcher } from "../components/BranchSwitcher";
 import { IconBack } from "../components/icons";
 import { EmployeeNameButton } from "../components/EmployeeCard";
@@ -197,7 +198,7 @@ function DayAppealsTable({ appeals }: { appeals: Appeal[] }) {
                 {a.clientData || "—"}
               </td>
               <td className="wrap-cell" title={a.dep ?? undefined}>
-                {a.dep || "—"}
+                {formatMoney(a.dep)}
               </td>
               <td className="col-center">{a.smsSentBy ? `${a.smsSentBy.fullName}` : "—"}</td>
               <td className="col-center">{a.intake ? "Да" : "—"}</td>
@@ -360,13 +361,12 @@ function ConversionBar({ stats }: { stats: ContactRangeStats }) {
   const segments = [
     { key: "reached", label: "Передал", value: stats.reached },
     { key: "notReached", label: "Недозвон", value: stats.notReached },
-    { key: "declined", label: "Отказ", value: stats.declined },
     { key: "answeringMachine", label: "АО", value: stats.answeringMachine },
     { key: "notPushed", label: "Недожал", value: stats.notPushed },
     { key: "skipOnCode", label: "Скип на коде", value: stats.skipOnCode },
   ] as const;
 
-  const total = stats.handled;
+  const total = segments.reduce((sum, s) => sum + s.value, 0);
   if (total === 0) {
     return <p className="empty-state">За выбранный период обработанных контактов нет.</p>;
   }
@@ -420,8 +420,6 @@ function ManagerCallTable({ rows }: { rows: ContactManagerStat[] }) {
             <th className="col-num">АО</th>
             <th className="col-num" title="Недожал">Недож.</th>
             <th className="col-num" title="Скип на коде">Скип</th>
-            <th className="col-num">Отказ</th>
-            <th className="col-num" title="Отмечено «Перезвонить»">Перезв.</th>
             <th className="col-num" title="Всего взято в работу за период">Всего</th>
           </tr>
         </thead>
@@ -436,8 +434,6 @@ function ManagerCallTable({ rows }: { rows: ContactManagerStat[] }) {
               <td className="col-num">{r.answeringMachine || "—"}</td>
               <td className="col-num">{r.notPushed || "—"}</td>
               <td className="col-num">{r.skipOnCode || "—"}</td>
-              <td className="col-num">{r.declined || "—"}</td>
-              <td className="col-num">{r.callback || "—"}</td>
               <td className="col-num stat-total">{r.total}</td>
             </tr>
           ))}
@@ -454,13 +450,11 @@ function CallStatsSection({ stats }: { stats: ContactRangeStats }) {
 
       <div className="kpi-grid kpi-grid--calls">
         <Kpi value={stats.queueNew} label="в очереди" sub="ждут звонка сейчас" accent="info" />
-        <Kpi value={stats.queueInWork} label="в работе" sub="взяты, не обработаны" accent="muted" />
         <Kpi value={stats.reached} label="передал" sub="за период → трубки" accent="success" />
         <Kpi value={stats.notReached} label="недозвонов" sub="за период" accent="muted" />
         <Kpi value={stats.answeringMachine} label="АО" sub="автоответчик" accent="muted" />
         <Kpi value={stats.notPushed} label="недожал" sub="за период" accent="muted" />
         <Kpi value={stats.skipOnCode} label="скип на коде" sub="за период" accent="muted" />
-        <Kpi value={stats.declined} label="отказов" sub="за период" accent="danger" />
         <Kpi value={stats.queueTotal} label="всего в базе" sub="контактов филиала" accent="gold" />
       </div>
 

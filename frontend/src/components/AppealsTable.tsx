@@ -3,6 +3,7 @@ import { Appeal } from "../types";
 import { AuthUser } from "../types";
 import { canEditAppeal, canEditAssignments } from "../lib/permissions";
 import { detectMobileOperator } from "../lib/mobileOperator";
+import { formatMoney } from "../lib/money";
 import { useEdgeAutoScroll } from "../hooks/useEdgeAutoScroll";
 import { IconCheck, IconEdit, IconTrash, IconX } from "./icons";
 import { EmployeeNameButton } from "./EmployeeCard";
@@ -95,12 +96,15 @@ function NewAppealRow({
           />
         </td>
         <td>
-          <input
-            placeholder="Деп."
-            value={values.dep}
-            onChange={(e) => setValues((v) => ({ ...v, dep: e.target.value }))}
-            onKeyDown={handleKeyDown}
-          />
+          <span className="money-field">
+            <input
+              placeholder="Деп."
+              value={values.dep}
+              onChange={(e) => setValues((v) => ({ ...v, dep: e.target.value }))}
+              onKeyDown={handleKeyDown}
+            />
+            <span className="money-suffix">₽</span>
+          </span>
         </td>
         <td colSpan={2} className="muted col-center">
           зададутся после создания
@@ -300,7 +304,7 @@ export function AppealsTable({
                   {appeal.clientData || "—"}
                 </td>
                 <td className="wrap-cell" title={appeal.dep ?? undefined}>
-                  {appeal.dep || "—"}
+                  {formatMoney(appeal.dep)}
                 </td>
                 <td className={`col-center${smsSent ? " cell-sms-sent" : ""}`}>
                   {smsSent ? (

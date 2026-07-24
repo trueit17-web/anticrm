@@ -2,8 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { api, ApiError } from "../api/client";
 import { Contact, ContactStatus } from "../types";
 import { detectMobileOperator } from "../lib/mobileOperator";
-import { fullNameIncludesBirthDate, parseExtraInfo, REGION_LABELS } from "../lib/contactExtraInfo";
+import { DEPOSIT_LABELS, fullNameIncludesBirthDate, parseExtraInfo, REGION_LABELS } from "../lib/contactExtraInfo";
 import { regionLocalTime } from "../lib/regionTime";
+import { formatMoney } from "../lib/money";
 import { IconPhone, IconX } from "./icons";
 
 // "Звонить!" — grabs the next contact off the shared queue and shows it as
@@ -315,7 +316,7 @@ export function CallCardModal({ onClose }: { onClose: () => void }) {
                       {restNoRegion.map((f, i) => (
                         <div key={i}>
                           {f.label && <strong>{f.label}: </strong>}
-                          {f.value}
+                          {f.label && DEPOSIT_LABELS.includes(f.label.toLowerCase()) ? formatMoney(f.value) : f.value}
                         </div>
                       ))}
                     </>
@@ -324,12 +325,15 @@ export function CallCardModal({ onClose }: { onClose: () => void }) {
               </label>
 
               <label className="no-caption">
-                <input
-                  value={dep}
-                  onChange={(e) => setDep(e.target.value)}
-                  placeholder="Деп."
-                  disabled={submitting}
-                />
+                <span className="money-field">
+                  <input
+                    value={dep}
+                    onChange={(e) => setDep(e.target.value)}
+                    placeholder="Деп."
+                    disabled={submitting}
+                  />
+                  <span className="money-suffix">₽</span>
+                </span>
               </label>
 
               <label className="no-caption">

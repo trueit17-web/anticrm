@@ -191,10 +191,13 @@ export function AppealFormModal({
 
             <label className="span-2">
               Деп.
-              <input
-                value={values.dep}
-                onChange={(e) => setValues((v) => ({ ...v, dep: e.target.value }))}
-              />
+              <span className="money-field">
+                <input
+                  value={values.dep}
+                  onChange={(e) => setValues((v) => ({ ...v, dep: e.target.value }))}
+                />
+                <span className="money-suffix">₽</span>
+              </span>
             </label>
 
             <label className="span-2">

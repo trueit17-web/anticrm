@@ -680,6 +680,28 @@ a {
    Прозвон page: scrollable bases, ИНН-grouped queue, СФР editor
    ============================================================ */
 
+/* "Деп." inputs show a static ₽ suffix without it becoming part of the
+   value — the field still stores/edits a plain number. */
+.money-field {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 100%;
+}
+
+.money-field > input {
+  width: 100%;
+  padding-right: 22px;
+}
+
+.money-suffix {
+  position: absolute;
+  right: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  pointer-events: none;
+}
+
 /* Top row: "Загрузить базу" and "Города — адреса СФР" each take half the
    width. The cards are normally fit-content — override so they fill their
    half. A lone card (manager without the СФР block) spans the full width. */

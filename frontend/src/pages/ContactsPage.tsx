@@ -4,6 +4,7 @@ import { useAuth } from "../auth/AuthContext";
 import { api, ApiError, getActiveBranchId } from "../api/client";
 import { Branch, Contact, ContactBatch, SocialFundOffice } from "../types";
 import { parseExtraInfo } from "../lib/contactExtraInfo";
+import { formatMoney } from "../lib/money";
 import { BranchSwitcher } from "../components/BranchSwitcher";
 import { IconBack, IconCheck, IconTrash, IconX } from "../components/icons";
 import { EmployeeNameButton } from "../components/EmployeeCard";
@@ -456,10 +457,6 @@ function buildInnGroups(queue: Contact[]): InnGroup[] {
   return groups;
 }
 
-function formatDep(dep: number | null, raw: string | null): string {
-  if (dep !== null) return dep.toLocaleString("ru-RU");
-  return raw || "—";
-}
 
 function QueueSection({ queue, loading, error, onClaimed }: {
   queue: Contact[];
@@ -521,7 +518,7 @@ function QueueSection({ queue, loading, error, onClaimed }: {
                   <span className="inn-label">{g.inn ? `ИНН ${g.inn}` : "Без ИНН"}</span>
                   <span className="inn-meta muted">
                     {g.rows.length} чел.
-                    {g.depSum > 0 ? ` · деп. ${g.depSum.toLocaleString("ru-RU")}` : ""}
+                    {g.depSum > 0 ? ` · деп. ${formatMoney(g.depSum)}` : ""}
                   </span>
                 </button>
                 {isOpen && (
@@ -536,11 +533,11 @@ function QueueSection({ queue, loading, error, onClaimed }: {
                         </tr>
                       </thead>
                       <tbody>
-                        {g.rows.map(({ contact: c, dep, depRaw }) => (
+                        {g.rows.map(({ contact: c, depRaw }) => (
                           <tr key={c.id}>
                             <td>{c.phone}</td>
                             <td>{c.fullName || "—"}</td>
-                            <td className="col-num">{formatDep(dep, depRaw)}</td>
+                            <td className="col-num">{depRaw ? formatMoney(depRaw) : "—"}</td>
                             <td>
                               <button onClick={() => handleClaim(c.id)} disabled={claimingId === c.id}>
                                 {claimingId === c.id ? "..." : "Взять в работу"}

@@ -10,6 +10,14 @@ export interface ChangelogEntry {
 // separately, so there's only one place to update.
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.17.0",
+    date: "2026-07-24",
+    changes: [
+      "Поля «Деп.» и суммы депозитов везде показываются в денежном формате с разделением разрядов и знаком ₽",
+      "Статистика «Прозвона»: убраны показатели «в работе», «отказ» и «перезвон»",
+    ],
+  },
+  {
     version: "1.16.0",
     date: "2026-07-24",
     changes: [
