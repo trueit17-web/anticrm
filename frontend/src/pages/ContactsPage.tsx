@@ -669,16 +669,8 @@ export function ContactsPage() {
       ) : (
         <>
           {(canUpload || isAdmin) && (
-            <div className="admin-fields-grid">
+            <div className="contacts-top-row">
               {canUpload && <UploadSection onUploaded={handleClaimedOrChanged} />}
-              {isAdmin && (
-                <BatchesSection
-                  batches={batches}
-                  loading={batchesLoading}
-                  error={batchesError}
-                  onDeleted={handleClaimedOrChanged}
-                />
-              )}
               {isAdmin && (
                 <SocialFundOfficesSection
                   count={officesCount}
@@ -690,7 +682,23 @@ export function ContactsPage() {
             </div>
           )}
 
-          <QueueSection queue={queue} loading={queueLoading} error={queueError} onClaimed={handleClaimedOrChanged} />
+          {isAdmin ? (
+            <div className="contacts-main">
+              <div className="contacts-col-bases">
+                <BatchesSection
+                  batches={batches}
+                  loading={batchesLoading}
+                  error={batchesError}
+                  onDeleted={handleClaimedOrChanged}
+                />
+              </div>
+              <div className="contacts-col-queue">
+                <QueueSection queue={queue} loading={queueLoading} error={queueError} onClaimed={handleClaimedOrChanged} />
+              </div>
+            </div>
+          ) : (
+            <QueueSection queue={queue} loading={queueLoading} error={queueError} onClaimed={handleClaimedOrChanged} />
+          )}
         </>
       )}
     </div>

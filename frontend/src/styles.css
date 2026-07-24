@@ -680,6 +680,51 @@ a {
    Прозвон page: scrollable bases, ИНН-grouped queue, СФР editor
    ============================================================ */
 
+/* Top row: "Загрузить базу" and "Города — адреса СФР" each take half the
+   width. The cards are normally fit-content — override so they fill their
+   half. A lone card (manager without the СФР block) spans the full width. */
+.contacts-top-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  align-items: start;
+  margin-bottom: 12px;
+}
+
+.contacts-top-row > .admin-field-card {
+  width: auto;
+  max-width: none;
+}
+
+.contacts-top-row > :only-child {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 760px) {
+  .contacts-top-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Below the top row: bases list (left) + queue (right). */
+.contacts-main {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.contacts-col-bases {
+  flex: 1 1 340px;
+  max-width: 480px;
+  min-width: 0;
+}
+
+.contacts-col-queue {
+  flex: 3 1 440px;
+  min-width: 0;
+}
+
 /* Many uploaded bases — keep the list from pushing the queue off-screen. */
 .batches-scroll {
   max-height: 320px;
