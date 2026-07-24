@@ -3,6 +3,7 @@ import { prisma } from "../../lib/prisma";
 import { createAppeal } from "../appeals/appeals.service";
 import { getDefaultOptionValue } from "../select-options/select-options.service";
 import { ParsedContact } from "../../utils/parseContactsFile";
+import { normalizePhone } from "../../utils/normalizePhone";
 
 const batchInclude = {
   uploadedBy: { select: { id: true, fullName: true } },
@@ -12,29 +13,75 @@ const contactInclude = {
   claimedBy: { select: { id: true, fullName: true } },
 } satisfies Prisma.ContactInclude;
 
+export type ContactBatchWithUploader = Prisma.ContactBatchGetPayload<{ include: typeof batchInclude }>;
+
+export interface CreateBatchResult {
+  // null when nothing new was added (every number was a duplicate) — no empty
+  // batch is created in that case, so re-uploading the same base doesn't
+  // litter "Загруженные базы" with zero-contact entries.
+  batch: ContactBatchWithUploader | null;
+  parsed: number; // rows the file parser produced
+  added: number; // contacts actually inserted
+  duplicatesInFile: number; // dropped: the same normalized number appeared earlier in this file
+  alreadyInBranch: number; // dropped: that normalized number is already a contact in this branch
+}
+
 export async function createBatch(
   branchId: number,
   uploadedById: number,
   fileName: string,
   rows: ParsedContact[]
-) {
-  const batch = await prisma.contactBatch.create({
-    data: { branchId, uploadedById, fileName, totalCount: rows.length },
-  });
+): Promise<CreateBatchResult> {
+  const parsed = rows.length;
 
-  if (rows.length > 0) {
-    await prisma.contact.createMany({
-      data: rows.map((r) => ({
-        branchId,
-        batchId: batch.id,
-        phone: r.phone,
-        fullName: r.fullName ?? null,
-        extraInfo: r.extraInfo ?? null,
-      })),
-    });
+  // 1. Normalize every phone to E.164 and drop within-file duplicates,
+  //    keeping the first occurrence (and its name/extraInfo).
+  const seen = new Set<string>();
+  const deduped: (ParsedContact & { phone: string })[] = [];
+  let duplicatesInFile = 0;
+  for (const r of rows) {
+    const phone = normalizePhone(r.phone);
+    if (!phone) continue; // parser already drops empties, but be safe
+    if (seen.has(phone)) {
+      duplicatesInFile++;
+      continue;
+    }
+    seen.add(phone);
+    deduped.push({ ...r, phone });
   }
 
-  return prisma.contactBatch.findUnique({ where: { id: batch.id }, include: batchInclude });
+  // 2. Drop numbers that already exist anywhere in this branch's Прозвон, so
+  //    a monthly re-upload doesn't re-queue people who were already called.
+  //    (Matches only against numbers stored in the new normalized form —
+  //    legacy un-normalized rows won't collide, which is acceptable.)
+  const phones = deduped.map((r) => r.phone);
+  const existing = phones.length
+    ? await prisma.contact.findMany({ where: { branchId, phone: { in: phones } }, select: { phone: true } })
+    : [];
+  const existingSet = new Set(existing.map((e) => e.phone));
+  const toInsert = deduped.filter((r) => !existingSet.has(r.phone));
+  const alreadyInBranch = deduped.length - toInsert.length;
+  const added = toInsert.length;
+
+  if (added === 0) {
+    return { batch: null, parsed, added: 0, duplicatesInFile, alreadyInBranch };
+  }
+
+  const batch = await prisma.contactBatch.create({
+    data: { branchId, uploadedById, fileName, totalCount: added },
+  });
+  await prisma.contact.createMany({
+    data: toInsert.map((r) => ({
+      branchId,
+      batchId: batch.id,
+      phone: r.phone,
+      fullName: r.fullName ?? null,
+      extraInfo: r.extraInfo ?? null,
+    })),
+  });
+
+  const withUploader = await prisma.contactBatch.findUnique({ where: { id: batch.id }, include: batchInclude });
+  return { batch: withUploader, parsed, added, duplicatesInFile, alreadyInBranch };
 }
 
 export async function listBatches(branchId: number) {

@@ -48,8 +48,18 @@ export async function uploadBatchHandler(req: Request, res: Response) {
     return res.status(400).json({ error: "В файле не найдено ни одного номера телефона" });
   }
 
-  const batch = await createBatch(branchId, req.user!.id, fileName, rows);
-  res.status(201).json({ batch });
+  const result = await createBatch(branchId, req.user!.id, fileName, rows);
+  // batch is null when every number was a duplicate — still a success (201),
+  // the summary tells the manager nothing new was added.
+  res.status(201).json({
+    batch: result.batch,
+    summary: {
+      parsed: result.parsed,
+      added: result.added,
+      duplicatesInFile: result.duplicatesInFile,
+      alreadyInBranch: result.alreadyInBranch,
+    },
+  });
 }
 
 export async function listBatchesHandler(req: Request, res: Response) {

@@ -38,8 +38,17 @@ function UploadSection({ onUploaded }: { onUploaded: () => void }) {
     try {
       const formData = new FormData();
       formData.append("file", file);
-      const res = await api.upload<{ batch: ContactBatch }>("/contacts/upload", formData);
-      setResult(`Загружено ${res.batch.totalCount} контактов из файла «${res.batch.fileName}»`);
+      const res = await api.upload<{
+        batch: ContactBatch | null;
+        summary: { parsed: number; added: number; duplicatesInFile: number; alreadyInBranch: number };
+      }>("/contacts/upload", formData);
+      const s = res.summary;
+      let msg = `Добавлено ${s.added} из ${s.parsed} номеров.`;
+      const skipped: string[] = [];
+      if (s.duplicatesInFile > 0) skipped.push(`дубликатов в файле — ${s.duplicatesInFile}`);
+      if (s.alreadyInBranch > 0) skipped.push(`уже в базе — ${s.alreadyInBranch}`);
+      if (skipped.length > 0) msg += ` Пропущено: ${skipped.join(", ")}.`;
+      setResult(msg);
       setFile(null);
       onUploaded();
     } catch (err) {
@@ -57,7 +66,8 @@ function UploadSection({ onUploaded }: { onUploaded: () => void }) {
         — имя (необязательно), заголовки «Телефон»/«Имя» распознаются автоматически. В TXT —
         построчно «Метка: значение»: «Имя:», «Дата рождения:», «Основной номер:», «Номер
         телефона:» (доп. номера), остальные строки идут в доп. инфу; контакты разделяются строкой
-        «-----».
+        «-----». Номера приводятся к единому виду (+7…); повторы внутри файла и номера, уже
+        имеющиеся в базе филиала, повторно не добавляются.
       </p>
       <form className="inline-form" onSubmit={handleUpload}>
         <input type="file" accept=".csv,.xlsx,.txt" onChange={handleFileChange} />
