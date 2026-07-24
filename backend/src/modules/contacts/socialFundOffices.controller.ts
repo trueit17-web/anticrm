@@ -8,12 +8,23 @@ import {
   exportSocialFundOfficesCsv,
   listSocialFundOffices,
   lookupSocialFundAddress,
+  searchSocialFundOffices,
   updateSocialFundOffice,
 } from "./socialFundOffices.service";
 
 export async function listSocialFundOfficesHandler(_req: Request, res: Response) {
   const offices = await listSocialFundOffices();
   res.json({ offices });
+}
+
+// Editor modal: searchable, capped list so a multi-thousand-row table can be
+// managed without loading it all at once.
+const OFFICE_SEARCH_LIMIT = 100;
+
+export async function searchSocialFundOfficesHandler(req: Request, res: Response) {
+  const search = typeof req.query.search === "string" ? req.query.search.trim() : "";
+  const result = await searchSocialFundOffices(search, OFFICE_SEARCH_LIMIT);
+  res.json({ ...result, limit: OFFICE_SEARCH_LIMIT });
 }
 
 // The admin page only shows a count + download link — the list itself can

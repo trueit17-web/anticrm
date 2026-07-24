@@ -1,6 +1,7 @@
 import { prisma } from "../../lib/prisma";
 import { extractCity } from "../../utils/extractCity";
 import { findCapitalForRegion } from "../../utils/regionCapitals";
+import { stripPostalIndex } from "../../utils/stripPostalIndex";
 
 // The DB's @unique on `city` is case-sensitive, so "Москва" and "москва"
 // would otherwise both insert fine — but lookupSocialFundAddress matches
@@ -18,6 +19,28 @@ export function listSocialFundOffices() {
   return prisma.socialFundOffice.findMany({ orderBy: { city: "asc" } });
 }
 
+// Powers the editor modal: the table can be thousands of rows, so it's
+// searched server-side (city OR address contains, case-insensitive) and
+// capped. `limit` is the max rows returned; the caller learns there are more
+// matches from `hasMore` and narrows the search.
+export async function searchSocialFundOffices(search: string, limit: number) {
+  const where = search
+    ? {
+        OR: [
+          { city: { contains: search, mode: "insensitive" as const } },
+          { address: { contains: search, mode: "insensitive" as const } },
+        ],
+      }
+    : {};
+  const offices = await prisma.socialFundOffice.findMany({
+    where,
+    orderBy: { city: "asc" },
+    take: limit + 1,
+  });
+  const hasMore = offices.length > limit;
+  return { offices: hasMore ? offices.slice(0, limit) : offices, hasMore };
+}
+
 // Powers the admin page's count display — the full list can be thousands
 // of rows, too many to render, so the page only shows how many there are
 // plus a download link (see exportSocialFundOfficesCsv below).
@@ -27,7 +50,7 @@ export function countSocialFundOffices() {
 
 export async function createSocialFundOffice(city: string, address: string) {
   if (await findByCityInsensitive(city)) throw new DuplicateCityError();
-  return prisma.socialFundOffice.create({ data: { city, address } });
+  return prisma.socialFundOffice.create({ data: { city, address: stripPostalIndex(address) } });
 }
 
 export async function updateSocialFundOffice(
@@ -35,7 +58,8 @@ export async function updateSocialFundOffice(
   data: { city?: string; address?: string }
 ) {
   if (data.city && (await findByCityInsensitive(data.city, id))) throw new DuplicateCityError();
-  const result = await prisma.socialFundOffice.updateMany({ where: { id }, data });
+  const patch = { ...data, ...(data.address !== undefined ? { address: stripPostalIndex(data.address) } : {}) };
+  const result = await prisma.socialFundOffice.updateMany({ where: { id }, data: patch });
   if (result.count === 0) return null;
   return prisma.socialFundOffice.findUnique({ where: { id } });
 }

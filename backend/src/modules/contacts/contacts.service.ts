@@ -151,12 +151,17 @@ function visibleQueueWhere(branchId: number, userId: number): Prisma.ContactWher
   };
 }
 
+// The page groups the whole queue by organization ИНН client-side, so it
+// needs more than a page's worth at once. Capped to keep the payload bounded;
+// the frontend flags when the queue is larger than the cap.
+export const QUEUE_LIMIT = 3000;
+
 export function listQueue(branchId: number, userId: number) {
   return prisma.contact.findMany({
     where: visibleQueueWhere(branchId, userId),
     include: contactInclude,
     orderBy: { createdAt: "asc" },
-    take: 200,
+    take: QUEUE_LIMIT,
   });
 }
 

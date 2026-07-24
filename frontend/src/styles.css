@@ -676,6 +676,123 @@ a {
   margin-left: auto;
 }
 
+/* ============================================================
+   Прозвон page: scrollable bases, ИНН-grouped queue, СФР editor
+   ============================================================ */
+
+/* Many uploaded bases — keep the list from pushing the queue off-screen. */
+.batches-scroll {
+  max-height: 320px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.queue-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.queue-head h2 {
+  margin: 0;
+}
+
+.inn-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 640px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.inn-group {
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid rgba(216, 215, 209, 0.82);
+  border-radius: 10px;
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+
+.inn-group-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 14px;
+  background: transparent;
+  color: var(--text);
+  border: none;
+  border-radius: 0;
+  text-align: left;
+  font-size: 13px;
+}
+
+.inn-group-head:hover {
+  background: rgba(195, 154, 79, 0.14);
+}
+
+.inn-group.open .inn-group-head {
+  border-bottom: 1px solid rgba(216, 215, 209, 0.7);
+  background: rgba(195, 154, 79, 0.1);
+}
+
+.inn-caret {
+  color: var(--primary-dark);
+  font-size: 11px;
+  width: 12px;
+  flex: none;
+}
+
+.inn-label {
+  font-weight: 700;
+}
+
+.inn-meta {
+  margin-left: auto;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.inn-group .table-scroll {
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* Wider drawer for the СФР editor table (city + address + actions). */
+.modal-card-wide {
+  max-width: 760px;
+}
+
+.sfr-search {
+  margin: 4px 0 2px;
+}
+
+.sfr-table-scroll {
+  max-height: 52vh;
+  overflow-y: auto;
+}
+
+.sfr-table-scroll td input {
+  width: 100%;
+  min-height: 30px;
+}
+
+.sfr-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.sfr-row-actions .btn-save {
+  padding: 6px 8px;
+}
+
 .inline-form {
   display: flex;
   gap: 10px;

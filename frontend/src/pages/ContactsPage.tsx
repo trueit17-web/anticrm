@@ -1,21 +1,20 @@
-import { ChangeEvent, FormEvent, useEffect, useState } from "react";
+import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { api, ApiError, getActiveBranchId } from "../api/client";
-import { Branch, CONTACT_STATUS_LABELS, Contact, ContactBatch, ContactStatus } from "../types";
+import { Branch, Contact, ContactBatch, SocialFundOffice } from "../types";
+import { parseExtraInfo } from "../lib/contactExtraInfo";
 import { BranchSwitcher } from "../components/BranchSwitcher";
-import { IconBack, IconTrash } from "../components/icons";
+import { IconBack, IconCheck, IconTrash, IconX } from "../components/icons";
 import { EmployeeNameButton } from "../components/EmployeeCard";
 
 function formatDateTime(iso: string): string {
   return new Date(iso).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
 
-const OUTCOME_STATUSES: { status: ContactStatus; label: string }[] = [
-  { status: "NOT_REACHED", label: CONTACT_STATUS_LABELS.NOT_REACHED },
-  { status: "DECLINED", label: CONTACT_STATUS_LABELS.DECLINED },
-  { status: "CALLBACK", label: CONTACT_STATUS_LABELS.CALLBACK },
-];
+// ---------------------------------------------------------------------------
+// Upload
+// ---------------------------------------------------------------------------
 
 function UploadSection({ onUploaded }: { onUploaded: () => void }) {
   const [file, setFile] = useState<File | null>(null);
@@ -81,6 +80,10 @@ function UploadSection({ onUploaded }: { onUploaded: () => void }) {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Uploaded bases
+// ---------------------------------------------------------------------------
+
 function BatchesSection({ batches, loading, error, onDeleted }: {
   batches: ContactBatch[];
   loading: boolean;
@@ -107,64 +110,249 @@ function BatchesSection({ batches, loading, error, onDeleted }: {
 
   return (
     <section className="admin-field-card fit-content">
-      <h2>Загруженные базы</h2>
+      <h2>Загруженные базы{batches.length > 0 ? ` (${batches.length})` : ""}</h2>
       {loading && <p className="muted">Загрузка...</p>}
       {error && <p className="error-text">{error}</p>}
       {!loading && !error && batches.length === 0 && <p className="muted">Баз пока нет.</p>}
       {!loading && !error && batches.length > 0 && (
-        <ul className="admin-option-list">
-          {batches.map((b) => {
-            const c = b.counts;
-            const reached = c.REACHED ?? 0;
-            const notReached = c.NOT_REACHED ?? 0;
-            const declined = c.DECLINED ?? 0;
-            const callback = c.CALLBACK ?? 0;
-            const inProgress = c.IN_PROGRESS ?? 0;
-            const remaining = c.NEW ?? 0;
-            return (
-              <li key={b.id}>
-                <span>
-                  {b.fileName} — {b.totalCount} шт., {formatDateTime(b.createdAt)},{" "}
-                  <EmployeeNameButton id={b.uploadedBy.id} fullName={b.uploadedBy.fullName} />
-                  <br />
-                  <span className="muted">
-                    в очереди: {remaining}, в работе: {inProgress}, дозвон: {reached}, недозвон:{" "}
-                    {notReached}, отказ: {declined}, перезвонить: {callback}
+        <div className="batches-scroll">
+          <ul className="admin-option-list">
+            {batches.map((b) => {
+              const c = b.counts;
+              const reached = c.REACHED ?? 0;
+              const notReached = c.NOT_REACHED ?? 0;
+              const declined = c.DECLINED ?? 0;
+              const callback = c.CALLBACK ?? 0;
+              const inProgress = c.IN_PROGRESS ?? 0;
+              const remaining = c.NEW ?? 0;
+              return (
+                <li key={b.id}>
+                  <span>
+                    {b.fileName} — {b.totalCount} шт., {formatDateTime(b.createdAt)},{" "}
+                    <EmployeeNameButton id={b.uploadedBy.id} fullName={b.uploadedBy.fullName} />
+                    <br />
+                    <span className="muted">
+                      в очереди: {remaining}, в работе: {inProgress}, передал: {reached}, недозвон:{" "}
+                      {notReached}, отказ: {declined}, перезвонить: {callback}
+                    </span>
+                    {confirmingId === b.id && deleteError && <p className="error-text">{deleteError}</p>}
                   </span>
-                  {confirmingId === b.id && deleteError && <p className="error-text">{deleteError}</p>}
-                </span>
-                {confirmingId === b.id ? (
-                  <span className="admin-option-actions">
-                    <span className="muted">Удалить базу «{b.fileName}» ({b.totalCount} шт.)?</span>
-                    <button className="secondary" disabled={deleting} onClick={() => handleDelete(b.id)}>
-                      {deleting ? "Удаление..." : "Да, удалить"}
-                    </button>
+                  {confirmingId === b.id ? (
+                    <span className="admin-option-actions">
+                      <span className="muted">Удалить базу «{b.fileName}» ({b.totalCount} шт.)?</span>
+                      <button className="secondary" disabled={deleting} onClick={() => handleDelete(b.id)}>
+                        {deleting ? "Удаление..." : "Да, удалить"}
+                      </button>
+                      <button
+                        className="secondary"
+                        onClick={() => {
+                          setConfirmingId(null);
+                          setDeleteError(null);
+                        }}
+                      >
+                        Отмена
+                      </button>
+                    </span>
+                  ) : (
                     <button
-                      className="secondary"
-                      onClick={() => {
-                        setConfirmingId(null);
-                        setDeleteError(null);
-                      }}
+                      className="delete-x"
+                      title="Удалить базу"
+                      aria-label="Удалить базу"
+                      onClick={() => setConfirmingId(b.id)}
                     >
-                      Отмена
+                      <IconTrash width={13} height={13} />
                     </button>
-                  </span>
-                ) : (
-                  <button
-                    className="delete-x"
-                    title="Удалить базу"
-                    aria-label="Удалить базу"
-                    onClick={() => setConfirmingId(b.id)}
-                  >
-                    <IconTrash width={13} height={13} />
-                  </button>
-                )}
-              </li>
-            );
-          })}
-        </ul>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       )}
     </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// СФР offices — summary card + editor modal
+// ---------------------------------------------------------------------------
+
+function SfrRow({ office, onChanged }: { office: SocialFundOffice; onChanged: () => void }) {
+  const [city, setCity] = useState(office.city);
+  const [address, setAddress] = useState(office.address);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [confirmDel, setConfirmDel] = useState(false);
+  const dirty = city !== office.city || address !== office.address;
+
+  async function save() {
+    if (!city.trim() || !address.trim()) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await api.patch(`/contacts/social-fund-offices/${office.id}`, { city: city.trim(), address: address.trim() });
+      onChanged();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Не удалось сохранить");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function del() {
+    setBusy(true);
+    setError(null);
+    try {
+      await api.delete(`/contacts/social-fund-offices/${office.id}`);
+      onChanged();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Не удалось удалить");
+      setBusy(false);
+    }
+  }
+
+  return (
+    <tr>
+      <td>
+        <input value={city} onChange={(e) => setCity(e.target.value)} disabled={busy} />
+      </td>
+      <td>
+        <input value={address} onChange={(e) => setAddress(e.target.value)} disabled={busy} />
+      </td>
+      <td className="sfr-row-actions">
+        <button className="btn-save" onClick={save} disabled={busy || !dirty} title="Сохранить" aria-label="Сохранить">
+          <IconCheck width={14} height={14} />
+        </button>
+        {confirmDel ? (
+          <>
+            <button className="secondary" onClick={del} disabled={busy}>
+              Да
+            </button>
+            <button className="secondary" onClick={() => setConfirmDel(false)} disabled={busy}>
+              Нет
+            </button>
+          </>
+        ) : (
+          <button className="delete-x" onClick={() => setConfirmDel(true)} title="Удалить" aria-label="Удалить">
+            <IconTrash width={13} height={13} />
+          </button>
+        )}
+        {error && <span className="error-text">{error}</span>}
+      </td>
+    </tr>
+  );
+}
+
+function SfrEditorModal({ onClose, onChanged }: { onClose: () => void; onChanged: () => void }) {
+  const [search, setSearch] = useState("");
+  const [offices, setOffices] = useState<SocialFundOffice[]>([]);
+  const [hasMore, setHasMore] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const [newCity, setNewCity] = useState("");
+  const [newAddress, setNewAddress] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
+
+  const load = useCallback((q: string) => {
+    setLoading(true);
+    setError(null);
+    api
+      .get<{ offices: SocialFundOffice[]; hasMore: boolean }>(
+        `/contacts/social-fund-offices/search?search=${encodeURIComponent(q)}`
+      )
+      .then((r) => {
+        setOffices(r.offices);
+        setHasMore(r.hasMore);
+      })
+      .catch((err) => setError(err instanceof ApiError ? err.message : "Не удалось загрузить"))
+      .finally(() => setLoading(false));
+  }, []);
+
+  // Debounced search — a keystroke waits 300 ms before hitting the server.
+  useEffect(() => {
+    const t = setTimeout(() => load(search), 300);
+    return () => clearTimeout(t);
+  }, [search, load]);
+
+  function refresh() {
+    load(search);
+    onChanged();
+  }
+
+  async function handleAdd(e: FormEvent) {
+    e.preventDefault();
+    if (!newCity.trim() || !newAddress.trim()) return;
+    setAdding(true);
+    setAddError(null);
+    try {
+      await api.post("/contacts/social-fund-offices", { city: newCity.trim(), address: newAddress.trim() });
+      setNewCity("");
+      setNewAddress("");
+      refresh();
+    } catch (err) {
+      setAddError(err instanceof ApiError ? err.message : "Не удалось добавить");
+    } finally {
+      setAdding(false);
+    }
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-card modal-card-wide call-card" onClick={(e) => e.stopPropagation()}>
+        <button type="button" className="call-card-close" onClick={onClose} aria-label="Закрыть">
+          <IconX width={18} height={18} />
+        </button>
+        <h2>Адреса СФР по городам</h2>
+        <p className="muted">
+          Город → адрес местного соц. фонда для карточки звонка. Почтовый индекс в адресе не нужен —
+          он убирается автоматически.
+        </p>
+
+        <form className="inline-form" onSubmit={handleAdd}>
+          <input placeholder="Город" value={newCity} onChange={(e) => setNewCity(e.target.value)} />
+          <input placeholder="Адрес СФР" value={newAddress} onChange={(e) => setNewAddress(e.target.value)} />
+          <button type="submit" className="btn-save" disabled={adding}>
+            <IconCheck width={15} height={15} />
+            {adding ? "..." : "Добавить"}
+          </button>
+        </form>
+        {addError && <p className="error-text">{addError}</p>}
+
+        <input
+          className="sfr-search"
+          placeholder="Поиск по городу или адресу…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+
+        {loading && <p className="muted">Загрузка…</p>}
+        {error && <p className="error-text">{error}</p>}
+        {!loading && !error && offices.length === 0 && <p className="empty-state">Ничего не найдено.</p>}
+        {!loading && !error && offices.length > 0 && (
+          <div className="table-scroll sfr-table-scroll">
+            <table className="appeals-table table-auto">
+              <thead>
+                <tr>
+                  <th>Город</th>
+                  <th>Адрес</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {offices.map((o) => (
+                  <SfrRow key={o.id} office={o} onChanged={refresh} />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {hasMore && (
+          <p className="muted">Показаны первые 100 — уточните поиск, чтобы найти остальные.</p>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -174,29 +362,9 @@ function SocialFundOfficesSection({ count, loading, error, onChanged }: {
   error: string | null;
   onChanged: () => void;
 }) {
-  const [city, setCity] = useState("");
-  const [address, setAddress] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
-
-  async function handleAdd(e: FormEvent) {
-    e.preventDefault();
-    if (!city.trim() || !address.trim()) return;
-    setSubmitting(true);
-    setFormError(null);
-    try {
-      await api.post("/contacts/social-fund-offices", { city: city.trim(), address: address.trim() });
-      setCity("");
-      setAddress("");
-      onChanged();
-    } catch (err) {
-      setFormError(err instanceof ApiError ? err.message : "Не удалось добавить");
-    } finally {
-      setSubmitting(false);
-    }
-  }
+  const [editing, setEditing] = useState(false);
 
   async function handleDownload() {
     setDownloading(true);
@@ -219,25 +387,78 @@ function SocialFundOfficesSection({ count, loading, error, onChanged }: {
       </p>
       {loading && <p className="muted">Загрузка...</p>}
       {error && <p className="error-text">{error}</p>}
-      {!loading && !error && (
-        <p className="muted">
-          Всего в справочнике: {count ?? 0}.{" "}
-          <button type="button" className="link-button" onClick={handleDownload} disabled={downloading}>
-            {downloading ? "Скачивание..." : "Скачать таблицу (CSV)"}
-          </button>
-        </p>
-      )}
-      {downloadError && <p className="error-text">{downloadError}</p>}
-      <form className="inline-form" onSubmit={handleAdd}>
-        <input placeholder="Город" value={city} onChange={(e) => setCity(e.target.value)} />
-        <input placeholder="Адрес СФР" value={address} onChange={(e) => setAddress(e.target.value)} />
-        <button type="submit" disabled={submitting}>
-          Добавить
+      {!loading && !error && <p className="muted">Всего в справочнике: {count ?? 0}.</p>}
+      <div className="inline-form">
+        <button type="button" onClick={() => setEditing(true)}>
+          Редактировать таблицу
         </button>
-      </form>
-      {formError && <p className="error-text">{formError}</p>}
+        <button type="button" className="secondary" onClick={handleDownload} disabled={downloading}>
+          {downloading ? "Скачивание..." : "Скачать CSV"}
+        </button>
+      </div>
+      {downloadError && <p className="error-text">{downloadError}</p>}
+      {editing && <SfrEditorModal onClose={() => setEditing(false)} onChanged={onChanged} />}
     </section>
   );
+}
+
+// ---------------------------------------------------------------------------
+// Queue — grouped by organization ИНН, collapsible, sorted by deposit
+// ---------------------------------------------------------------------------
+
+const QUEUE_CAP = 3000;
+
+interface QueueRow {
+  contact: Contact;
+  dep: number | null;
+  depRaw: string | null;
+}
+interface InnGroup {
+  key: string;
+  inn: string | null;
+  rows: QueueRow[];
+  depSum: number;
+}
+
+function parseDeposit(raw: string | null): number | null {
+  if (!raw) return null;
+  const cleaned = raw.replace(/[^\d.,-]/g, "").replace(",", ".");
+  const n = parseFloat(cleaned);
+  return Number.isFinite(n) ? n : null;
+}
+
+// Group the whole queue by organization ИНН, biggest deposits first inside
+// each group, groups ordered by ИНН (contacts without one sink to a "Без ИНН"
+// group at the end).
+function buildInnGroups(queue: Contact[]): InnGroup[] {
+  const map = new Map<string, InnGroup>();
+  for (const c of queue) {
+    const info = parseExtraInfo(c.extraInfo);
+    const dep = parseDeposit(info.depositTotal);
+    const key = info.inn ?? "__none__";
+    let g = map.get(key);
+    if (!g) {
+      g = { key, inn: info.inn, rows: [], depSum: 0 };
+      map.set(key, g);
+    }
+    g.rows.push({ contact: c, dep, depRaw: info.depositTotal });
+    if (dep !== null) g.depSum += dep;
+  }
+  const groups = [...map.values()];
+  for (const g of groups) {
+    g.rows.sort((a, b) => (b.dep ?? -Infinity) - (a.dep ?? -Infinity));
+  }
+  groups.sort((a, b) => {
+    if (a.inn === null) return 1;
+    if (b.inn === null) return -1;
+    return a.inn.localeCompare(b.inn, undefined, { numeric: true });
+  });
+  return groups;
+}
+
+function formatDep(dep: number | null, raw: string | null): string {
+  if (dep !== null) return dep.toLocaleString("ru-RU");
+  return raw || "—";
 }
 
 function QueueSection({ queue, loading, error, onClaimed }: {
@@ -248,6 +469,18 @@ function QueueSection({ queue, loading, error, onClaimed }: {
 }) {
   const [claimingId, setClaimingId] = useState<number | null>(null);
   const [claimError, setClaimError] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  const groups = useMemo(() => buildInnGroups(queue), [queue]);
+
+  function toggle(key: string) {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
 
   async function handleClaim(id: number) {
     setClaimingId(id);
@@ -264,140 +497,73 @@ function QueueSection({ queue, loading, error, onClaimed }: {
 
   return (
     <section className="stats-section">
-      <h2>Очередь</h2>
+      <div className="queue-head">
+        <h2>Очередь</h2>
+        {!loading && !error && queue.length > 0 && (
+          <span className="muted">
+            {queue.length} контактов · {groups.length} орг.
+            {queue.length >= QUEUE_CAP ? ` (показаны первые ${QUEUE_CAP})` : ""}
+          </span>
+        )}
+      </div>
       {loading && <p>Загрузка...</p>}
       {error && <p className="error-text">{error}</p>}
       {claimError && <p className="error-text">{claimError}</p>}
       {!loading && !error && queue.length === 0 && <p className="empty-state">Очередь пуста.</p>}
-      {!loading && !error && queue.length > 0 && (
-        <div className="table-scroll">
-          <table className="appeals-table table-auto contacts-table">
-            <thead>
-              <tr>
-                <th>Телефон</th>
-                <th>Имя</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {queue.map((c) => (
-                <tr key={c.id}>
-                  <td>{c.phone}</td>
-                  <td>{c.fullName || "—"}</td>
-                  <td>
-                    <button onClick={() => handleClaim(c.id)} disabled={claimingId === c.id}>
-                      {claimingId === c.id ? "..." : "Взять в работу"}
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {!loading && !error && groups.length > 0 && (
+        <div className="inn-groups">
+          {groups.map((g) => {
+            const isOpen = expanded.has(g.key);
+            return (
+              <div className={`inn-group${isOpen ? " open" : ""}`} key={g.key}>
+                <button type="button" className="inn-group-head" onClick={() => toggle(g.key)}>
+                  <span className="inn-caret">{isOpen ? "▾" : "▸"}</span>
+                  <span className="inn-label">{g.inn ? `ИНН ${g.inn}` : "Без ИНН"}</span>
+                  <span className="inn-meta muted">
+                    {g.rows.length} чел.
+                    {g.depSum > 0 ? ` · деп. ${g.depSum.toLocaleString("ru-RU")}` : ""}
+                  </span>
+                </button>
+                {isOpen && (
+                  <div className="table-scroll">
+                    <table className="appeals-table table-auto contacts-table">
+                      <thead>
+                        <tr>
+                          <th>Телефон</th>
+                          <th>Имя</th>
+                          <th className="col-num">Деп.</th>
+                          <th></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {g.rows.map(({ contact: c, dep, depRaw }) => (
+                          <tr key={c.id}>
+                            <td>{c.phone}</td>
+                            <td>{c.fullName || "—"}</td>
+                            <td className="col-num">{formatDep(dep, depRaw)}</td>
+                            <td>
+                              <button onClick={() => handleClaim(c.id)} disabled={claimingId === c.id}>
+                                {claimingId === c.id ? "..." : "Взять в работу"}
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </section>
   );
 }
 
-function MineRow({ contact, onChanged }: { contact: Contact; onChanged: () => void }) {
-  const [note, setNote] = useState(contact.resultNote ?? "");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function handleOutcome(status: ContactStatus) {
-    setBusy(true);
-    setError(null);
-    try {
-      await api.patch(`/contacts/${contact.id}/outcome`, { status, resultNote: note || null });
-      onChanged();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Не удалось сохранить результат");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function handleConvert() {
-    setBusy(true);
-    setError(null);
-    try {
-      await api.post(`/contacts/${contact.id}/convert`);
-      onChanged();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Не удалось создать трубку");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <tr>
-      <td>{contact.phone}</td>
-      <td>{contact.fullName || "—"}</td>
-      <td>
-        <input
-          placeholder="Заметка"
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          disabled={busy}
-        />
-      </td>
-      <td className="contact-actions">
-        <button onClick={handleConvert} disabled={busy}>
-          Дозвон
-        </button>
-        {OUTCOME_STATUSES.map((o) => (
-          <button
-            key={o.status}
-            className="secondary"
-            onClick={() => handleOutcome(o.status)}
-            disabled={busy}
-          >
-            {o.label}
-          </button>
-        ))}
-        {error && <span className="error-text">{error}</span>}
-      </td>
-    </tr>
-  );
-}
-
-function MineSection({ mine, loading, error, onChanged }: {
-  mine: Contact[];
-  loading: boolean;
-  error: string | null;
-  onChanged: () => void;
-}) {
-  return (
-    <section className="stats-section">
-      <h2>Мои контакты</h2>
-      {loading && <p>Загрузка...</p>}
-      {error && <p className="error-text">{error}</p>}
-      {!loading && !error && mine.length === 0 && (
-        <p className="empty-state">У вас нет контактов в работе — возьмите из очереди выше.</p>
-      )}
-      {!loading && !error && mine.length > 0 && (
-        <div className="table-scroll">
-          <table className="appeals-table table-auto contacts-table">
-            <thead>
-              <tr>
-                <th>Телефон</th>
-                <th>Имя</th>
-                <th>Заметка</th>
-                <th>Результат</th>
-              </tr>
-            </thead>
-            <tbody>
-              {mine.map((c) => (
-                <MineRow key={c.id} contact={c} onChanged={onChanged} />
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </section>
-  );
-}
+// ---------------------------------------------------------------------------
+// Page
+// ---------------------------------------------------------------------------
 
 export function ContactsPage() {
   const { user } = useAuth();
@@ -416,10 +582,6 @@ export function ContactsPage() {
   const [queue, setQueue] = useState<Contact[]>([]);
   const [queueLoading, setQueueLoading] = useState(true);
   const [queueError, setQueueError] = useState<string | null>(null);
-
-  const [mine, setMine] = useState<Contact[]>([]);
-  const [mineLoading, setMineLoading] = useState(true);
-  const [mineError, setMineError] = useState<string | null>(null);
 
   const [officesCount, setOfficesCount] = useState<number | null>(null);
   const [officesLoading, setOfficesLoading] = useState(isAdmin);
@@ -446,16 +608,6 @@ export function ContactsPage() {
       .finally(() => setQueueLoading(false));
   }
 
-  function loadMine() {
-    setMineLoading(true);
-    setMineError(null);
-    api
-      .get<{ contacts: Contact[] }>("/contacts/mine")
-      .then((res) => setMine(res.contacts))
-      .catch((err) => setMineError(err instanceof ApiError ? err.message : "Не удалось загрузить"))
-      .finally(() => setMineLoading(false));
-  }
-
   function loadOffices() {
     if (!isAdmin) return;
     setOfficesLoading(true);
@@ -470,7 +622,6 @@ export function ContactsPage() {
   useEffect(() => {
     loadBatches();
     loadQueue();
-    loadMine();
     loadOffices();
     api
       .get<{ branches: Branch[] }>("/branches/mine")
@@ -489,7 +640,6 @@ export function ContactsPage() {
 
   function handleClaimedOrChanged() {
     loadQueue();
-    loadMine();
     if (isAdmin) loadBatches();
   }
 
@@ -503,7 +653,7 @@ export function ContactsPage() {
             <h1>Прозвон</h1>
             <BranchSwitcher />
           </div>
-          <p className="muted">Загруженная база клиентов и очередь на обзвон.</p>
+          <p className="muted">Загруженные базы клиентов и очередь на обзвон.</p>
         </div>
         <div className="header-actions">
           <Link to="/" className="icon-link" title="К трубкам" aria-label="К трубкам">
@@ -541,7 +691,6 @@ export function ContactsPage() {
           )}
 
           <QueueSection queue={queue} loading={queueLoading} error={queueError} onClaimed={handleClaimedOrChanged} />
-          <MineSection mine={mine} loading={mineLoading} error={mineError} onChanged={handleClaimedOrChanged} />
         </>
       )}
     </div>

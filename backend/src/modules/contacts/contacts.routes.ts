@@ -26,6 +26,7 @@ import {
   exportSocialFundOfficesHandler,
   listSocialFundOfficesHandler,
   lookupSocialFundOfficeHandler,
+  searchSocialFundOfficesHandler,
   updateSocialFundOfficeHandler,
 } from "./socialFundOffices.controller";
 
@@ -125,6 +126,11 @@ contactsRouter.get(
   "/social-fund-offices/count",
   requireRole(Role.ADMIN, Role.SUPERADMIN),
   asyncHandler(countSocialFundOfficesHandler)
+);
+contactsRouter.get(
+  "/social-fund-offices/search",
+  requireRole(Role.ADMIN, Role.SUPERADMIN),
+  asyncHandler(searchSocialFundOfficesHandler)
 );
 contactsRouter.get(
   "/social-fund-offices/export",
