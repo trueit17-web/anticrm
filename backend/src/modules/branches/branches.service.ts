@@ -47,6 +47,41 @@ export async function updateBranch(
   return branch ? toPublicBranch(branch) : null;
 }
 
+export type DeleteBranchResult =
+  | { ok: true }
+  | { ok: false; error: "not_found" }
+  | { ok: false; error: "not_empty"; blockers: { users: number; appeals: number; contacts: number } };
+
+// Deleting a branch is only allowed when it holds no real data — the FK
+// constraints on User/Appeal/Contact are Restrict, and cascade-wiping people
+// and trubki behind one button click would be far too easy to do by accident.
+// So we refuse if any users (home branch), appeals (incl. trashed), or
+// Прозвон contacts/bases exist, and tell the SUPERADMIN what to clear first.
+// Only the config/join rows that are meaningless without the branch
+// (select-options, branch-access grants) are removed automatically.
+export async function deleteBranch(id: number): Promise<DeleteBranchResult> {
+  return prisma.$transaction(async (tx) => {
+    const branch = await tx.branch.findUnique({ where: { id }, select: { id: true } });
+    if (!branch) return { ok: false, error: "not_found" };
+
+    const [users, appeals, contacts, contactBatches] = await Promise.all([
+      tx.user.count({ where: { branchId: id } }),
+      tx.appeal.count({ where: { branchId: id } }),
+      tx.contact.count({ where: { branchId: id } }),
+      tx.contactBatch.count({ where: { branchId: id } }),
+    ]);
+    const contactsTotal = contacts + contactBatches;
+    if (users > 0 || appeals > 0 || contactsTotal > 0) {
+      return { ok: false, error: "not_empty", blockers: { users, appeals, contacts: contactsTotal } };
+    }
+
+    await tx.selectOption.deleteMany({ where: { branchId: id } });
+    await tx.userBranchAccess.deleteMany({ where: { branchId: id } });
+    await tx.branch.delete({ where: { id } });
+    return { ok: true };
+  });
+}
+
 // Gate checked by every /contacts route — a branch with the module off
 // 403s the whole thing, not just a hidden nav icon.
 export async function isContactsEnabled(branchId: number): Promise<boolean> {
