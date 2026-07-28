@@ -223,17 +223,19 @@ export function BranchesManager() {
                     >
                       <IconEdit width={16} height={16} />
                     </button>
-                    <button
-                      className="delete-x"
-                      title="Удалить филиал"
-                      aria-label="Удалить филиал"
-                      onClick={() => {
-                        setConfirmingDeleteId(b.id);
-                        setDeleteError(null);
-                      }}
-                    >
-                      <IconTrash width={14} height={14} />
-                    </button>
+                    {b.deletable && (
+                      <button
+                        className="delete-x"
+                        title="Удалить филиал"
+                        aria-label="Удалить филиал"
+                        onClick={() => {
+                          setConfirmingDeleteId(b.id);
+                          setDeleteError(null);
+                        }}
+                      >
+                        <IconTrash width={14} height={14} />
+                      </button>
+                    )}
                   </span>
                 )}
               </li>

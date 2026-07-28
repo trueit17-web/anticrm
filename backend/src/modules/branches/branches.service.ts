@@ -20,14 +20,33 @@ function toPublicBranch(branch: PublicBranch & { dadataApiKey: string | null }) 
   return { ...rest, hasDadataApiKey: !!dadataApiKey?.trim() };
 }
 
+// Branch ids that hold real data — home users, appeals (incl. trashed), or
+// Прозвон contacts/bases. Such branches can't be deleted (see deleteBranch),
+// so the Филиалы page hides the delete button for them (deletable=false).
+async function branchIdsWithData(): Promise<Set<number>> {
+  const [users, appeals, contacts, batches] = await Promise.all([
+    prisma.user.findMany({ where: { branchId: { not: null } }, distinct: ["branchId"], select: { branchId: true } }),
+    prisma.appeal.findMany({ distinct: ["branchId"], select: { branchId: true } }),
+    prisma.contact.findMany({ distinct: ["branchId"], select: { branchId: true } }),
+    prisma.contactBatch.findMany({ distinct: ["branchId"], select: { branchId: true } }),
+  ]);
+  const set = new Set<number>();
+  for (const arr of [users, appeals, contacts, batches]) {
+    for (const row of arr) if (row.branchId != null) set.add(row.branchId);
+  }
+  return set;
+}
+
 // Used by the SUPERADMIN-only Филиалы admin page — needs to show whether a
-// branch-level key is set, but never the key itself.
+// branch-level key is set (never the key itself) and whether the branch is
+// empty enough to be deleted.
 export async function listBranches() {
   const branches = await prisma.branch.findMany({
     select: { ...branchPublicSelect, dadataApiKey: true },
     orderBy: { name: "asc" },
   });
-  return branches.map(toPublicBranch);
+  const nonEmpty = await branchIdsWithData();
+  return branches.map((b) => ({ ...toPublicBranch(b), deletable: !nonEmpty.has(b.id) }));
 }
 
 export function createBranch(name: string) {
