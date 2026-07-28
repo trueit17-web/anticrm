@@ -10,6 +10,13 @@ export interface ChangelogEntry {
 // separately, so there's only one place to update.
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.19.2",
+    date: "2026-07-28",
+    changes: [
+      "Админка → Филиалы: филиалы, которые нельзя удалить (в которых есть данные), теперь скрыты из списка целиком — показываются только пустые филиалы",
+    ],
+  },
+  {
     version: "1.19.1",
     date: "2026-07-28",
     changes: [

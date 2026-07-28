@@ -171,7 +171,9 @@ export function BranchesManager() {
 
       {!loading && !error && (
         <ul className="admin-option-list">
-          {branches.map((b) =>
+          {branches
+            .filter((b) => b.deletable)
+            .map((b) =>
             editingId === b.id ? (
               <BranchRow
                 key={b.id}
@@ -242,6 +244,13 @@ export function BranchesManager() {
             )
           )}
         </ul>
+      )}
+
+      {!loading && !error && branches.some((b) => !b.deletable) && (
+        <p className="muted">
+          Филиалы с данными (пользователи, трубки или контакты «Прозвона») здесь не показаны —
+          удалить их нельзя.
+        </p>
       )}
     </div>
   );
