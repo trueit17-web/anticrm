@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { api, ApiError } from "../api/client";
 import { Branch } from "../types";
-import { IconCheck, IconEdit, IconTrash, IconX } from "./icons";
+import { IconCheck, IconEdit, IconX } from "./icons";
 
 function BranchRow({
   branch,
@@ -89,10 +89,6 @@ export function BranchesManager() {
   const [creating, setCreating] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
-  const [confirmingDeleteId, setConfirmingDeleteId] = useState<number | null>(null);
-  const [deleting, setDeleting] = useState(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
-
   function load() {
     setLoading(true);
     setError(null);
@@ -114,20 +110,6 @@ export function BranchesManager() {
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Не удалось сохранить");
       load();
-    }
-  }
-
-  async function handleDelete(id: number) {
-    setDeleting(true);
-    setDeleteError(null);
-    try {
-      await api.delete(`/branches/${id}`);
-      setConfirmingDeleteId(null);
-      load();
-    } catch (err) {
-      setDeleteError(err instanceof ApiError ? err.message : "Не удалось удалить филиал");
-    } finally {
-      setDeleting(false);
     }
   }
 
@@ -171,9 +153,7 @@ export function BranchesManager() {
 
       {!loading && !error && (
         <ul className="admin-option-list">
-          {branches
-            .filter((b) => b.deletable)
-            .map((b) =>
+          {branches.map((b) =>
             editingId === b.id ? (
               <BranchRow
                 key={b.id}
@@ -186,71 +166,29 @@ export function BranchesManager() {
               />
             ) : (
               <li key={b.id}>
-                <span>
-                  {b.name}
-                  {confirmingDeleteId === b.id && deleteError && <p className="error-text">{deleteError}</p>}
+                <span>{b.name}</span>
+                <span className="admin-option-actions">
+                  <label className="toggle-inline" title="Загрузка баз и очередь звонков для этого филиала">
+                    <input
+                      type="checkbox"
+                      checked={b.contactsEnabled}
+                      onChange={() => handleToggleContacts(b)}
+                    />
+                    Прозвон
+                  </label>
+                  <button
+                    className="icon-btn"
+                    title="Редактировать"
+                    aria-label="Редактировать"
+                    onClick={() => setEditingId(b.id)}
+                  >
+                    <IconEdit width={16} height={16} />
+                  </button>
                 </span>
-                {confirmingDeleteId === b.id ? (
-                  <span className="admin-option-actions">
-                    <span className="muted">Удалить филиал «{b.name}»?</span>
-                    <button className="secondary" disabled={deleting} onClick={() => handleDelete(b.id)}>
-                      {deleting ? "Удаление..." : "Да, удалить"}
-                    </button>
-                    <button
-                      className="secondary"
-                      disabled={deleting}
-                      onClick={() => {
-                        setConfirmingDeleteId(null);
-                        setDeleteError(null);
-                      }}
-                    >
-                      Отмена
-                    </button>
-                  </span>
-                ) : (
-                  <span className="admin-option-actions">
-                    <label className="toggle-inline" title="Загрузка баз и очередь звонков для этого филиала">
-                      <input
-                        type="checkbox"
-                        checked={b.contactsEnabled}
-                        onChange={() => handleToggleContacts(b)}
-                      />
-                      Прозвон
-                    </label>
-                    <button
-                      className="icon-btn"
-                      title="Редактировать"
-                      aria-label="Редактировать"
-                      onClick={() => setEditingId(b.id)}
-                    >
-                      <IconEdit width={16} height={16} />
-                    </button>
-                    {b.deletable && (
-                      <button
-                        className="delete-x"
-                        title="Удалить филиал"
-                        aria-label="Удалить филиал"
-                        onClick={() => {
-                          setConfirmingDeleteId(b.id);
-                          setDeleteError(null);
-                        }}
-                      >
-                        <IconTrash width={14} height={14} />
-                      </button>
-                    )}
-                  </span>
-                )}
               </li>
             )
           )}
         </ul>
-      )}
-
-      {!loading && !error && branches.some((b) => !b.deletable) && (
-        <p className="muted">
-          Филиалы с данными (пользователи, трубки или контакты «Прозвона») здесь не показаны —
-          удалить их нельзя.
-        </p>
       )}
     </div>
   );

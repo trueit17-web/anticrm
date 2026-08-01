@@ -50,10 +50,6 @@ export interface Branch {
   // The actual key is never sent to the client (write-only) — only whether
   // one is currently set.
   hasDadataApiKey: boolean;
-  // Only present in the SUPERADMIN Филиалы listing: true when the branch has
-  // no users/appeals/Прозвон data and can therefore be deleted. The delete
-  // button is hidden when this is false.
-  deletable?: boolean;
 }
 
 export interface Appeal {

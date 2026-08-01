@@ -4,7 +4,6 @@ import { requireAuth, requireRole } from "../../middleware/auth";
 import { asyncHandler } from "../../utils/asyncHandler";
 import {
   createBranchHandler,
-  deleteBranchHandler,
   listBranchesHandler,
   listMyBranchesHandler,
   updateBranchHandler,
@@ -21,4 +20,3 @@ branchesRouter.get("/mine", asyncHandler(listMyBranchesHandler));
 branchesRouter.get("/", requireRole(Role.SUPERADMIN), asyncHandler(listBranchesHandler));
 branchesRouter.post("/", requireRole(Role.SUPERADMIN), asyncHandler(createBranchHandler));
 branchesRouter.patch("/:id", requireRole(Role.SUPERADMIN), asyncHandler(updateBranchHandler));
-branchesRouter.delete("/:id", requireRole(Role.SUPERADMIN), asyncHandler(deleteBranchHandler));
