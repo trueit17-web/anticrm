@@ -10,6 +10,13 @@ export interface ChangelogEntry {
 // separately, so there's only one place to update.
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.18.1",
+    date: "2026-07-28",
+    changes: [
+      "Поле «Деп.»: суммы с разделителями (например 2,322,233 или 2 322 233) больше не искажаются — показываются как «2 322 233 ₽»",
+    ],
+  },
+  {
     version: "1.18.0",
     date: "2026-07-24",
     changes: [
