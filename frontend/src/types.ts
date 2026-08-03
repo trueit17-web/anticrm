@@ -47,9 +47,30 @@ export interface Branch {
   name: string;
   createdAt: string;
   contactsEnabled: boolean;
+  // "Считать кош" module toggle (SUPERADMIN, Филиалы page).
+  walletCountEnabled: boolean;
   // The actual key is never sent to the client (write-only) — only whether
   // one is currently set.
   hasDadataApiKey: boolean;
+}
+
+export interface WalletRecipient {
+  id: number;
+  address: string;
+  name: string;
+}
+
+export interface WalletRecipientStat {
+  name: string;
+  amount: number;
+  count: number;
+}
+
+export interface WalletStats {
+  address: string | null;
+  total: number;
+  count: number;
+  byRecipient: WalletRecipientStat[];
 }
 
 export interface Appeal {

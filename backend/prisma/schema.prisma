@@ -54,12 +54,35 @@ model Branch {
   // DADATA_API_KEY env var when unset.
   dadataApiKey    String?
 
+  // SUPERADMIN-controlled toggle (Филиалы page) for the "Считать кош"
+  // module — reads outgoing USDT TRC-20 transfers of walletAddress from
+  // Tronscan and shows them, grouped by recipient, in the statistics.
+  walletCountEnabled Boolean @default(false)
+  // The TRON (T...) address whose outgoing USDT transfers are counted.
+  walletAddress      String?
+
   users         User[]
   appeals       Appeal[]
   selectOptions SelectOption[]
   userAccess    UserBranchAccess[]
   contactBatches ContactBatch[]
   contacts       Contact[]
+  walletRecipients WalletRecipient[]
+}
+
+// Maps a destination TRON address to a human name shown in the "Считать кош"
+// statistics block. Outgoing transfers to an address with no mapping are
+// bucketed under "Другое". Managed per branch in Админка.
+model WalletRecipient {
+  id        Int      @id @default(autoincrement())
+  branchId  Int
+  branch    Branch   @relation(fields: [branchId], references: [id])
+  address   String
+  name      String
+  createdAt DateTime @default(now())
+
+  @@unique([branchId, address])
+  @@index([branchId])
 }
 
 // Extra branches a user can switch into beyond their home branch (User.branchId).

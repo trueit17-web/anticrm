@@ -10,6 +10,7 @@ const branchPublicSelect = {
   id: true,
   name: true,
   contactsEnabled: true,
+  walletCountEnabled: true,
   createdAt: true,
 } satisfies Prisma.BranchSelect;
 
@@ -36,7 +37,7 @@ export function createBranch(name: string) {
 
 export async function updateBranch(
   id: number,
-  data: { name?: string; contactsEnabled?: boolean; dadataApiKey?: string | null }
+  data: { name?: string; contactsEnabled?: boolean; walletCountEnabled?: boolean; dadataApiKey?: string | null }
 ) {
   const result = await prisma.branch.updateMany({ where: { id }, data });
   if (result.count === 0) return null;

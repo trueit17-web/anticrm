@@ -29,6 +29,7 @@ export async function createBranchHandler(req: Request, res: Response) {
 const updateSchema = z.object({
   name: z.string().min(1).optional(),
   contactsEnabled: z.boolean().optional(),
+  walletCountEnabled: z.boolean().optional(),
   dadataApiKey: z.string().nullable().optional(),
 });
 

@@ -11,7 +11,9 @@ import {
   StatBucket,
   SummaryStats,
   TfTimeBucket,
+  WalletStats,
 } from "../types";
+import { useAuth } from "../auth/AuthContext";
 import { detectMobileOperator } from "../lib/mobileOperator";
 import { formatMoney } from "../lib/money";
 import { BranchSwitcher } from "../components/BranchSwitcher";
@@ -443,6 +445,72 @@ function ManagerCallTable({ rows }: { rows: ContactManagerStat[] }) {
   );
 }
 
+function formatUsdt(amount: number): string {
+  return `${amount.toLocaleString("ru-RU", { maximumFractionDigits: 2 })} USDT`;
+}
+
+function shortAddress(addr: string): string {
+  return addr.length > 14 ? `${addr.slice(0, 6)}…${addr.slice(-6)}` : addr;
+}
+
+function WalletStatsSection({ stats }: { stats: WalletStats }) {
+  return (
+    <section className="stats-section">
+      <p className="stats-eyebrow">Считать кош</p>
+
+      {!stats.address ? (
+        <p className="empty-state">
+          Адрес кошелька не указан — задайте его в Админке (вкладка «Считать кош»).
+        </p>
+      ) : (
+        <>
+          <div className="kpi-grid kpi-grid--calls">
+            <Kpi value={formatUsdt(stats.total)} label="исходящих всего" sub="за период" accent="success" />
+            <Kpi value={stats.count} label="транзакций" sub="исходящих USDT" accent="muted" />
+            <Kpi value={stats.byRecipient.length} label="получателей" sub="в периоде" accent="gold" />
+          </div>
+          <p className="muted" style={{ marginTop: 6 }}>
+            Кошелёк: <span title={stats.address}>{shortAddress(stats.address)}</span> · исходящие USDT
+            (TRC-20) с Tronscan
+          </p>
+
+          <div className="stats-panels stats-panels--calls">
+            <div className="stats-panel">
+              <div className="stats-subtable">
+                <h3>По получателям</h3>
+                {stats.byRecipient.length === 0 ? (
+                  <p className="empty-state">За выбранный период исходящих переводов нет.</p>
+                ) : (
+                  <div className="table-scroll">
+                    <table className="appeals-table stats-manager-table">
+                      <thead>
+                        <tr>
+                          <th>Получатель</th>
+                          <th className="col-num">Сумма</th>
+                          <th className="col-num">Транз.</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {stats.byRecipient.map((r) => (
+                          <tr key={r.name}>
+                            <td>{r.name}</td>
+                            <td className="col-num stat-total">{formatUsdt(r.amount)}</td>
+                            <td className="col-num">{r.count}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+
 function CallStatsSection({ stats }: { stats: ContactRangeStats }) {
   return (
     <section className="stats-section">
@@ -477,6 +545,9 @@ function CallStatsSection({ stats }: { stats: ContactRangeStats }) {
 }
 
 export function StatsPage() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "ADMIN" || user?.role === "SUPERADMIN";
+
   const [period, setPeriod] = useState<Period>("today");
   const [customFrom, setCustomFrom] = useState(todayInputValue());
   const [customTo, setCustomTo] = useState(todayInputValue());
@@ -490,6 +561,9 @@ export function StatsPage() {
   // Прозвон stats live behind the per-branch module toggle: a 403 (module off)
   // or any other failure just hides the block rather than erroring the page.
   const [callStats, setCallStats] = useState<ContactRangeStats | null>(null);
+  // "Считать кош" — admin-only; hidden (null) when the module is off (403),
+  // Tronscan is unreachable, or the user isn't an admin.
+  const [walletStats, setWalletStats] = useState<WalletStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -526,6 +600,17 @@ export function StatsPage() {
       .get<ContactRangeStats>(`/contacts/stats?from=${from}&to=${to}`)
       .then(setCallStats)
       .catch(() => setCallStats(null));
+
+    // "Считать кош" — admin only. Same range. Hidden on 403 (module off),
+    // Tronscan error, or non-admin.
+    if (isAdmin) {
+      api
+        .get<WalletStats>(`/wallet/stats?from=${from}&to=${to}`)
+        .then(setWalletStats)
+        .catch(() => setWalletStats(null));
+    } else {
+      setWalletStats(null);
+    }
   }, [period, customFrom, customTo]);
 
   // Always-visible today/week/all-time counts — independent of whatever
@@ -655,6 +740,7 @@ export function StatsPage() {
           </section>
 
           {callStats && <CallStatsSection stats={callStats} />}
+          {walletStats && <WalletStatsSection stats={walletStats} />}
         </>
       )}
 

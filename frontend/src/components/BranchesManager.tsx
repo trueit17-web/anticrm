@@ -113,6 +113,18 @@ export function BranchesManager() {
     }
   }
 
+  async function handleToggleWallet(branch: Branch) {
+    setBranches((prev) =>
+      prev.map((b) => (b.id === branch.id ? { ...b, walletCountEnabled: !b.walletCountEnabled } : b))
+    );
+    try {
+      await api.patch(`/branches/${branch.id}`, { walletCountEnabled: !branch.walletCountEnabled });
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Не удалось сохранить");
+      load();
+    }
+  }
+
   async function handleCreate(e: FormEvent) {
     e.preventDefault();
     setFormError(null);
@@ -175,6 +187,14 @@ export function BranchesManager() {
                       onChange={() => handleToggleContacts(b)}
                     />
                     Прозвон
+                  </label>
+                  <label className="toggle-inline" title="Подсчёт исходящих USDT по кошельку (Tronscan)">
+                    <input
+                      type="checkbox"
+                      checked={b.walletCountEnabled}
+                      onChange={() => handleToggleWallet(b)}
+                    />
+                    Считать кош
                   </label>
                   <button
                     className="icon-btn"

@@ -7,6 +7,7 @@ import { BranchSwitcher } from "../components/BranchSwitcher";
 import { UsersManager } from "../components/UsersManager";
 import { BranchesManager } from "../components/BranchesManager";
 import { UpdatesManager } from "../components/UpdatesManager";
+import { WalletManager } from "../components/WalletManager";
 import { IconBack, IconTrash } from "../components/icons";
 import { formatRuDate, todayInputValue } from "../lib/dateUtils";
 
@@ -206,7 +207,7 @@ function AppealsDeleteSection({ date }: { date: string }) {
   );
 }
 
-type AdminTab = "appeals" | OptionField | "users" | "branches" | "updates";
+type AdminTab = "appeals" | OptionField | "users" | "branches" | "updates" | "wallet";
 
 export function AdminPage() {
   const { user } = useAuth();
@@ -290,6 +291,13 @@ export function AdminPage() {
             >
               Пользователи
             </button>
+            <button
+              type="button"
+              className={`admin-tab${activeTab === "wallet" ? " admin-tab-active" : ""}`}
+              onClick={() => setActiveTab("wallet")}
+            >
+              Считать кош
+            </button>
             {user?.role === "SUPERADMIN" && (
               <>
                 <button
@@ -321,6 +329,8 @@ export function AdminPage() {
           <BranchesManager />
         ) : activeTab === "updates" ? (
           <UpdatesManager />
+        ) : activeTab === "wallet" ? (
+          <WalletManager />
         ) : (
           <>
             {loading && <p>Загрузка...</p>}
