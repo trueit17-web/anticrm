@@ -60,6 +60,11 @@ model Branch {
   walletCountEnabled Boolean @default(false)
   // The TRON (T...) address whose outgoing USDT transfers are counted.
   walletAddress      String?
+  // Per-branch Tronscan API key (TRON-PRO-API-KEY) for the "Считать кош"
+  // lookups — lifts the anonymous rate limit. Secret: write-only, never
+  // returned to the client (only a "is it set" flag). Falls back to the
+  // TRONSCAN_API_KEY env var when unset.
+  tronscanApiKey     String?
 
   users         User[]
   appeals       Appeal[]
@@ -79,7 +84,26 @@ model WalletRecipient {
   branch    Branch   @relation(fields: [branchId], references: [id])
   address   String
   name      String
+  // A "hub" (сборный кош) — services with rotating one-time deposit addresses
+  // sweep everything to one collection wallet. When set, an outgoing transfer
+  // to any address that forwards (one hop) into this hub is attributed here,
+  // so the throwaway deposit addresses don't each need mapping.
+  isHub     Boolean  @default(false)
   createdAt DateTime @default(now())
+
+  @@unique([branchId, address])
+  @@index([branchId])
+}
+
+// Caches the one-hop next destinations of an address (where it forwards its
+// USDT) so the hub-tracing in "Считать кош" doesn't re-query Tronscan for the
+// same deposit address on every stats load. Refreshed past TTL (see service).
+model WalletHopCache {
+  id        Int      @id @default(autoincrement())
+  branchId  Int
+  address   String
+  nextHops  String // comma-separated destination addresses this address sent USDT to
+  checkedAt DateTime @default(now())
 
   @@unique([branchId, address])
   @@index([branchId])

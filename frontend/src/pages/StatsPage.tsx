@@ -511,57 +511,77 @@ function WalletStatsSection({ stats }: { stats: WalletStats }) {
         <p className="empty-state">
           Адрес кошелька не указан — задайте его в Админке (вкладка «Считать кош»).
         </p>
-      ) : stats.byRecipient.length === 0 ? (
-        <p className="empty-state">За выбранный период исходящих переводов известным получателям нет.</p>
       ) : (
         <>
-          <p className="muted wallet-caption">
-            Кошелёк: <span title={stats.address}>{shortAddress(stats.address)}</span> · исходящие USDT
-            (TRC-20) с Tronscan
-          </p>
-          <div className="wallet-panels">
-            <div className="stats-panel wallet-diagram">
-              <WalletDonut stats={stats} />
-            </div>
-            <div className="stats-panel wallet-table">
-              <div className="stats-subtable">
-                <h3>По получателям</h3>
-                <div className="table-scroll">
-                  <table className="appeals-table stats-manager-table">
-                    <thead>
-                      <tr>
-                        <th>Получатель</th>
-                        <th className="col-num">Сумма</th>
-                        <th className="col-num">Транз.</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {stats.byRecipient.map((r, i) => (
-                        <tr key={r.name}>
-                          <td>
-                            <i
-                              className="wallet-dot"
-                              style={{ background: WALLET_COLORS[i % WALLET_COLORS.length] }}
-                            />
-                            {r.name}
-                          </td>
-                          <td className="col-num stat-total">{formatUsdt(r.amount)}</td>
-                          <td className="col-num">{r.count}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                    <tfoot>
-                      <tr>
-                        <td>Итого</td>
-                        <td className="col-num stat-total">{formatUsdt(stats.total)}</td>
-                        <td className="col-num">{stats.count}</td>
-                      </tr>
-                    </tfoot>
-                  </table>
+          {stats.byRecipient.length === 0 ? (
+            <p className="empty-state">За выбранный период исходящих переводов известным получателям нет.</p>
+          ) : (
+            <>
+              <p className="muted wallet-caption">
+                Кошелёк: <span title={stats.address}>{shortAddress(stats.address)}</span> · исходящие
+                USDT (TRC-20) с Tronscan
+              </p>
+              <div className="wallet-panels">
+                <div className="stats-panel wallet-diagram">
+                  <WalletDonut stats={stats} />
+                </div>
+                <div className="stats-panel wallet-table">
+                  <div className="stats-subtable">
+                    <h3>По получателям</h3>
+                    <div className="table-scroll">
+                      <table className="appeals-table stats-manager-table">
+                        <thead>
+                          <tr>
+                            <th>Получатель</th>
+                            <th className="col-num">Сумма</th>
+                            <th className="col-num">Транз.</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {stats.byRecipient.map((r, i) => (
+                            <tr key={r.name}>
+                              <td>
+                                <i
+                                  className="wallet-dot"
+                                  style={{ background: WALLET_COLORS[i % WALLET_COLORS.length] }}
+                                />
+                                {r.name}
+                              </td>
+                              <td className="col-num stat-total">{formatUsdt(r.amount)}</td>
+                              <td className="col-num">{r.count}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot>
+                          <tr>
+                            <td>Итого</td>
+                            <td className="col-num stat-total">{formatUsdt(stats.total)}</td>
+                            <td className="col-num">{stats.count}</td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  </div>
                 </div>
               </div>
+            </>
+          )}
+
+          {stats.suggestedHubs.length > 0 && (
+            <div className="wallet-suggestions">
+              <p className="muted">
+                Возможные хабы (несколько неопознанных адресов пересылают сюда) — добавьте как «Хаб» в
+                Админке, чтобы учитывать автоматически:
+              </p>
+              <ul>
+                {stats.suggestedHubs.map((h) => (
+                  <li key={h.address}>
+                    <code>{h.address}</code> — {h.fromCount} адр.
+                  </li>
+                ))}
+              </ul>
             </div>
-          </div>
+          )}
         </>
       )}
     </section>

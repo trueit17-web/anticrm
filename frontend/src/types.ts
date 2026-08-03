@@ -58,6 +58,10 @@ export interface WalletRecipient {
   id: number;
   address: string;
   name: string;
+  // A "hub" (сборный кош) — payments to any address that sweeps into it are
+  // attributed to this recipient, so rotating deposit addresses aren't each
+  // mapped by hand.
+  isHub: boolean;
 }
 
 export interface WalletRecipientStat {
@@ -66,11 +70,17 @@ export interface WalletRecipientStat {
   count: number;
 }
 
+export interface WalletHubSuggestion {
+  address: string;
+  fromCount: number;
+}
+
 export interface WalletStats {
   address: string | null;
   total: number;
   count: number;
   byRecipient: WalletRecipientStat[];
+  suggestedHubs: WalletHubSuggestion[];
 }
 
 export interface Appeal {

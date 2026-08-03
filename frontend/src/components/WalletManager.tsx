@@ -6,23 +6,25 @@ import { IconCheck, IconTrash } from "./icons";
 interface WalletConfig {
   address: string | null;
   enabled: boolean;
+  hasTronscanApiKey: boolean;
   recipients: WalletRecipient[];
 }
 
 function RecipientRow({ recipient, onChanged }: { recipient: WalletRecipient; onChanged: () => void }) {
   const [address, setAddress] = useState(recipient.address);
   const [name, setName] = useState(recipient.name);
+  const [isHub, setIsHub] = useState(recipient.isHub);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmDel, setConfirmDel] = useState(false);
-  const dirty = address !== recipient.address || name !== recipient.name;
+  const dirty = address !== recipient.address || name !== recipient.name || isHub !== recipient.isHub;
 
   async function save() {
     if (!address.trim() || !name.trim()) return;
     setBusy(true);
     setError(null);
     try {
-      await api.patch(`/wallet/recipients/${recipient.id}`, { address: address.trim(), name: name.trim() });
+      await api.patch(`/wallet/recipients/${recipient.id}`, { address: address.trim(), name: name.trim(), isHub });
       onChanged();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Не удалось сохранить");
@@ -50,6 +52,9 @@ function RecipientRow({ recipient, onChanged }: { recipient: WalletRecipient; on
       </td>
       <td>
         <input value={name} onChange={(e) => setName(e.target.value)} disabled={busy} />
+      </td>
+      <td className="col-center">
+        <input type="checkbox" checked={isHub} onChange={(e) => setIsHub(e.target.checked)} disabled={busy} />
       </td>
       <td className="sfr-row-actions">
         <button className="btn-save" onClick={save} disabled={busy || !dirty} title="Сохранить" aria-label="Сохранить">
@@ -81,12 +86,15 @@ export function WalletManager() {
   const [error, setError] = useState<string | null>(null);
 
   const [address, setAddress] = useState("");
-  const [savingAddr, setSavingAddr] = useState(false);
-  const [addrError, setAddrError] = useState<string | null>(null);
-  const [addrSaved, setAddrSaved] = useState(false);
+  const [apiKey, setApiKey] = useState("");
+  const [clearApiKey, setClearApiKey] = useState(false);
+  const [savingConfig, setSavingConfig] = useState(false);
+  const [configError, setConfigError] = useState<string | null>(null);
+  const [configSaved, setConfigSaved] = useState(false);
 
   const [newAddress, setNewAddress] = useState("");
   const [newName, setNewName] = useState("");
+  const [newIsHub, setNewIsHub] = useState(false);
   const [adding, setAdding] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
 
@@ -105,20 +113,27 @@ export function WalletManager() {
 
   useEffect(load, []);
 
-  async function saveAddress(e: FormEvent) {
+  async function saveConfig(e: FormEvent) {
     e.preventDefault();
-    setSavingAddr(true);
-    setAddrError(null);
-    setAddrSaved(false);
+    setSavingConfig(true);
+    setConfigError(null);
+    setConfigSaved(false);
     try {
-      await api.patch("/wallet/config", { address: address.trim() || null });
-      setAddrSaved(true);
-      setTimeout(() => setAddrSaved(false), 2000);
+      const payload: { address: string | null; tronscanApiKey?: string | null } = {
+        address: address.trim() || null,
+      };
+      if (clearApiKey) payload.tronscanApiKey = null;
+      else if (apiKey.trim()) payload.tronscanApiKey = apiKey.trim();
+      await api.patch("/wallet/config", payload);
+      setApiKey("");
+      setClearApiKey(false);
+      setConfigSaved(true);
+      setTimeout(() => setConfigSaved(false), 2000);
       load();
     } catch (err) {
-      setAddrError(err instanceof ApiError ? err.message : "Не удалось сохранить");
+      setConfigError(err instanceof ApiError ? err.message : "Не удалось сохранить");
     } finally {
-      setSavingAddr(false);
+      setSavingConfig(false);
     }
   }
 
@@ -128,9 +143,10 @@ export function WalletManager() {
     setAdding(true);
     setAddError(null);
     try {
-      await api.post("/wallet/recipients", { address: newAddress.trim(), name: newName.trim() });
+      await api.post("/wallet/recipients", { address: newAddress.trim(), name: newName.trim(), isHub: newIsHub });
       setNewAddress("");
       setNewName("");
+      setNewIsHub(false);
       load();
     } catch (err) {
       setAddError(err instanceof ApiError ? err.message : "Не удалось добавить");
@@ -156,29 +172,60 @@ export function WalletManager() {
             (суперадмин), чтобы блок появился в статистике.
           </p>
         )}
-        <form className="inline-form" onSubmit={saveAddress}>
+        <form className="inline-form" onSubmit={saveConfig}>
           <input
             placeholder="Адрес кошелька (T…)"
             value={address}
             onChange={(e) => setAddress(e.target.value)}
             style={{ minWidth: 320 }}
           />
-          <button type="submit" className="btn-save" disabled={savingAddr}>
+          <input
+            placeholder={
+              config?.hasTronscanApiKey
+                ? "Ключ Tronscan задан — оставьте пустым, чтобы не менять"
+                : "Ключ Tronscan API (необязательно)"
+            }
+            value={apiKey}
+            onChange={(e) => setApiKey(e.target.value)}
+            disabled={clearApiKey}
+            style={{ minWidth: 320 }}
+          />
+          {config?.hasTronscanApiKey && (
+            <label className="toggle-inline" title="Убрать ключ — будет использован общий ключ сервера, если он есть">
+              <input type="checkbox" checked={clearApiKey} onChange={(e) => setClearApiKey(e.target.checked)} />
+              Удалить ключ
+            </label>
+          )}
+          <button type="submit" className="btn-save" disabled={savingConfig}>
             <IconCheck width={15} height={15} />
-            {savingAddr ? "..." : addrSaved ? "Сохранено" : "Сохранить"}
+            {savingConfig ? "..." : configSaved ? "Сохранено" : "Сохранить"}
           </button>
         </form>
-        {addrError && <p className="error-text">{addrError}</p>}
+        <p className="muted">
+          Ключ Tronscan снимает лимит запросов (нужен при активном кошельке и для хабов). Бесплатный —{" "}
+          <a href="https://tronscan.org" target="_blank" rel="noreferrer">
+            tronscan.org
+          </a>
+          , раздел API keys.
+        </p>
+        {configError && <p className="error-text">{configError}</p>}
       </section>
 
       <section className="admin-field-card fit-content">
         <h2>Получатели (адрес → имя)</h2>
         <p className="muted">
-          Кому идут исходящие переводы. Адрес назначения без сопоставления показывается как «Другое».
+          Кому идут исходящие переводы. «Хаб» — сборный кош сервиса: если сервис каждый раз даёт новый
+          адрес, но все они пересылают средства на один кош — отметьте его как хаб, и платежи на такие
+          адреса будут засчитаны автоматически (без добавления каждого). Переводы на неопознанные
+          адреса не учитываются.
         </p>
         <form className="inline-form" onSubmit={handleAdd}>
           <input placeholder="Адрес назначения (T…)" value={newAddress} onChange={(e) => setNewAddress(e.target.value)} />
           <input placeholder="Имя получателя" value={newName} onChange={(e) => setNewName(e.target.value)} />
+          <label className="toggle-inline" title="Сборный кош — платежи на адреса, пересылающие сюда, засчитываются этому получателю">
+            <input type="checkbox" checked={newIsHub} onChange={(e) => setNewIsHub(e.target.checked)} />
+            Хаб
+          </label>
           <button type="submit" className="btn-save" disabled={adding}>
             <IconCheck width={15} height={15} />
             {adding ? "..." : "Добавить"}
@@ -195,6 +242,7 @@ export function WalletManager() {
                 <tr>
                   <th>Адрес назначения</th>
                   <th>Имя получателя</th>
+                  <th className="col-center">Хаб</th>
                   <th></th>
                 </tr>
               </thead>

@@ -1,9 +1,10 @@
 // Reads USDT TRC-20 transfers for a TRON address from Tronscan's public API.
-// Used by the "Считать кош" module to total outgoing payments per recipient.
+// Used by the "Считать кош" module to total outgoing payments per recipient
+// and to trace where rotating deposit addresses sweep to (hub tracing).
 //
-// Tronscan is public; TRONSCAN_API_KEY (env) is sent as TRON-PRO-API-KEY when
-// set, to lift the anonymous rate limit. Amounts come back as integer base
-// units ("quant") — USDT has 6 decimals.
+// A per-branch Tronscan API key (or the TRONSCAN_API_KEY env fallback) is sent
+// as TRON-PRO-API-KEY to lift the anonymous rate limit. Amounts come back as
+// integer base units ("quant") — USDT has 6 decimals.
 const USDT_CONTRACT = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t";
 const BASE = "https://apilist.tronscanapi.com/api/token_trc20/transfers";
 const PAGE_SIZE = 50;
@@ -25,46 +26,49 @@ interface TronscanTransfer {
   tokenInfo?: { tokenDecimal?: number };
 }
 
-function headers(): Record<string, string> {
+function headers(apiKey?: string | null): Record<string, string> {
   const h: Record<string, string> = { Accept: "application/json" };
-  if (process.env.TRONSCAN_API_KEY) h["TRON-PRO-API-KEY"] = process.env.TRONSCAN_API_KEY;
+  const key = apiKey || process.env.TRONSCAN_API_KEY;
+  if (key) h["TRON-PRO-API-KEY"] = key;
   return h;
 }
 
+async function fetchPage(address: string, page: number, apiKey?: string | null): Promise<TronscanTransfer[]> {
+  const params = new URLSearchParams({
+    limit: String(PAGE_SIZE),
+    start: String(page * PAGE_SIZE),
+    contract_address: USDT_CONTRACT,
+    relatedAddress: address,
+  });
+  const res = await fetch(`${BASE}?${params.toString()}`, { headers: headers(apiKey), signal: AbortSignal.timeout(15000) });
+  if (!res.ok) throw new Error(`Tronscan ответил ${res.status}`);
+  const body = (await res.json()) as { token_transfers?: TronscanTransfer[] };
+  return body.token_transfers ?? [];
+}
+
 // All OUTGOING USDT transfers (from == address) in [fromMs, toMs). Tronscan
-// returns transfers newest-first; `total` is a capped/approximate value and
-// its time-range params aren't reliable, so we page from the newest and filter
-// by block_ts in JS, stopping as soon as we pass below `fromMs` (everything
-// after that is older). Bounded by MAX_PAGES.
-export async function fetchOutgoingUsdt(address: string, fromMs: number, toMs: number): Promise<UsdtTransfer[]> {
+// returns transfers newest-first, so we page from the newest and stop as soon
+// as we drop below fromMs. Bounded by MAX_PAGES.
+export async function fetchOutgoingUsdt(
+  address: string,
+  fromMs: number,
+  toMs: number,
+  apiKey?: string | null
+): Promise<UsdtTransfer[]> {
   const out: UsdtTransfer[] = [];
 
   for (let page = 0; page < MAX_PAGES; page++) {
-    const params = new URLSearchParams({
-      limit: String(PAGE_SIZE),
-      start: String(page * PAGE_SIZE),
-      contract_address: USDT_CONTRACT,
-      relatedAddress: address,
-      // Sent as hints — honored when Tronscan supports them, otherwise the JS
-      // filter below still gets it right.
-      start_timestamp: String(fromMs),
-      end_timestamp: String(toMs),
-    });
-    const res = await fetch(`${BASE}?${params.toString()}`, { headers: headers(), signal: AbortSignal.timeout(15000) });
-    if (!res.ok) throw new Error(`Tronscan ответил ${res.status}`);
-    const body = (await res.json()) as { token_transfers?: TronscanTransfer[] };
-    const rows = body.token_transfers ?? [];
+    const rows = await fetchPage(address, page, apiKey);
     if (rows.length === 0) break;
 
     let reachedOlder = false;
     for (const r of rows) {
       const ts = r.block_ts ?? 0;
       if (ts < fromMs) {
-        reachedOlder = true; // newest-first — nothing after this is in range
+        reachedOlder = true;
         break;
       }
-      if (ts >= toMs) continue; // newer than the range — skip, keep paging
-      // relatedAddress returns both directions — keep only outgoing.
+      if (ts >= toMs) continue;
       if (!r.from_address || !r.to_address || r.from_address !== address) continue;
       const decimals = r.tokenInfo?.tokenDecimal ?? 6;
       out.push({ from: r.from_address, to: r.to_address, amount: Number(r.quant ?? "0") / 10 ** decimals, timestamp: ts });
@@ -74,4 +78,23 @@ export async function fetchOutgoingUsdt(address: string, fromMs: number, toMs: n
   }
 
   return out;
+}
+
+// Distinct destinations `address` has forwarded USDT to (one hop). Used to
+// tell whether a rotating deposit address sweeps into a mapped hub. Looks at
+// the most recent few pages only — a deposit address forwards to very few
+// addresses, so this is cheap.
+const NEXT_HOP_PAGES = 3;
+
+export async function fetchNextHops(address: string, apiKey?: string | null): Promise<string[]> {
+  const dests = new Set<string>();
+  for (let page = 0; page < NEXT_HOP_PAGES; page++) {
+    const rows = await fetchPage(address, page, apiKey);
+    if (rows.length === 0) break;
+    for (const r of rows) {
+      if (r.from_address === address && r.to_address) dests.add(r.to_address);
+    }
+    if (rows.length < PAGE_SIZE) break;
+  }
+  return [...dests];
 }

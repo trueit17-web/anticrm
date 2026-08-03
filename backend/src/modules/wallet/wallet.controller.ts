@@ -9,7 +9,7 @@ import {
   getWalletStats,
   isWalletCountEnabled,
   listRecipients,
-  setWalletAddress,
+  setWalletConfig,
   updateRecipient,
 } from "./wallet.service";
 
@@ -36,18 +36,29 @@ export async function getWalletConfigHandler(req: Request, res: Response) {
   res.json({ ...config, recipients });
 }
 
-const addressSchema = z.object({ address: z.string().trim().nullable().optional() });
+const configSchema = z.object({
+  address: z.string().trim().nullable().optional(),
+  // string = set, null = clear, omitted = keep (write-only secret).
+  tronscanApiKey: z.string().trim().nullable().optional(),
+});
 
-export async function setWalletAddressHandler(req: Request, res: Response) {
+export async function setWalletConfigHandler(req: Request, res: Response) {
   const branchId = await resolveBranchId(req);
   if (branchId === null) return res.status(400).json({ error: "Выберите филиал" });
-  const parsed = addressSchema.safeParse(req.body);
+  const parsed = configSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Проверьте поля формы" });
-  await setWalletAddress(branchId, parsed.data.address?.trim() || null);
+  const patch: { address?: string | null; tronscanApiKey?: string | null } = {};
+  if (parsed.data.address !== undefined) patch.address = parsed.data.address?.trim() || null;
+  if (parsed.data.tronscanApiKey !== undefined) patch.tronscanApiKey = parsed.data.tronscanApiKey?.trim() || null;
+  await setWalletConfig(branchId, patch);
   res.json(await getWalletConfig(branchId));
 }
 
-const recipientSchema = z.object({ address: z.string().trim().min(1), name: z.string().trim().min(1) });
+const recipientSchema = z.object({
+  address: z.string().trim().min(1),
+  name: z.string().trim().min(1),
+  isHub: z.boolean().optional(),
+});
 
 export async function createRecipientHandler(req: Request, res: Response) {
   const branchId = await resolveBranchId(req);
@@ -55,7 +66,7 @@ export async function createRecipientHandler(req: Request, res: Response) {
   const parsed = recipientSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Проверьте поля формы", details: parsed.error.flatten() });
   try {
-    const recipient = await createRecipient(branchId, parsed.data.address, parsed.data.name);
+    const recipient = await createRecipient(branchId, parsed.data.address, parsed.data.name, parsed.data.isHub ?? false);
     res.status(201).json({ recipient });
   } catch (err) {
     if (err instanceof DuplicateAddressError) return res.status(409).json({ error: "Этот адрес уже добавлен" });
@@ -66,6 +77,7 @@ export async function createRecipientHandler(req: Request, res: Response) {
 const recipientUpdateSchema = z.object({
   address: z.string().trim().min(1).optional(),
   name: z.string().trim().min(1).optional(),
+  isHub: z.boolean().optional(),
 });
 
 export async function updateRecipientHandler(req: Request, res: Response) {

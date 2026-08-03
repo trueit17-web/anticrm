@@ -7,7 +7,7 @@ import {
   deleteRecipientHandler,
   getWalletConfigHandler,
   getWalletStatsHandler,
-  setWalletAddressHandler,
+  setWalletConfigHandler,
   updateRecipientHandler,
 } from "./wallet.controller";
 
@@ -19,7 +19,7 @@ walletRouter.use(requireAuth);
 walletRouter.use(requireRole(Role.ADMIN, Role.SUPERADMIN));
 
 walletRouter.get("/config", asyncHandler(getWalletConfigHandler));
-walletRouter.patch("/config", asyncHandler(setWalletAddressHandler));
+walletRouter.patch("/config", asyncHandler(setWalletConfigHandler));
 
 walletRouter.get("/stats", asyncHandler(getWalletStatsHandler));
 

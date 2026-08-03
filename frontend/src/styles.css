@@ -1257,6 +1257,20 @@ a {
   background: #f0ede4;
 }
 
+.wallet-suggestions {
+  margin-top: 12px;
+}
+
+.wallet-suggestions ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+
+.wallet-suggestions code {
+  font-size: 12px;
+  word-break: break-all;
+}
+
 /* Conversion proportion bar */
 .conv-head {
   display: flex;
