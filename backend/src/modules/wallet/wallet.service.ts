@@ -67,8 +67,6 @@ export interface WalletStats {
   byRecipient: WalletRecipientStat[];
 }
 
-const OTHER = "Другое";
-
 export async function getWalletStats(branchId: number, from: Date, to: Date): Promise<WalletStats> {
   const [branch, recipients] = await Promise.all([
     prisma.branch.findUnique({ where: { id: branchId }, select: { walletAddress: true } }),
@@ -80,24 +78,25 @@ export async function getWalletStats(branchId: number, from: Date, to: Date): Pr
   const transfers = await fetchOutgoingUsdt(address, from.getTime(), to.getTime());
   const nameByAddr = new Map(recipients.map((r) => [r.address, r.name]));
 
+  // Only transfers to a known (mapped) recipient are counted — transfers to
+  // unmapped addresses are ignored entirely (not summed, not shown).
   const agg = new Map<string, { amount: number; count: number }>();
   let total = 0;
+  let count = 0;
   for (const t of transfers) {
-    const name = nameByAddr.get(t.to) ?? OTHER;
+    const name = nameByAddr.get(t.to);
+    if (!name) continue;
     const cur = agg.get(name) ?? { amount: 0, count: 0 };
     cur.amount += t.amount;
     cur.count += 1;
     agg.set(name, cur);
     total += t.amount;
+    count += 1;
   }
 
   const byRecipient = [...agg.entries()]
     .map(([name, v]) => ({ name, amount: v.amount, count: v.count }))
-    .sort((a, b) => {
-      if (a.name === OTHER) return 1; // "Другое" always last
-      if (b.name === OTHER) return -1;
-      return b.amount - a.amount;
-    });
+    .sort((a, b) => b.amount - a.amount);
 
-  return { address, total, count: transfers.length, byRecipient };
+  return { address, total, count, byRecipient };
 }

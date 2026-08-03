@@ -453,6 +453,55 @@ function shortAddress(addr: string): string {
   return addr.length > 14 ? `${addr.slice(0, 6)}…${addr.slice(-6)}` : addr;
 }
 
+// Distinct colors for recipients, shared between the donut and the table dots.
+const WALLET_COLORS = ["#3f8f68", "#cf9a44", "#3d6ea5", "#c8493c", "#7f5aa8", "#c98a3a", "#4a9d9a", "#9a7fa8"];
+
+function WalletDonut({ stats }: { stats: WalletStats }) {
+  const total = stats.total;
+  const cx = 80;
+  const cy = 80;
+  const r = 58;
+  const circ = 2 * Math.PI * r;
+  let offset = 0;
+
+  return (
+    <svg viewBox="0 0 160 160" className="wallet-donut" role="img" aria-label="Распределение по получателям">
+      {total > 0 ? (
+        stats.byRecipient.map((rec, i) => {
+          const frac = rec.amount / total;
+          const dash = frac * circ;
+          const seg = (
+            <circle
+              key={rec.name}
+              cx={cx}
+              cy={cy}
+              r={r}
+              fill="none"
+              stroke={WALLET_COLORS[i % WALLET_COLORS.length]}
+              strokeWidth={22}
+              strokeDasharray={`${dash} ${circ - dash}`}
+              strokeDashoffset={-offset}
+              transform={`rotate(-90 ${cx} ${cy})`}
+            >
+              <title>{`${rec.name}: ${formatUsdt(rec.amount)}`}</title>
+            </circle>
+          );
+          offset += dash;
+          return seg;
+        })
+      ) : (
+        <circle cx={cx} cy={cy} r={r} fill="none" stroke="rgba(33,30,23,0.1)" strokeWidth={22} />
+      )}
+      <text x={cx} y={cy - 4} textAnchor="middle" className="wallet-donut-total">
+        {Math.round(total).toLocaleString("ru-RU")}
+      </text>
+      <text x={cx} y={cy + 14} textAnchor="middle" className="wallet-donut-unit">
+        USDT
+      </text>
+    </svg>
+  );
+}
+
 function WalletStatsSection({ stats }: { stats: WalletStats }) {
   return (
     <section className="stats-section">
@@ -462,46 +511,54 @@ function WalletStatsSection({ stats }: { stats: WalletStats }) {
         <p className="empty-state">
           Адрес кошелька не указан — задайте его в Админке (вкладка «Считать кош»).
         </p>
+      ) : stats.byRecipient.length === 0 ? (
+        <p className="empty-state">За выбранный период исходящих переводов известным получателям нет.</p>
       ) : (
         <>
-          <div className="kpi-grid kpi-grid--calls">
-            <Kpi value={formatUsdt(stats.total)} label="исходящих всего" sub="за период" accent="success" />
-            <Kpi value={stats.count} label="транзакций" sub="исходящих USDT" accent="muted" />
-            <Kpi value={stats.byRecipient.length} label="получателей" sub="в периоде" accent="gold" />
-          </div>
-          <p className="muted" style={{ marginTop: 6 }}>
+          <p className="muted wallet-caption">
             Кошелёк: <span title={stats.address}>{shortAddress(stats.address)}</span> · исходящие USDT
             (TRC-20) с Tronscan
           </p>
-
-          <div className="stats-panels stats-panels--calls">
-            <div className="stats-panel">
+          <div className="wallet-panels">
+            <div className="stats-panel wallet-diagram">
+              <WalletDonut stats={stats} />
+            </div>
+            <div className="stats-panel wallet-table">
               <div className="stats-subtable">
                 <h3>По получателям</h3>
-                {stats.byRecipient.length === 0 ? (
-                  <p className="empty-state">За выбранный период исходящих переводов нет.</p>
-                ) : (
-                  <div className="table-scroll">
-                    <table className="appeals-table stats-manager-table">
-                      <thead>
-                        <tr>
-                          <th>Получатель</th>
-                          <th className="col-num">Сумма</th>
-                          <th className="col-num">Транз.</th>
+                <div className="table-scroll">
+                  <table className="appeals-table stats-manager-table">
+                    <thead>
+                      <tr>
+                        <th>Получатель</th>
+                        <th className="col-num">Сумма</th>
+                        <th className="col-num">Транз.</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {stats.byRecipient.map((r, i) => (
+                        <tr key={r.name}>
+                          <td>
+                            <i
+                              className="wallet-dot"
+                              style={{ background: WALLET_COLORS[i % WALLET_COLORS.length] }}
+                            />
+                            {r.name}
+                          </td>
+                          <td className="col-num stat-total">{formatUsdt(r.amount)}</td>
+                          <td className="col-num">{r.count}</td>
                         </tr>
-                      </thead>
-                      <tbody>
-                        {stats.byRecipient.map((r) => (
-                          <tr key={r.name}>
-                            <td>{r.name}</td>
-                            <td className="col-num stat-total">{formatUsdt(r.amount)}</td>
-                            <td className="col-num">{r.count}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr>
+                        <td>Итого</td>
+                        <td className="col-num stat-total">{formatUsdt(stats.total)}</td>
+                        <td className="col-num">{stats.count}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
               </div>
             </div>
           </div>

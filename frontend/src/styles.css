@@ -1202,6 +1202,61 @@ a {
   font-weight: 700;
 }
 
+/* "Считать кош" block: smaller donut beside a wider recipients table. */
+.wallet-caption {
+  margin: 0 0 10px;
+}
+
+.wallet-panels {
+  display: flex;
+  gap: 16px;
+  align-items: stretch;
+  flex-wrap: wrap;
+}
+
+.wallet-diagram {
+  flex: 0 0 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wallet-table {
+  flex: 1 1 360px;
+  min-width: 0;
+}
+
+.wallet-donut {
+  width: 170px;
+  height: 170px;
+}
+
+.wallet-donut-total {
+  font-family: var(--font-display);
+  font-size: 20px;
+  fill: var(--text);
+}
+
+.wallet-donut-unit {
+  font-size: 11px;
+  fill: var(--muted);
+}
+
+.wallet-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  margin-right: 7px;
+  vertical-align: middle;
+}
+
+.stats-manager-table tfoot td {
+  font-weight: 700;
+  border-top: 2px solid rgba(71, 79, 67, 0.18);
+  background: #f0ede4;
+}
+
 /* Conversion proportion bar */
 .conv-head {
   display: flex;

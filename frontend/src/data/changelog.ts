@@ -10,6 +10,14 @@ export interface ChangelogEntry {
 // separately, so there's only one place to update.
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.20.1",
+    date: "2026-08-03",
+    changes: [
+      "«Считать кош»: переводы на неизвестные (не сопоставленные) адреса больше не учитываются и не показываются",
+      "«Считать кош»: убраны плитки-показатели; таблица получателей теперь в одну строку с диаграммой распределения, сама диаграмма компактнее",
+    ],
+  },
+  {
     version: "1.20.0",
     date: "2026-08-03",
     changes: [
