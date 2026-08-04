@@ -507,9 +507,9 @@ function WalletStatsSection({ stats }: { stats: WalletStats }) {
     <section className="stats-section">
       <p className="stats-eyebrow">Считать кош</p>
 
-      {!stats.address ? (
+      {stats.sources.length === 0 ? (
         <p className="empty-state">
-          Адрес кошелька не указан — задайте его в Админке (вкладка «Считать кош»).
+          Кошельки не указаны — задайте их в Админке (вкладка «Считать кош»).
         </p>
       ) : (
         <>
@@ -518,8 +518,14 @@ function WalletStatsSection({ stats }: { stats: WalletStats }) {
           ) : (
             <>
               <p className="muted wallet-caption">
-                Кошелёк: <span title={stats.address}>{shortAddress(stats.address)}</span> · исходящие
-                USDT (TRC-20) с Tronscan
+                {stats.sources.length === 1 ? (
+                  <>
+                    Кошелёк: <span title={stats.sources[0]}>{shortAddress(stats.sources[0])}</span>
+                  </>
+                ) : (
+                  <span title={stats.sources.join("\n")}>Кошельков: {stats.sources.length}</span>
+                )}{" "}
+                · исходящие USDT (TRC-20) с Tronscan
               </p>
               <div className="wallet-panels">
                 <div className="stats-panel wallet-diagram">

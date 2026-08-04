@@ -76,7 +76,7 @@ export interface WalletHubSuggestion {
 }
 
 export interface WalletStats {
-  address: string | null;
+  sources: string[];
   total: number;
   count: number;
   byRecipient: WalletRecipientStat[];

@@ -10,6 +10,14 @@ export interface ChangelogEntry {
 // separately, so there's only one place to update.
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.22.0",
+    date: "2026-08-04",
+    changes: [
+      "«Считать кош»: для одного филиала можно указать несколько кошельков — их исходящие переводы считаются вместе, переводы между своими кошельками не учитываются",
+      "Админка → «Считать кош»: кошельки добавляются и удаляются списком; ключ Tronscan API вынесен в отдельную настройку",
+    ],
+  },
+  {
     version: "1.21.0",
     date: "2026-08-03",
     changes: [

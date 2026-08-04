@@ -5,6 +5,8 @@ import { asyncHandler } from "../../utils/asyncHandler";
 import {
   createRecipientHandler,
   deleteRecipientHandler,
+  addSourceHandler,
+  deleteSourceHandler,
   getWalletConfigHandler,
   getWalletStatsHandler,
   setWalletConfigHandler,
@@ -20,6 +22,9 @@ walletRouter.use(requireRole(Role.ADMIN, Role.SUPERADMIN));
 
 walletRouter.get("/config", asyncHandler(getWalletConfigHandler));
 walletRouter.patch("/config", asyncHandler(setWalletConfigHandler));
+
+walletRouter.post("/sources", asyncHandler(addSourceHandler));
+walletRouter.delete("/sources/:id", asyncHandler(deleteSourceHandler));
 
 walletRouter.get("/stats", asyncHandler(getWalletStatsHandler));
 

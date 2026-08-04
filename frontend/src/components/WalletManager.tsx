@@ -3,8 +3,13 @@ import { api, ApiError } from "../api/client";
 import { WalletRecipient } from "../types";
 import { IconCheck, IconTrash } from "./icons";
 
+interface WalletSource {
+  id: number;
+  address: string;
+}
+
 interface WalletConfig {
-  address: string | null;
+  sources: WalletSource[];
   enabled: boolean;
   hasTronscanApiKey: boolean;
   recipients: WalletRecipient[];
@@ -85,12 +90,15 @@ export function WalletManager() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [address, setAddress] = useState("");
+  const [newSource, setNewSource] = useState("");
+  const [addingSource, setAddingSource] = useState(false);
+  const [sourceError, setSourceError] = useState<string | null>(null);
+
   const [apiKey, setApiKey] = useState("");
   const [clearApiKey, setClearApiKey] = useState(false);
-  const [savingConfig, setSavingConfig] = useState(false);
-  const [configError, setConfigError] = useState<string | null>(null);
-  const [configSaved, setConfigSaved] = useState(false);
+  const [savingKey, setSavingKey] = useState(false);
+  const [keyError, setKeyError] = useState<string | null>(null);
+  const [keySaved, setKeySaved] = useState(false);
 
   const [newAddress, setNewAddress] = useState("");
   const [newName, setNewName] = useState("");
@@ -103,37 +111,56 @@ export function WalletManager() {
     setError(null);
     api
       .get<WalletConfig>("/wallet/config")
-      .then((res) => {
-        setConfig(res);
-        setAddress(res.address ?? "");
-      })
+      .then((res) => setConfig(res))
       .catch((err) => setError(err instanceof ApiError ? err.message : "Не удалось загрузить"))
       .finally(() => setLoading(false));
   }
 
   useEffect(load, []);
 
-  async function saveConfig(e: FormEvent) {
+  async function handleAddSource(e: FormEvent) {
     e.preventDefault();
-    setSavingConfig(true);
-    setConfigError(null);
-    setConfigSaved(false);
+    if (!newSource.trim()) return;
+    setAddingSource(true);
+    setSourceError(null);
     try {
-      const payload: { address: string | null; tronscanApiKey?: string | null } = {
-        address: address.trim() || null,
-      };
-      if (clearApiKey) payload.tronscanApiKey = null;
-      else if (apiKey.trim()) payload.tronscanApiKey = apiKey.trim();
-      await api.patch("/wallet/config", payload);
-      setApiKey("");
-      setClearApiKey(false);
-      setConfigSaved(true);
-      setTimeout(() => setConfigSaved(false), 2000);
+      await api.post("/wallet/sources", { address: newSource.trim() });
+      setNewSource("");
       load();
     } catch (err) {
-      setConfigError(err instanceof ApiError ? err.message : "Не удалось сохранить");
+      setSourceError(err instanceof ApiError ? err.message : "Не удалось добавить");
     } finally {
-      setSavingConfig(false);
+      setAddingSource(false);
+    }
+  }
+
+  async function deleteSource(id: number) {
+    setSourceError(null);
+    try {
+      await api.delete(`/wallet/sources/${id}`);
+      load();
+    } catch (err) {
+      setSourceError(err instanceof ApiError ? err.message : "Не удалось удалить");
+    }
+  }
+
+  async function saveKey(e: FormEvent) {
+    e.preventDefault();
+    if (!clearApiKey && !apiKey.trim()) return;
+    setSavingKey(true);
+    setKeyError(null);
+    setKeySaved(false);
+    try {
+      await api.patch("/wallet/config", { tronscanApiKey: clearApiKey ? null : apiKey.trim() });
+      setApiKey("");
+      setClearApiKey(false);
+      setKeySaved(true);
+      setTimeout(() => setKeySaved(false), 2000);
+      load();
+    } catch (err) {
+      setKeyError(err instanceof ApiError ? err.message : "Не удалось сохранить");
+    } finally {
+      setSavingKey(false);
     }
   }
 
@@ -161,10 +188,10 @@ export function WalletManager() {
   return (
     <div className="admin-fields-grid">
       <section className="admin-field-card fit-content">
-        <h2>Кошелёк для подсчёта</h2>
+        <h2>Кошельки для подсчёта</h2>
         <p className="muted">
-          TRON-адрес (T…), исходящие переводы USDT (TRC-20) которого считаются и показываются в
-          статистике, сгруппированные по получателям.
+          Один или несколько TRON-адресов (T…). Исходящие переводы USDT (TRC-20) всех этих кошельков
+          считаются вместе и показываются в статистике, сгруппированные по получателям.
         </p>
         {config && !config.enabled && (
           <p className="muted">
@@ -172,19 +199,50 @@ export function WalletManager() {
             (суперадмин), чтобы блок появился в статистике.
           </p>
         )}
-        <form className="inline-form" onSubmit={saveConfig}>
+        <form className="inline-form" onSubmit={handleAddSource}>
           <input
             placeholder="Адрес кошелька (T…)"
-            value={address}
-            onChange={(e) => setAddress(e.target.value)}
+            value={newSource}
+            onChange={(e) => setNewSource(e.target.value)}
             style={{ minWidth: 320 }}
           />
+          <button type="submit" className="btn-save" disabled={addingSource}>
+            <IconCheck width={15} height={15} />
+            {addingSource ? "..." : "Добавить"}
+          </button>
+        </form>
+        {sourceError && <p className="error-text">{sourceError}</p>}
+        {config && config.sources.length === 0 ? (
+          <p className="muted">Пока не добавлено ни одного кошелька.</p>
+        ) : (
+          <ul className="admin-option-list">
+            {config?.sources.map((s) => (
+              <li key={s.id}>
+                <span style={{ wordBreak: "break-all" }}>{s.address}</span>
+                <button
+                  className="delete-x"
+                  title="Удалить кошелёк"
+                  aria-label="Удалить кошелёк"
+                  onClick={() => deleteSource(s.id)}
+                >
+                  <IconTrash width={13} height={13} />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <h2 style={{ marginTop: 20 }}>Ключ Tronscan API</h2>
+        <p className="muted">
+          Снимает лимит запросов (нужен при активном кошельке и для хабов). Бесплатный —{" "}
+          <a href="https://tronscan.org" target="_blank" rel="noreferrer">
+            tronscan.org
+          </a>
+          , раздел API keys. {config?.hasTronscanApiKey ? "Ключ задан." : "Ключ не задан."}
+        </p>
+        <form className="inline-form" onSubmit={saveKey}>
           <input
-            placeholder={
-              config?.hasTronscanApiKey
-                ? "Ключ Tronscan задан — оставьте пустым, чтобы не менять"
-                : "Ключ Tronscan API (необязательно)"
-            }
+            placeholder={config?.hasTronscanApiKey ? "Новый ключ (оставьте пустым, чтобы не менять)" : "Ключ Tronscan API"}
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
             disabled={clearApiKey}
@@ -196,19 +254,12 @@ export function WalletManager() {
               Удалить ключ
             </label>
           )}
-          <button type="submit" className="btn-save" disabled={savingConfig}>
+          <button type="submit" className="btn-save" disabled={savingKey || (!clearApiKey && !apiKey.trim())}>
             <IconCheck width={15} height={15} />
-            {savingConfig ? "..." : configSaved ? "Сохранено" : "Сохранить"}
+            {savingKey ? "..." : keySaved ? "Сохранено" : "Сохранить"}
           </button>
         </form>
-        <p className="muted">
-          Ключ Tronscan снимает лимит запросов (нужен при активном кошельке и для хабов). Бесплатный —{" "}
-          <a href="https://tronscan.org" target="_blank" rel="noreferrer">
-            tronscan.org
-          </a>
-          , раздел API keys.
-        </p>
-        {configError && <p className="error-text">{configError}</p>}
+        {keyError && <p className="error-text">{keyError}</p>}
       </section>
 
       <section className="admin-field-card fit-content">

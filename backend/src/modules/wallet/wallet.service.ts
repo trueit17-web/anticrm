@@ -3,31 +3,46 @@ import { fetchNextHops, fetchOutgoingUsdt } from "../../utils/tronscan";
 
 export class DuplicateAddressError extends Error {}
 
-// --- Config (source wallet + Tronscan key live on Branch) ---
+// --- Config (source wallets + Tronscan key) ---
 
 export async function getWalletConfig(branchId: number) {
-  const b = await prisma.branch.findUnique({
-    where: { id: branchId },
-    select: { walletAddress: true, walletCountEnabled: true, tronscanApiKey: true },
-  });
+  const [b, sources] = await Promise.all([
+    prisma.branch.findUnique({
+      where: { id: branchId },
+      select: { walletCountEnabled: true, tronscanApiKey: true },
+    }),
+    prisma.walletSource.findMany({ where: { branchId }, orderBy: { createdAt: "asc" }, select: { id: true, address: true } }),
+  ]);
   return {
-    address: b?.walletAddress ?? null,
+    sources,
     enabled: b?.walletCountEnabled ?? false,
     // Write-only: only whether a key is set, never the key itself.
     hasTronscanApiKey: !!b?.tronscanApiKey?.trim(),
   };
 }
 
-// address / tronscanApiKey: undefined = leave unchanged, null = clear,
-// string = set.
-export async function setWalletConfig(
-  branchId: number,
-  patch: { address?: string | null; tronscanApiKey?: string | null }
-) {
-  const data: { walletAddress?: string | null; tronscanApiKey?: string | null } = {};
-  if (patch.address !== undefined) data.walletAddress = patch.address;
-  if (patch.tronscanApiKey !== undefined) data.tronscanApiKey = patch.tronscanApiKey;
-  await prisma.branch.update({ where: { id: branchId }, data });
+// tronscanApiKey: undefined = leave unchanged, null = clear, string = set.
+export async function setWalletConfig(branchId: number, patch: { tronscanApiKey?: string | null }) {
+  if (patch.tronscanApiKey === undefined) return;
+  await prisma.branch.update({ where: { id: branchId }, data: { tronscanApiKey: patch.tronscanApiKey } });
+}
+
+// --- Source wallets (multiple per branch) ---
+
+export function listSources(branchId: number) {
+  return prisma.walletSource.findMany({ where: { branchId }, orderBy: { createdAt: "asc" }, select: { id: true, address: true } });
+}
+
+export async function addSource(branchId: number, address: string) {
+  if (await prisma.walletSource.findFirst({ where: { branchId, address } })) {
+    throw new DuplicateAddressError();
+  }
+  return prisma.walletSource.create({ data: { branchId, address }, select: { id: true, address: true } });
+}
+
+export async function deleteSource(branchId: number, id: number) {
+  const result = await prisma.walletSource.deleteMany({ where: { id, branchId } });
+  return result.count > 0;
 }
 
 async function getTronscanApiKey(branchId: number): Promise<string | null> {
@@ -110,7 +125,7 @@ export interface WalletHubSuggestion {
 }
 
 export interface WalletStats {
-  address: string | null;
+  sources: string[];
   total: number;
   count: number;
   byRecipient: WalletRecipientStat[];
@@ -120,15 +135,22 @@ export interface WalletStats {
 }
 
 export async function getWalletStats(branchId: number, from: Date, to: Date): Promise<WalletStats> {
-  const [branch, recipients, apiKey] = await Promise.all([
-    prisma.branch.findUnique({ where: { id: branchId }, select: { walletAddress: true } }),
+  const [sourceRows, recipients, apiKey] = await Promise.all([
+    prisma.walletSource.findMany({ where: { branchId }, select: { address: true } }),
     prisma.walletRecipient.findMany({ where: { branchId }, select: { address: true, name: true, isHub: true } }),
     getTronscanApiKey(branchId),
   ]);
-  const address = branch?.walletAddress?.trim() || null;
-  if (!address) return { address: null, total: 0, count: 0, byRecipient: [], suggestedHubs: [] };
+  const sources = sourceRows.map((s) => s.address.trim()).filter(Boolean);
+  if (sources.length === 0) return { sources: [], total: 0, count: 0, byRecipient: [], suggestedHubs: [] };
 
-  const transfers = await fetchOutgoingUsdt(address, from.getTime(), to.getTime(), apiKey);
+  // Outgoing of every source wallet, merged — but a transfer between two of
+  // our own source wallets isn't a payment out, so it's dropped.
+  const sourceSet = new Set(sources);
+  const transfers = (
+    await Promise.all(sources.map((s) => fetchOutgoingUsdt(s, from.getTime(), to.getTime(), apiKey)))
+  )
+    .flat()
+    .filter((t) => !sourceSet.has(t.to));
 
   const nameByAddr = new Map(recipients.map((r) => [r.address, r.name]));
   const mappedAddrs = new Set(recipients.map((r) => r.address));
@@ -199,5 +221,5 @@ export async function getWalletStats(branchId: number, from: Date, to: Date): Pr
     .sort((a, b) => b.fromCount - a.fromCount)
     .slice(0, 5);
 
-  return { address, total, count, byRecipient, suggestedHubs };
+  return { sources, total, count, byRecipient, suggestedHubs };
 }

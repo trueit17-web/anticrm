@@ -55,11 +55,10 @@ model Branch {
   dadataApiKey    String?
 
   // SUPERADMIN-controlled toggle (Филиалы page) for the "Считать кош"
-  // module — reads outgoing USDT TRC-20 transfers of walletAddress from
-  // Tronscan and shows them, grouped by recipient, in the statistics.
+  // module — reads outgoing USDT TRC-20 transfers of the branch's source
+  // wallets (WalletSource) from Tronscan and shows them, grouped by
+  // recipient, in the statistics.
   walletCountEnabled Boolean @default(false)
-  // The TRON (T...) address whose outgoing USDT transfers are counted.
-  walletAddress      String?
   // Per-branch Tronscan API key (TRON-PRO-API-KEY) for the "Считать кош"
   // lookups — lifts the anonymous rate limit. Secret: write-only, never
   // returned to the client (only a "is it set" flag). Falls back to the
@@ -73,6 +72,21 @@ model Branch {
   contactBatches ContactBatch[]
   contacts       Contact[]
   walletRecipients WalletRecipient[]
+  walletSources    WalletSource[]
+}
+
+// A source TRON (T...) address whose OUTGOING USDT transfers are counted for
+// the "Считать кош" module. A branch may have several — their outgoing is
+// merged before grouping by recipient.
+model WalletSource {
+  id        Int      @id @default(autoincrement())
+  branchId  Int
+  branch    Branch   @relation(fields: [branchId], references: [id])
+  address   String
+  createdAt DateTime @default(now())
+
+  @@unique([branchId, address])
+  @@index([branchId])
 }
 
 // Maps a destination TRON address to a human name shown in the "Считать кош"
