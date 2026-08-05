@@ -401,8 +401,8 @@ export function UsersManager() {
     await loadUsers();
   }
 
-  const editColSpan = isSuperadmin ? 5 : 3;
-  const totalColumns = isSuperadmin ? 7 : 5;
+  const editColSpan = isSuperadmin ? 6 : 4;
+  const totalColumns = isSuperadmin ? 8 : 6;
 
   return (
     <div>
@@ -462,6 +462,7 @@ export function UsersManager() {
                 {isSuperadmin && <th>🏢 Филиал</th>}
                 {isSuperadmin && <th>🔐 Доп. доступ</th>}
                 <th className="col-center">🚦 Статус</th>
+                <th className="col-center">🕒 Последний вход</th>
                 <th></th>
               </tr>
             </thead>
@@ -534,6 +535,9 @@ export function UsersManager() {
                         <td>{u.branchAccess.length > 0 ? u.branchAccess.map((b) => b.name).join(", ") : "—"}</td>
                       )}
                       <td className="col-center">{u.active ? "Активен" : "Отключён"}</td>
+                      <td className="col-center muted">
+                        {u.lastLoginAt ? formatEventTime(u.lastLoginAt) : "—"}
+                      </td>
                       <td>
                         <button
                           className="icon-btn"

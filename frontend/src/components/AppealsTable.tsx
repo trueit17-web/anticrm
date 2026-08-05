@@ -1,4 +1,4 @@
-import { KeyboardEvent, useRef, useState } from "react";
+import { KeyboardEvent, PointerEvent as ReactPointerEvent, useRef, useState } from "react";
 import { Appeal } from "../types";
 import { AuthUser } from "../types";
 import { canEditAppeal, canEditAssignments } from "../lib/permissions";
@@ -10,6 +10,51 @@ import { EmployeeNameButton } from "./EmployeeCard";
 
 function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+}
+
+// Header labels + default widths for the main trubki table, kept in one place
+// so the <colgroup>, the header row, and the persisted per-user widths all
+// stay in sync. The trailing empty column is the row-actions column.
+const COLUMNS: { label: string; className?: string }[] = [
+  { label: "№", className: "col-num" },
+  { label: "📅 Дата", className: "col-center" },
+  { label: "📞 Телефон" },
+  { label: "📠 ТФ", className: "col-center" },
+  { label: "🧾 Данные клиента" },
+  { label: "💰 Деп." },
+  { label: "💬 СМС", className: "col-center" },
+  { label: "Прием", className: "col-center" },
+  { label: "🏛️ Госы", className: "col-center" },
+  { label: "🚦 Статус", className: "col-center" },
+  { label: "📝 Описание" },
+  { label: "🏦 ЦБ", className: "col-center" },
+  { label: "🛡️ ФСБ", className: "col-center" },
+  { label: "🔒 Закрыв", className: "col-center" },
+  { label: "" },
+];
+const DEFAULT_WIDTHS = [36, 110, 112, 90, 178, 90, 90, 60, 110, 130, 180, 110, 110, 110, 64];
+const MIN_COL_WIDTH = 40;
+// Bumped if COLUMNS ever changes shape, so an old saved layout with the wrong
+// number of columns is discarded rather than misapplied.
+const COL_WIDTHS_KEY = (userId: number) => `crm_appeal_col_widths_v1_${userId}`;
+
+function loadColWidths(userId: number): number[] {
+  try {
+    const raw = localStorage.getItem(COL_WIDTHS_KEY(userId));
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (
+        Array.isArray(parsed) &&
+        parsed.length === DEFAULT_WIDTHS.length &&
+        parsed.every((n) => typeof n === "number" && n > 0)
+      ) {
+        return parsed;
+      }
+    }
+  } catch {
+    // ignore malformed/blocked storage — fall back to defaults
+  }
+  return [...DEFAULT_WIDTHS];
 }
 
 type TagField = "gov" | "cb" | "fsb" | "closer" | "tf";
@@ -208,6 +253,42 @@ export function AppealsTable({
   const scrollRef = useRef<HTMLDivElement>(null);
   useEdgeAutoScroll(scrollRef);
 
+  // Per-user resizable column widths, remembered across logins (localStorage,
+  // keyed by user id so shared browsers don't cross over).
+  const [colWidths, setColWidths] = useState<number[]>(() => loadColWidths(currentUser.id));
+  const tableWidth = colWidths.reduce((a, b) => a + b, 0);
+
+  function startResize(index: number, e: ReactPointerEvent) {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startW = colWidths[index];
+    const onMove = (ev: PointerEvent) => {
+      const next = Math.max(MIN_COL_WIDTH, Math.round(startW + (ev.clientX - startX)));
+      setColWidths((prev) => {
+        if (prev[index] === next) return prev;
+        const copy = [...prev];
+        copy[index] = next;
+        return copy;
+      });
+    };
+    const onUp = () => {
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onUp);
+      document.body.classList.remove("col-resizing");
+      setColWidths((prev) => {
+        try {
+          localStorage.setItem(COL_WIDTHS_KEY(currentUser.id), JSON.stringify(prev));
+        } catch {
+          // ignore storage failures (private mode / quota)
+        }
+        return prev;
+      });
+    };
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerup", onUp);
+    document.body.classList.add("col-resizing");
+  }
+
   function renderTagSelect(appeal: Appeal, field: TagField, options: string[]) {
     const value = appeal[field] ?? "";
     if (!canAssign) {
@@ -227,41 +308,26 @@ export function AppealsTable({
 
   return (
     <div className="table-scroll" ref={scrollRef}>
-      <table className="appeals-table">
+      <table className="appeals-table" style={{ width: tableWidth }}>
         <colgroup>
-          <col style={{ width: 36 }} />
-          <col style={{ width: 110 }} />
-          <col style={{ width: 112 }} />
-          <col style={{ width: 90 }} />
-          <col style={{ width: 178 }} />
-          <col style={{ width: 90 }} />
-          <col style={{ width: 90 }} />
-          <col style={{ width: 60 }} />
-          <col style={{ width: 110 }} />
-          <col style={{ width: 130 }} />
-          <col style={{ width: 180 }} />
-          <col style={{ width: 110 }} />
-          <col style={{ width: 110 }} />
-          <col style={{ width: 110 }} />
-          <col style={{ width: 64 }} />
+          {colWidths.map((w, i) => (
+            <col key={i} style={{ width: w }} />
+          ))}
         </colgroup>
         <thead>
           <tr>
-            <th className="col-num">№</th>
-            <th className="col-center">📅 Дата</th>
-            <th>📞 Телефон</th>
-            <th className="col-center">📠 ТФ</th>
-            <th>🧾 Данные клиента</th>
-            <th>💰 Деп.</th>
-            <th className="col-center">💬 СМС</th>
-            <th className="col-center">Прием</th>
-            <th className="col-center">🏛️ Госы</th>
-            <th className="col-center">🚦 Статус</th>
-            <th>📝 Описание</th>
-            <th className="col-center">🏦 ЦБ</th>
-            <th className="col-center">🛡️ ФСБ</th>
-            <th className="col-center">🔒 Закрыв</th>
-            <th></th>
+            {COLUMNS.map((c, i) => (
+              <th key={i} className={c.className}>
+                {c.label}
+                {i < COLUMNS.length - 1 && (
+                  <span
+                    className="col-resizer"
+                    onPointerDown={(e) => startResize(i, e)}
+                    title="Потяните, чтобы изменить ширину колонки"
+                  />
+                )}
+              </th>
+            ))}
           </tr>
         </thead>
         <tbody>

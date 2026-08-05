@@ -302,6 +302,31 @@ a {
 
 .appeals-table th {
   font-weight: 700;
+  position: relative;
+}
+
+/* Drag handle at the right edge of each header cell to resize its column. */
+.col-resizer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 7px;
+  height: 100%;
+  cursor: col-resize;
+  user-select: none;
+  touch-action: none;
+}
+.col-resizer:hover {
+  background: var(--primary);
+  opacity: 0.5;
+}
+body.col-resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+body.col-resizing .col-resizer {
+  background: var(--primary);
+  opacity: 0.7;
 }
 
 .appeals-table .col-num {

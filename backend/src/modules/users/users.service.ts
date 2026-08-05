@@ -20,15 +20,23 @@ const publicUserSelect = {
   bio: true,
   branch: { select: { id: true, name: true } },
   branchAccess: { select: { branch: { select: { id: true, name: true } } } },
+  // Most recent successful login — surfaced as `lastLoginAt` on the summary.
+  loginEvents: { orderBy: { createdAt: "desc" }, take: 1, select: { createdAt: true } },
 } satisfies Prisma.UserSelect;
 
 type PublicUser = Prisma.UserGetPayload<{ select: typeof publicUserSelect }>;
-export type UserSummary = Omit<PublicUser, "branchAccess"> & {
+export type UserSummary = Omit<PublicUser, "branchAccess" | "loginEvents"> & {
   branchAccess: { id: number; name: string }[];
+  lastLoginAt: Date | null;
 };
 
 function toUserSummary(user: PublicUser): UserSummary {
-  return { ...user, branchAccess: user.branchAccess.map((a) => a.branch) };
+  const { loginEvents, branchAccess, ...rest } = user;
+  return {
+    ...rest,
+    branchAccess: branchAccess.map((a) => a.branch),
+    lastLoginAt: loginEvents[0]?.createdAt ?? null,
+  };
 }
 
 // branchId === null means "no branch selected" (SUPERADMIN viewing across

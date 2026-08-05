@@ -40,6 +40,8 @@ export interface UserSummary {
   branch: { id: number; name: string } | null;
   // Extra branches this user can switch into beyond their home branch.
   branchAccess: { id: number; name: string }[];
+  // Timestamp of the most recent successful login, or null if never logged in.
+  lastLoginAt: string | null;
 }
 
 export interface Branch {
