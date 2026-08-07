@@ -33,6 +33,8 @@ export interface UserSummary {
   fullName: string;
   role: Role;
   active: boolean;
+  // Hidden from the operator ranking on the Statistics page when true.
+  excludedFromStats: boolean;
   createdAt: string;
   avatarUrl: string | null;
   telegram: string | null;

@@ -10,6 +10,13 @@ export interface ChangelogEntry {
 // separately, so there's only one place to update.
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.24.0",
+    date: "2026-08-07",
+    changes: [
+      "Админка → Пользователи: кнопка «Скрыть из стат.» — исключает сотрудника из рейтинга операторов на странице «Статистика» (удобно для тестовых/неактивных аккаунтов с 0 трубок); повторное нажатие возвращает",
+    ],
+  },
+  {
     version: "1.23.0",
     date: "2026-08-05",
     changes: [

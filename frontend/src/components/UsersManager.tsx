@@ -392,6 +392,11 @@ export function UsersManager() {
     await loadUsers();
   }
 
+  async function toggleExcludedFromStats(u: UserSummary) {
+    await api.patch(`/users/${u.id}`, { excludedFromStats: !u.excludedFromStats });
+    await loadUsers();
+  }
+
   async function changeRole(u: UserSummary, newRole: Role) {
     if (u.role === "SUPERADMIN" && newRole !== "SUPERADMIN") {
       setDemoteTarget({ id: u.id, role: newRole });
@@ -562,6 +567,17 @@ export function UsersManager() {
                           onClick={() => setLoginHistoryId(historyOpen ? null : u.id)}
                         >
                           {historyOpen ? "Скрыть входы" : "История входов"}
+                        </button>{" "}
+                        <button
+                          className="link-button"
+                          title={
+                            u.excludedFromStats
+                              ? "Вернуть в статистику по трубкам"
+                              : "Скрыть из статистики по трубкам (для аккаунтов с 0 трубок)"
+                          }
+                          onClick={() => toggleExcludedFromStats(u)}
+                        >
+                          {u.excludedFromStats ? "Вернуть в стат." : "Скрыть из стат."}
                         </button>{" "}
                         <button className="link-button" onClick={() => toggleActive(u)}>
                           {u.active ? "Отключить" : "Включить"}

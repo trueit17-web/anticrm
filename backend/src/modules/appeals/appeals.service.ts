@@ -305,8 +305,11 @@ export async function getStatsForRange(branchId: number, from: Date, to: Date): 
   // (e.g. a SUPERADMIN or a manager with extra access, whose home branch
   // differs) so an existing contributor never drops off the list.
   const countByOperator = new Map(operatorGroups.map((g) => [g.operatorId, g._count._all]));
+  // Users flagged excludedFromStats never appear in the ranking (test/idle
+  // accounts an admin chose to hide) — both branch members and outside
+  // contributors.
   const branchUsers = await prisma.user.findMany({
-    where: { branchId, active: true },
+    where: { branchId, active: true, excludedFromStats: false },
     select: { id: true, fullName: true, avatarUrl: true },
   });
   const outsideOperatorIds = operatorGroups
@@ -314,7 +317,7 @@ export async function getStatsForRange(branchId: number, from: Date, to: Date): 
     .filter((id) => !branchUsers.some((u) => u.id === id));
   const outsideUsers = outsideOperatorIds.length
     ? await prisma.user.findMany({
-        where: { id: { in: outsideOperatorIds } },
+        where: { id: { in: outsideOperatorIds }, excludedFromStats: false },
         select: { id: true, fullName: true, avatarUrl: true },
       })
     : [];

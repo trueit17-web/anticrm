@@ -166,6 +166,9 @@ model User {
   passwordHash String
   role         Role     @default(USER)
   active       Boolean  @default(true)
+  // When true, this user is hidden from the operator ranking on the
+  // Statistics page (e.g. test/inactive accounts sitting at zero trubki).
+  excludedFromStats Boolean @default(false)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

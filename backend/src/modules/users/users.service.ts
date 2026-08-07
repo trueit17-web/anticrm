@@ -14,6 +14,7 @@ const publicUserSelect = {
   fullName: true,
   role: true,
   active: true,
+  excludedFromStats: true,
   createdAt: true,
   avatarUrl: true,
   telegram: true,
@@ -78,6 +79,7 @@ export interface UpdateUserInput {
   // this for everyone else before it reaches here.
   branchId?: number | null;
   active?: boolean;
+  excludedFromStats?: boolean;
   password?: string;
   telegram?: string | null;
   bio?: string | null;
@@ -147,6 +149,7 @@ export async function updateUser(
 
     const data: Record<string, unknown> = { role: nextRole, branchId: nextBranchId, active: nextActive };
     if (input.fullName !== undefined) data.fullName = input.fullName;
+    if (input.excludedFromStats !== undefined) data.excludedFromStats = input.excludedFromStats;
     if (input.telegram !== undefined) data.telegram = input.telegram || null;
     if (input.bio !== undefined) data.bio = input.bio || null;
     if (input.password) data.passwordHash = await hashPassword(input.password);
