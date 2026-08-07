@@ -521,7 +521,16 @@ export function UsersManager() {
                 const historyOpen = loginHistoryId === u.id;
                 return (
                   <Fragment key={u.id}>
-                    <tr>
+                    <tr
+                      className={`clickable-row${historyOpen ? " row-open" : ""}`}
+                      title={historyOpen ? "Скрыть историю входов" : "Показать историю входов"}
+                      onClick={(e) => {
+                        // Let the interactive controls in the row do their own
+                        // thing; only a click on empty row space toggles history.
+                        if ((e.target as HTMLElement).closest("button, select, input, label, a")) return;
+                        setLoginHistoryId(historyOpen ? null : u.id);
+                      }}
+                    >
                       <td>{u.username}</td>
                       <td>
                         <EmployeeNameButton id={u.id} fullName={u.fullName} />
@@ -539,7 +548,15 @@ export function UsersManager() {
                       {isSuperadmin && (
                         <td>{u.branchAccess.length > 0 ? u.branchAccess.map((b) => b.name).join(", ") : "—"}</td>
                       )}
-                      <td className="col-center">{u.active ? "Активен" : "Отключён"}</td>
+                      <td className="col-center">
+                        <label
+                          className="switch"
+                          title={u.active ? "Активен — нажмите, чтобы отключить" : "Отключён — нажмите, чтобы включить"}
+                        >
+                          <input type="checkbox" checked={u.active} onChange={() => toggleActive(u)} />
+                          <span className="slider" />
+                        </label>
+                      </td>
                       <td className="col-center muted">
                         {u.lastLoginAt ? formatEventTime(u.lastLoginAt) : "—"}
                       </td>
@@ -562,26 +579,17 @@ export function UsersManager() {
                             <IconKey width={16} height={16} />
                           </button>
                         )}{" "}
-                        <button
-                          className="link-button"
-                          onClick={() => setLoginHistoryId(historyOpen ? null : u.id)}
+                        <label
+                          className="stat-check"
+                          title="Скрыть сотрудника из статистики по трубкам (для аккаунтов с 0 трубок)"
                         >
-                          {historyOpen ? "Скрыть входы" : "История входов"}
-                        </button>{" "}
-                        <button
-                          className="link-button"
-                          title={
-                            u.excludedFromStats
-                              ? "Вернуть в статистику по трубкам"
-                              : "Скрыть из статистики по трубкам (для аккаунтов с 0 трубок)"
-                          }
-                          onClick={() => toggleExcludedFromStats(u)}
-                        >
-                          {u.excludedFromStats ? "Вернуть в стат." : "Скрыть из стат."}
-                        </button>{" "}
-                        <button className="link-button" onClick={() => toggleActive(u)}>
-                          {u.active ? "Отключить" : "Включить"}
-                        </button>
+                          <input
+                            type="checkbox"
+                            checked={u.excludedFromStats}
+                            onChange={() => toggleExcludedFromStats(u)}
+                          />
+                          Скрыт из стат.
+                        </label>
                       </td>
                     </tr>
                     {historyOpen && (
