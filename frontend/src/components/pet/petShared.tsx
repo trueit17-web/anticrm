@@ -1,6 +1,15 @@
-import { PetSkin, PetTrigger } from "../../types";
+import { RefObject, useEffect, useRef, useState } from "react";
+import { PetProfile, PetSkin, PetTrigger } from "../../types";
 
 export type PetEmotion = "happy" | "alert" | "cheer" | "sleep";
+
+// One thing the pet can say/do: an emotion + message, optionally anchored to a
+// table row (row-walking mode). Without rowIndex it just reacts in place.
+export interface PetReaction {
+  mood: PetEmotion;
+  text: string;
+  rowIndex?: number;
+}
 
 export const SKINS: { value: PetSkin; label: string; color: string; emoji: string }[] = [
   { value: "fox", label: "Лисёнок", color: "#cf9a44", emoji: "🦊" },
@@ -101,5 +110,136 @@ export function PetSprite({
         <path d="M27 43 q5 5 10 0" stroke="#22201c" strokeWidth="2" fill="none" strokeLinecap="round" />
       )}
     </svg>
+  );
+}
+
+// Shared pet engine used by every page's assistant. Two layouts:
+//   • row-walking (corner=false): walks to a table row via rowSelector.
+//   • corner (corner=true): floats fixed in the bottom-right, reacts in place —
+//     used where the page has grouped/multiple tables (Прозвон, Статистика).
+// Domain logic lives in `evaluate`, supplied by each page wrapper.
+export function PetOverlay({
+  containerRef,
+  profile,
+  greeting,
+  evaluate,
+  rowSelector = ".appeals-table tbody tr",
+  corner = false,
+}: {
+  containerRef?: RefObject<HTMLDivElement | null>;
+  profile: PetProfile;
+  greeting: string;
+  evaluate: () => PetReaction | null;
+  rowSelector?: string;
+  corner?: boolean;
+}) {
+  const [y, setY] = useState(8);
+  const [emo, setEmo] = useState<PetEmotion>("happy");
+  const [bubble, setBubble] = useState<{ text: string; show: boolean }>({ text: "", show: false });
+  const [hop, setHop] = useState(false);
+
+  const busyRef = useRef(false);
+  const bubbleTimer = useRef<number | undefined>(undefined);
+  const evalRef = useRef(evaluate);
+  evalRef.current = evaluate;
+
+  function rowY(i: number): number | null {
+    const c = containerRef?.current;
+    if (!c) return null;
+    const rows = c.querySelectorAll<HTMLTableRowElement>(rowSelector);
+    const row = rows[i];
+    if (!row) return null;
+    const cRect = c.getBoundingClientRect();
+    const rRect = row.getBoundingClientRect();
+    return rRect.top - cRect.top + rRect.height / 2 - 28;
+  }
+
+  function speak(text: string) {
+    setBubble({ text, show: true });
+    window.clearTimeout(bubbleTimer.current);
+    bubbleTimer.current = window.setTimeout(() => setBubble((b) => ({ ...b, show: false })), 4200);
+  }
+
+  function doReact(r: PetReaction) {
+    busyRef.current = true;
+    const finish = () => {
+      setEmo(r.mood);
+      setHop(false);
+      requestAnimationFrame(() => setHop(true));
+      speak(r.text);
+      window.setTimeout(() => {
+        busyRef.current = false;
+      }, 700);
+    };
+    if (!corner && r.rowIndex !== undefined) {
+      const ny = rowY(r.rowIndex);
+      if (ny !== null) setY(ny);
+      window.setTimeout(finish, 820);
+    } else {
+      finish();
+    }
+  }
+
+  function checkOnce(): boolean {
+    const r = evalRef.current();
+    if (r) {
+      doReact(r);
+      return true;
+    }
+    return false;
+  }
+
+  // Greeting on mount.
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      setEmo("happy");
+      if (!corner) setY(8);
+      setHop(true);
+      speak(greeting);
+    }, 500);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Ambient autopilot; interval driven by chattiness (0 = off).
+  useEffect(() => {
+    const chat = profile.chattiness;
+    if (chat <= 0) return;
+    const period = chat >= 2 ? 7000 : 12000;
+    const id = window.setInterval(() => {
+      if (busyRef.current || document.visibilityState !== "visible") return;
+      if (!checkOnce() && !corner) {
+        const ny = rowY(0);
+        if (ny !== null) {
+          setY(ny);
+          setEmo("sleep");
+          setBubble((b) => ({ ...b, show: false }));
+        }
+      }
+    }, period);
+    return () => window.clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile.chattiness]);
+
+  return (
+    <div className={`pet-layer${corner ? " pet-layer--corner" : ""}`} aria-hidden="true">
+      <div
+        className={`pet-sprite${hop ? " hop" : ""}`}
+        style={corner ? undefined : { top: y }}
+        onClick={() => {
+          if (!busyRef.current && !checkOnce()) {
+            setEmo("cheer");
+            setHop(true);
+            speak("Всё под контролем! 👍");
+          }
+        }}
+        title={profile.name}
+      >
+        <PetSprite skin={profile.skin} emo={emo} />
+      </div>
+      <div className={`pet-bubble${bubble.show ? " show" : ""}`} style={corner ? undefined : { top: y + 2 }}>
+        {bubble.text}
+      </div>
+    </div>
   );
 }

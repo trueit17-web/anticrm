@@ -7,6 +7,7 @@ import {
   ContactRangeStats,
   DailyStat,
   OperatorStat,
+  PetConfig,
   RangeStats,
   StatBucket,
   SummaryStats,
@@ -19,6 +20,7 @@ import { formatMoney } from "../lib/money";
 import { BranchSwitcher } from "../components/BranchSwitcher";
 import { IconBack } from "../components/icons";
 import { EmployeeNameButton } from "../components/EmployeeCard";
+import { PetStatsAssistant } from "../components/pet/PetStatsAssistant";
 import { APP_BUILD, APP_VERSION } from "../data/changelog";
 
 type Period = "today" | "week" | "custom";
@@ -654,6 +656,8 @@ export function StatsPage() {
   const [dayAppeals, setDayAppeals] = useState<Appeal[]>([]);
   const [dayLoading, setDayLoading] = useState(false);
 
+  const [petConfig, setPetConfig] = useState<PetConfig | null>(null);
+
   useEffect(() => {
     if (period === "custom" && (!customFrom || !customTo || customFrom > customTo)) {
       return;
@@ -702,6 +706,10 @@ export function StatsPage() {
     api
       .get<SummaryStats>("/appeals/summary")
       .then(setSummary)
+      .catch(() => {});
+    api
+      .get<PetConfig>("/pet/config")
+      .then(setPetConfig)
       .catch(() => {});
   }, []);
 
@@ -830,6 +838,8 @@ export function StatsPage() {
       <footer className="stats-footer muted">
         Версия {APP_VERSION} (сборка {APP_BUILD}) · <Link to="/changelog">История версий и обновлений</Link>
       </footer>
+
+      {petConfig?.enabled && <PetStatsAssistant byOperator={byOperator} config={petConfig} />}
     </div>
   );
 }

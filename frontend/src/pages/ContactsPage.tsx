@@ -2,12 +2,13 @@ import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useState } fro
 import { Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { api, ApiError, getActiveBranchId } from "../api/client";
-import { Branch, Contact, ContactBatch, SocialFundOffice } from "../types";
+import { Branch, Contact, ContactBatch, PetConfig, SocialFundOffice } from "../types";
 import { parseExtraInfo } from "../lib/contactExtraInfo";
 import { formatMoney } from "../lib/money";
 import { BranchSwitcher } from "../components/BranchSwitcher";
 import { IconBack, IconCheck, IconTrash, IconX } from "../components/icons";
 import { EmployeeNameButton } from "../components/EmployeeCard";
+import { PetContactsAssistant } from "../components/pet/PetContactsAssistant";
 
 function formatDateTime(iso: string): string {
   return new Date(iso).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
@@ -584,6 +585,8 @@ export function ContactsPage() {
   const [officesLoading, setOfficesLoading] = useState(isAdmin);
   const [officesError, setOfficesError] = useState<string | null>(null);
 
+  const [petConfig, setPetConfig] = useState<PetConfig | null>(null);
+
   function loadBatches() {
     if (!isAdmin) return;
     setBatchesLoading(true);
@@ -620,6 +623,10 @@ export function ContactsPage() {
     loadBatches();
     loadQueue();
     loadOffices();
+    api
+      .get<PetConfig>("/pet/config")
+      .then((res) => setPetConfig(res))
+      .catch(() => {});
     api
       .get<{ branches: Branch[] }>("/branches/mine")
       .then((res) => {
@@ -696,6 +703,7 @@ export function ContactsPage() {
           ) : (
             <QueueSection queue={queue} loading={queueLoading} error={queueError} onClaimed={handleClaimedOrChanged} />
           )}
+          {petConfig?.enabled && <PetContactsAssistant queue={queue} config={petConfig} />}
         </>
       )}
     </div>

@@ -1,7 +1,7 @@
-import { RefObject, useEffect, useRef, useState } from "react";
+import { RefObject } from "react";
 import { Appeal, PetConfig, PetTrigger } from "../../types";
 import { formatMoney } from "../../lib/money";
-import { PetEmotion, PetSprite, DEFAULT_RULES } from "./petShared";
+import { PetEmotion, PetOverlay, PetReaction, DEFAULT_RULES } from "./petShared";
 
 // Deposit string ("2 500 000", "2,5 млн"…) → number of rubles, best-effort.
 function depNumber(dep: string | null): number {
@@ -50,16 +50,6 @@ export function PetAssistant({
   appeals: Appeal[];
   config: PetConfig;
 }) {
-  const [y, setY] = useState(8);
-  const [emo, setEmo] = useState<PetEmotion>("happy");
-  const [bubble, setBubble] = useState<{ text: string; show: boolean }>({ text: "", show: false });
-  const [hop, setHop] = useState(false);
-
-  const appealsRef = useRef(appeals);
-  appealsRef.current = appeals;
-  const busyRef = useRef(false);
-  const bubbleTimer = useRef<number | undefined>(undefined);
-
   // Built-in rules + admin-taught ones (enabled only).
   const rules = [
     ...DEFAULT_RULES,
@@ -68,105 +58,20 @@ export function PetAssistant({
       .map((r) => ({ trigger: r.trigger, message: r.message, mood: moodFor(r.trigger) })),
   ];
 
-  function rowY(i: number): number | null {
-    const c = containerRef.current;
-    if (!c) return null;
-    const rows = c.querySelectorAll<HTMLTableRowElement>(".appeals-table tbody tr");
-    const row = rows[i];
-    if (!row) return null;
-    const cRect = c.getBoundingClientRect();
-    const rRect = row.getBoundingClientRect();
-    return rRect.top - cRect.top + rRect.height / 2 - 28;
-  }
-
-  function speak(text: string) {
-    setBubble({ text, show: true });
-    window.clearTimeout(bubbleTimer.current);
-    bubbleTimer.current = window.setTimeout(() => setBubble((b) => ({ ...b, show: false })), 4200);
-  }
-
-  function react(i: number, mood: PetEmotion, text: string) {
-    const ny = rowY(i);
-    if (ny === null) return;
-    busyRef.current = true;
-    setY(ny);
-    window.setTimeout(() => {
-      setEmo(mood);
-      setHop(false);
-      // restart hop animation
-      requestAnimationFrame(() => setHop(true));
-      speak(text);
-      window.setTimeout(() => {
-        busyRef.current = false;
-      }, 700);
-    }, 820);
-  }
-
-  // Evaluate rules against current rows; react to the first match.
-  function checkOnce(): boolean {
-    const list = appealsRef.current;
+  function evaluate(): PetReaction | null {
     for (const rule of rules) {
-      const i = matchIndex(rule.trigger, list);
-      if (i >= 0) {
-        react(i, rule.mood, fill(rule.message, list[i]));
-        return true;
-      }
+      const i = matchIndex(rule.trigger, appeals);
+      if (i >= 0) return { rowIndex: i, mood: rule.mood, text: fill(rule.message, appeals[i]) };
     }
-    return false;
+    return null;
   }
-
-  // Greeting on mount.
-  useEffect(() => {
-    const t = window.setTimeout(() => {
-      setEmo("happy");
-      setY(8);
-      setHop(true);
-      speak(`Привет! Я ${config.profile.name} 🐾 Присматриваю за трубками — подскажу, если что.`);
-    }, 500);
-    return () => window.clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Ambient autopilot; interval driven by chattiness (0 = off).
-  useEffect(() => {
-    const chat = config.profile.chattiness;
-    if (chat <= 0) return;
-    const period = chat >= 2 ? 7000 : 12000;
-    const id = window.setInterval(() => {
-      if (busyRef.current || document.visibilityState !== "visible") return;
-      if (!checkOnce()) {
-        // Nothing to flag — nap by the first row.
-        const ny = rowY(0);
-        if (ny !== null) {
-          setY(ny);
-          setEmo("sleep");
-          setBubble((b) => ({ ...b, show: false }));
-        }
-      }
-    }, period);
-    return () => window.clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [config.profile.chattiness, config.rules.length]);
 
   return (
-    <div className="pet-layer" aria-hidden="true">
-      <div
-        className={`pet-sprite${hop ? " hop" : ""}`}
-        style={{ top: y }}
-        onClick={() => {
-          if (!busyRef.current && !checkOnce()) {
-            setEmo("cheer");
-            setHop(true);
-            speak("Всё под контролем! 👍");
-          }
-        }}
-        title={config.profile.name}
-      >
-        <PetSprite skin={config.profile.skin} emo={emo} />
-      </div>
-      <div className={`pet-bubble${bubble.show ? " show" : ""}`} style={{ top: y + 2 }}>
-        {bubble.text}
-      </div>
-    </div>
+    <PetOverlay
+      containerRef={containerRef}
+      profile={config.profile}
+      greeting={`Привет! Я ${config.profile.name} 🐾 Присматриваю за трубками — подскажу, если что.`}
+      evaluate={evaluate}
+    />
   );
 }

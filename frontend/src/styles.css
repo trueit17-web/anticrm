@@ -311,6 +311,39 @@ a {
   margin-right: 4px;
 }
 
+/* Corner mode: pet floats fixed in the viewport's bottom-right (used on pages
+   with grouped/multiple tables — Прозвон, Статистика — where row-walking
+   doesn't apply). Bubble sits to its left. */
+.pet-layer--corner {
+  position: fixed;
+  inset: auto;
+  right: 0;
+  bottom: 0;
+  z-index: 50;
+}
+.pet-layer--corner .pet-sprite {
+  position: fixed;
+  left: auto;
+  top: auto;
+  right: 20px;
+  bottom: 20px;
+  transition: none;
+}
+.pet-layer--corner .pet-bubble {
+  position: fixed;
+  left: auto;
+  top: auto;
+  right: 84px;
+  bottom: 30px;
+  max-width: 240px;
+}
+.pet-layer--corner .pet-bubble::after {
+  left: auto;
+  right: -7px;
+  border-right-color: transparent;
+  border-left-color: #fffef7;
+}
+
 .fab {
   position: sticky;
   top: 16px;

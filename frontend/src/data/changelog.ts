@@ -10,6 +10,13 @@ export interface ChangelogEntry {
 // separately, so there's only one place to update.
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.26.0",
+    date: "2026-08-11",
+    changes: [
+      "Питомец теперь помогает и на страницах «Прозвон» и «Статистика»: сидит в углу, подсказывает по очереди обзвона и хвалит лидеров/подбадривает по показателям",
+    ],
+  },
+  {
     version: "1.25.0",
     date: "2026-08-11",
     changes: [
