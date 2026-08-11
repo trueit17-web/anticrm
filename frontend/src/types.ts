@@ -53,9 +53,36 @@ export interface Branch {
   contactsEnabled: boolean;
   // "Считать кош" module toggle (SUPERADMIN, Филиалы page).
   walletCountEnabled: boolean;
+  // "Питомец" (AI mascot) module toggle (SUPERADMIN, Филиалы page).
+  petEnabled: boolean;
   // The actual key is never sent to the client (write-only) — only whether
   // one is currently set.
   hasDadataApiKey: boolean;
+}
+
+// --- "Питомец" (AI mascot assistant) ---
+
+export type PetTrigger = "no_sms" | "big_dep" | "nedozhal" | "stalled" | "custom";
+export type PetSkin = "fox" | "robot" | "frog" | "cat";
+
+export interface PetProfile {
+  name: string;
+  skin: PetSkin;
+  // 0 = quiet, 1 = normal, 2 = chatty (controls the ambient tip interval).
+  chattiness: number;
+}
+
+export interface PetRule {
+  id: number;
+  trigger: PetTrigger;
+  message: string;
+  enabled: boolean;
+}
+
+export interface PetConfig {
+  enabled: boolean;
+  profile: PetProfile;
+  rules: PetRule[];
 }
 
 export interface WalletRecipient {

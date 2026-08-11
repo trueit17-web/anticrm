@@ -65,6 +65,11 @@ model Branch {
   // TRONSCAN_API_KEY env var when unset.
   tronscanApiKey     String?
 
+  // SUPERADMIN-controlled toggle (Филиалы page) for the "Питомец" module —
+  // an AI-mascot overlay that walks the tables and shows tips/emotions to
+  // staff. Off by default; off means every /pet endpoint 403s for this branch.
+  petEnabled Boolean @default(false)
+
   users         User[]
   appeals       Appeal[]
   selectOptions SelectOption[]
@@ -73,6 +78,8 @@ model Branch {
   contacts       Contact[]
   walletRecipients WalletRecipient[]
   walletSources    WalletSource[]
+  petProfile     PetProfile?
+  petRules       PetRule[]
 }
 
 // A source TRON (T...) address whose OUTGOING USDT transfers are counted for
@@ -120,6 +127,37 @@ model WalletHopCache {
   checkedAt DateTime @default(now())
 
   @@unique([branchId, address])
+  @@index([branchId])
+}
+
+// Per-branch settings for the "Питомец" mascot: its name, visual skin, and
+// how chatty it is. One row per branch (created lazily with defaults).
+model PetProfile {
+  id         Int      @id @default(autoincrement())
+  branchId   Int      @unique
+  branch     Branch   @relation(fields: [branchId], references: [id])
+  name       String   @default("Кеша")
+  skin       String   @default("fox") // fox | robot | frog | cat
+  // 0 = quiet (only on explicit checks), 1 = normal, 2 = chatty (frequent
+  // ambient tips). Controls the autopilot interval on the client.
+  chattiness Int      @default(1)
+  updatedAt  DateTime @updatedAt
+
+  @@index([branchId])
+}
+
+// A learnable tip rule for the pet. `trigger` is one of a fixed set of
+// heuristics evaluated client-side against the visible rows (e.g. no SMS,
+// large deposit, "Недожал"); `message` is what the pet says when it matches.
+model PetRule {
+  id        Int      @id @default(autoincrement())
+  branchId  Int
+  branch    Branch   @relation(fields: [branchId], references: [id])
+  trigger   String   // no_sms | big_dep | nedozhal | stalled | custom
+  message   String
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+
   @@index([branchId])
 }
 

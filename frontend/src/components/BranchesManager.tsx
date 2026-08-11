@@ -125,6 +125,18 @@ export function BranchesManager() {
     }
   }
 
+  async function handleTogglePet(branch: Branch) {
+    setBranches((prev) =>
+      prev.map((b) => (b.id === branch.id ? { ...b, petEnabled: !b.petEnabled } : b))
+    );
+    try {
+      await api.patch(`/branches/${branch.id}`, { petEnabled: !branch.petEnabled });
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Не удалось сохранить");
+      load();
+    }
+  }
+
   async function handleCreate(e: FormEvent) {
     e.preventDefault();
     setFormError(null);
@@ -195,6 +207,14 @@ export function BranchesManager() {
                       onChange={() => handleToggleWallet(b)}
                     />
                     Считать кош
+                  </label>
+                  <label className="toggle-inline" title="ИИ-питомец: подсказки и эмоции по таблицам">
+                    <input
+                      type="checkbox"
+                      checked={b.petEnabled}
+                      onChange={() => handleTogglePet(b)}
+                    />
+                    Питомец
                   </label>
                   <button
                     className="icon-btn"

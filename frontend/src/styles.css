@@ -247,6 +247,68 @@ a {
   display: flex;
   align-items: flex-start;
   gap: 12px;
+  position: relative;
+}
+
+/* AI pet assistant overlay */
+.pet-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 6;
+}
+.pet-sprite {
+  position: absolute;
+  left: 52px;
+  width: 56px;
+  height: 56px;
+  pointer-events: auto;
+  cursor: pointer;
+  transition: top 0.8s cubic-bezier(0.34, 1.3, 0.5, 1);
+  filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.35));
+}
+.pet-sprite.hop {
+  animation: pet-hop 0.55s ease;
+}
+@keyframes pet-hop {
+  0%, 100% { margin-top: 0; }
+  35% { margin-top: -16px; }
+  70% { margin-top: -4px; }
+}
+.pet-bubble {
+  position: absolute;
+  left: 112px;
+  max-width: 250px;
+  background: #fffef7;
+  color: #26241f;
+  font-size: 12.5px;
+  line-height: 1.35;
+  padding: 8px 11px;
+  border-radius: 12px;
+  border: 1px solid #e7dcbf;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.25s, transform 0.25s;
+  pointer-events: none;
+  z-index: 7;
+}
+.pet-bubble.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+.pet-bubble::after {
+  content: "";
+  position: absolute;
+  left: -7px;
+  top: 16px;
+  border: 7px solid transparent;
+  border-right-color: #fffef7;
+}
+.pet-rule-tag {
+  color: var(--primary);
+  font-weight: 700;
+  margin-right: 4px;
 }
 
 .fab {

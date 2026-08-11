@@ -12,6 +12,7 @@ import { branchesRouter } from "./modules/branches/branches.routes";
 import { contactsRouter } from "./modules/contacts/contacts.routes";
 import { systemRouter } from "./modules/system/system.routes";
 import { walletRouter } from "./modules/wallet/wallet.routes";
+import { petRouter } from "./modules/pet/pet.routes";
 
 export const app = express();
 
@@ -47,6 +48,7 @@ app.use("/api/branches", branchesRouter);
 app.use("/api/contacts", contactsRouter);
 app.use("/api/system", systemRouter);
 app.use("/api/wallet", walletRouter);
+app.use("/api/pet", petRouter);
 
 app.use((req: Request, res: Response) => {
   res.status(404).json({ error: "Не найдено" });

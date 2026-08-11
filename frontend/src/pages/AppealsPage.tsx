@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../auth/AuthContext";
 import { api, ApiError, getActiveBranchId, getSelectedDate } from "../api/client";
 import { formatRuDate, todayInputValue } from "../lib/dateUtils";
-import { Appeal, OperatorStat, SelectOption } from "../types";
+import { Appeal, OperatorStat, PetConfig, SelectOption } from "../types";
+import { PetAssistant } from "../components/pet/PetAssistant";
 import { AppealsTable, NewAppealValues } from "../components/AppealsTable";
 import { AppealFormModal, AppealFormValues } from "../components/AppealFormModal";
 import { CallCardModal } from "../components/CallCardModal";
@@ -211,6 +212,8 @@ export function AppealsPage() {
   );
   const [showTrash, setShowTrash] = useState(false);
   const [showCallCard, setShowCallCard] = useState(false);
+  const [petConfig, setPetConfig] = useState<PetConfig | null>(null);
+  const tableAreaRef = useRef<HTMLDivElement>(null);
 
   // `silent` is used for the background poll below: it refreshes the data
   // without flashing the loading state or an error banner over the table
@@ -236,6 +239,10 @@ export function AppealsPage() {
     api
       .get<{ options: SelectOption[] }>("/select-options")
       .then((res) => setOptions(res.options))
+      .catch(() => {});
+    api
+      .get<PetConfig>("/pet/config")
+      .then((res) => setPetConfig(res))
       .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -416,7 +423,10 @@ export function AppealsPage() {
       {!loading && !error && !branchRequired && showTrash && <DeletedAppealsPanel date={selectedDate} />}
 
       {!loading && !error && !branchRequired && !showTrash && (
-        <div className="table-with-fab">
+        <div className="table-with-fab" ref={tableAreaRef}>
+          {petConfig?.enabled && (
+            <PetAssistant containerRef={tableAreaRef} appeals={appeals} config={petConfig} />
+          )}
           <button className="fab" title="Новая трубка" onClick={() => setCreating(true)}>
             +
           </button>

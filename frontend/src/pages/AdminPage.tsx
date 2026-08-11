@@ -8,6 +8,7 @@ import { UsersManager } from "../components/UsersManager";
 import { BranchesManager } from "../components/BranchesManager";
 import { UpdatesManager } from "../components/UpdatesManager";
 import { WalletManager } from "../components/WalletManager";
+import { PetManager } from "../components/PetManager";
 import { IconBack, IconTrash } from "../components/icons";
 import { formatRuDate, todayInputValue } from "../lib/dateUtils";
 
@@ -207,7 +208,7 @@ function AppealsDeleteSection({ date }: { date: string }) {
   );
 }
 
-type AdminTab = "appeals" | OptionField | "users" | "branches" | "updates" | "wallet";
+type AdminTab = "appeals" | OptionField | "users" | "branches" | "updates" | "wallet" | "pet";
 
 export function AdminPage() {
   const { user } = useAuth();
@@ -298,6 +299,13 @@ export function AdminPage() {
             >
               Считать кош
             </button>
+            <button
+              type="button"
+              className={`admin-tab${activeTab === "pet" ? " admin-tab-active" : ""}`}
+              onClick={() => setActiveTab("pet")}
+            >
+              Питомец
+            </button>
             {user?.role === "SUPERADMIN" && (
               <>
                 <button
@@ -331,6 +339,8 @@ export function AdminPage() {
           <UpdatesManager />
         ) : activeTab === "wallet" ? (
           <WalletManager />
+        ) : activeTab === "pet" ? (
+          <PetManager />
         ) : (
           <>
             {loading && <p>Загрузка...</p>}

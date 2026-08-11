@@ -30,6 +30,7 @@ const updateSchema = z.object({
   name: z.string().min(1).optional(),
   contactsEnabled: z.boolean().optional(),
   walletCountEnabled: z.boolean().optional(),
+  petEnabled: z.boolean().optional(),
   dadataApiKey: z.string().nullable().optional(),
 });
 
