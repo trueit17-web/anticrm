@@ -1,13 +1,46 @@
 import { FormEvent, useEffect, useState } from "react";
 import { api, ApiError } from "../api/client";
-import { PetConfig, PetRule, PetTrigger } from "../types";
+import { PetConfig, PetRule, PetTrigger, SelectOption } from "../types";
 import { IconCheck, IconTrash } from "./icons";
-import { CHATTINESS_LABELS, DEFAULT_RULES, PetSprite, SKINS, TRIGGER_LABELS } from "./pet/petShared";
+import { MOBILE_OPERATORS } from "../lib/mobileOperator";
+import {
+  CHATTINESS_LABELS,
+  DAILY_COUNT_OPTIONS,
+  DEFAULT_RULES,
+  fillExample,
+  guessTrigger,
+  moodForTrigger,
+  PetSprite,
+  SKINS,
+  TRIGGER_LABELS,
+} from "./pet/petShared";
 
-const RULE_TRIGGERS: PetTrigger[] = ["no_sms", "big_dep", "nedozhal", "stalled", "custom"];
+// Base triggers offered in the condition dropdown (parametrized ones — status,
+// carrier, daily count — are added below as separate groups).
+const BASE_TRIGGERS: PetTrigger[] = ["no_sms", "big_dep", "nedozhal", "stalled", "custom"];
+
+// The condition <select> encodes a parametrized trigger as "<trigger>:<param>"
+// so one control can offer fixed triggers plus per-branch statuses, carriers
+// and count thresholds.
+function encodeCond(trigger: PetTrigger, param: string | null): string {
+  return param ? `${trigger}:${param}` : trigger;
+}
+function decodeCond(cond: string): { trigger: PetTrigger; param: string | null } {
+  const i = cond.indexOf(":");
+  if (i >= 0) return { trigger: cond.slice(0, i) as PetTrigger, param: cond.slice(i + 1) };
+  return { trigger: cond as PetTrigger, param: null };
+}
+function ruleLabel(trigger: PetTrigger, param: string | null): string {
+  if (!param) return TRIGGER_LABELS[trigger];
+  if (trigger === "status") return `Статус «${param}»`;
+  if (trigger === "phone_operator") return `Оператор ${param}`;
+  if (trigger === "daily_count") return param === "6" ? "Трубок за день больше 5" : `Трубок за день ≥ ${param}`;
+  return TRIGGER_LABELS[trigger];
+}
 
 export function PetManager() {
   const [config, setConfig] = useState<PetConfig | null>(null);
+  const [statuses, setStatuses] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -18,11 +51,22 @@ export function PetManager() {
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileSaved, setProfileSaved] = useState(false);
 
-  // new rule draft
-  const [trigger, setTrigger] = useState<PetTrigger>("no_sms");
+  // new rule draft — `cond` is the encoded dropdown value (see encodeCond).
+  const [cond, setCond] = useState<string>("no_sms");
+  // Once the admin picks a condition by hand we stop auto-guessing it from the
+  // text, so their choice isn't overwritten on the next keystroke.
+  const [condTouched, setCondTouched] = useState(false);
   const [message, setMessage] = useState("");
   const [adding, setAdding] = useState(false);
   const [ruleError, setRuleError] = useState<string | null>(null);
+
+  function onMessageChange(text: string) {
+    setMessage(text);
+    if (!condTouched) {
+      const g = guessTrigger(text, statuses);
+      setCond(encodeCond(g.trigger, g.param));
+    }
+  }
 
   function load() {
     setLoading(true);
@@ -38,7 +82,14 @@ export function PetManager() {
       .catch((err) => setError(err instanceof ApiError ? err.message : "Не удалось загрузить"))
       .finally(() => setLoading(false));
   }
-  useEffect(load, []);
+  useEffect(() => {
+    load();
+    // Real, per-branch statuses the pet can react to.
+    api
+      .get<{ options: SelectOption[] }>("/select-options")
+      .then((res) => setStatuses(res.options.filter((o) => o.field === "STATUS").map((o) => o.value)))
+      .catch(() => {});
+  }, []);
 
   async function saveProfile(e: FormEvent) {
     e.preventDefault();
@@ -60,11 +111,14 @@ export function PetManager() {
   async function addRule(e: FormEvent) {
     e.preventDefault();
     if (!message.trim()) return;
+    const { trigger, param } = decodeCond(cond);
     setAdding(true);
     setRuleError(null);
     try {
-      await api.post("/pet/rules", { trigger, message: message.trim() });
+      await api.post("/pet/rules", { trigger, param, message: message.trim() });
       setMessage("");
+      setCond("no_sms");
+      setCondTouched(false);
       load();
     } catch (err) {
       setRuleError(err instanceof ApiError ? err.message : "Не удалось добавить");
@@ -85,6 +139,8 @@ export function PetManager() {
 
   if (loading) return <p className="muted">Загрузка...</p>;
   if (error) return <p className="error-text">{error}</p>;
+
+  const previewTrigger = decodeCond(cond).trigger;
 
   return (
     <div className="admin-fields-grid">
@@ -147,7 +203,7 @@ export function PetManager() {
           {config?.rules.map((r) => (
             <li key={r.id} style={{ opacity: r.enabled ? 1 : 0.5 }}>
               <span>
-                <span className="pet-rule-tag">{TRIGGER_LABELS[r.trigger]}</span> {r.message}
+                <span className="pet-rule-tag">{ruleLabel(r.trigger, r.param)}</span> {r.message}
               </span>
               <span className="admin-option-actions">
                 <label className="toggle-inline" title={r.enabled ? "Выключить правило" : "Включить правило"}>
@@ -161,26 +217,73 @@ export function PetManager() {
           ))}
         </ul>
 
-        <form className="inline-form" onSubmit={addRule}>
-          <select value={trigger} onChange={(e) => setTrigger(e.target.value as PetTrigger)}>
-            {RULE_TRIGGERS.map((t) => (
-              <option key={t} value={t}>
-                {TRIGGER_LABELS[t]}
-              </option>
-            ))}
-          </select>
+        <h3 className="pet-teach-title">🎓 Научить питомца</h3>
+        <p className="muted">
+          Просто напишите подсказку своими словами — питомец сам поймёт, когда её показывать (по
+          ключевым словам «смс», «деп», «недожал», «завис…», по названиям ваших статусов, оператору
+          номера — «МТС», «Билайн»… — и по числу трубок «за день»). Условие можно поправить вручную. В
+          тексте доступна ещё подстановка <code>{"{count}"}</code> — число трубок за день.
+        </p>
+        <form className="pet-teach-form" onSubmit={addRule}>
           <input
             placeholder="Текст подсказки, напр.: 💰 {op}: крупный деп {dep} — проверь код"
             value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            style={{ minWidth: 340 }}
+            onChange={(e) => onMessageChange(e.target.value)}
             maxLength={200}
           />
-          <button type="submit" disabled={adding}>
-            {adding ? "..." : "Научить"}
-          </button>
+          <div className="pet-teach-row">
+            <label className="pet-teach-cond">
+              Питомец покажет это при:{" "}
+              <select
+                value={cond}
+                onChange={(e) => {
+                  setCond(e.target.value);
+                  setCondTouched(true);
+                }}
+              >
+                {BASE_TRIGGERS.map((t) => (
+                  <option key={t} value={t}>
+                    {TRIGGER_LABELS[t]}
+                  </option>
+                ))}
+                {statuses.length > 0 && (
+                  <optgroup label="Статусы филиала">
+                    {statuses.map((s) => (
+                      <option key={s} value={`status:${s}`}>
+                        Статус «{s}»
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+                <optgroup label="Оператор номера">
+                  {MOBILE_OPERATORS.map((c) => (
+                    <option key={c} value={`phone_operator:${c}`}>
+                      Оператор {c}
+                    </option>
+                  ))}
+                </optgroup>
+                <optgroup label="Трубок за день">
+                  {DAILY_COUNT_OPTIONS.map((o) => (
+                    <option key={o.threshold} value={`daily_count:${o.threshold}`}>
+                      {o.label}
+                    </option>
+                  ))}
+                </optgroup>
+              </select>
+            </label>
+            <button type="submit" disabled={adding || !message.trim()}>
+              {adding ? "..." : "Научить"}
+            </button>
+          </div>
         </form>
         {ruleError && <p className="error-text">{ruleError}</p>}
+
+        {message.trim() && (
+          <div className="pet-preview">
+            <PetSprite skin={skin as PetConfig["profile"]["skin"]} emo={moodForTrigger(previewTrigger)} size={48} />
+            <div className="pet-preview-bubble">{fillExample(message)}</div>
+          </div>
+        )}
       </section>
     </div>
   );

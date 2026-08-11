@@ -5,6 +5,7 @@ import {
   addRule,
   deleteRule,
   getPetConfig,
+  PARAM_TRIGGERS,
   PET_TRIGGERS,
   updateProfile,
   updateRule,
@@ -36,6 +37,7 @@ export async function updateProfileHandler(req: Request, res: Response) {
 
 const ruleSchema = z.object({
   trigger: z.enum(PET_TRIGGERS),
+  param: z.string().trim().min(1).max(60).nullable().optional(),
   message: z.string().trim().min(1).max(200),
 });
 
@@ -44,12 +46,16 @@ export async function addRuleHandler(req: Request, res: Response) {
   if (branchId === null) return res.status(400).json({ error: "Выберите филиал" });
   const parsed = ruleSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Проверьте поля формы", details: parsed.error.flatten() });
-  const rule = await addRule(branchId, parsed.data.trigger, parsed.data.message);
+  if (PARAM_TRIGGERS.includes(parsed.data.trigger) && !parsed.data.param) {
+    return res.status(400).json({ error: "Для этого условия укажите значение (статус, число или оператора)" });
+  }
+  const rule = await addRule(branchId, parsed.data.trigger, parsed.data.message, parsed.data.param ?? null);
   res.status(201).json({ rule });
 }
 
 const ruleUpdateSchema = z.object({
   trigger: z.enum(PET_TRIGGERS).optional(),
+  param: z.string().trim().min(1).max(60).nullable().optional(),
   message: z.string().trim().min(1).max(200).optional(),
   enabled: z.boolean().optional(),
 });

@@ -62,7 +62,15 @@ export interface Branch {
 
 // --- "Питомец" (AI mascot assistant) ---
 
-export type PetTrigger = "no_sms" | "big_dep" | "nedozhal" | "stalled" | "custom";
+export type PetTrigger =
+  | "no_sms"
+  | "big_dep"
+  | "nedozhal"
+  | "stalled"
+  | "status"
+  | "daily_count"
+  | "phone_operator"
+  | "custom";
 export type PetSkin = "fox" | "robot" | "frog" | "cat";
 
 export interface PetProfile {
@@ -75,6 +83,8 @@ export interface PetProfile {
 export interface PetRule {
   id: number;
   trigger: PetTrigger;
+  // For trigger "status": the exact branch status value to react to.
+  param: string | null;
   message: string;
   enabled: boolean;
 }

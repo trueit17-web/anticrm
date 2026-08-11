@@ -311,6 +311,61 @@ a {
   margin-right: 4px;
 }
 
+/* Teach-the-pet form + live preview (PetManager). */
+.pet-teach-title {
+  margin: 16px 0 4px;
+  font-size: 14px;
+}
+.pet-teach-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+.pet-teach-form > input {
+  width: 100%;
+  box-sizing: border-box;
+}
+.pet-teach-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.pet-teach-cond {
+  font-size: 12.5px;
+  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.pet-preview {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+.pet-preview-bubble {
+  position: relative;
+  background: #fffef7;
+  color: #26241f;
+  font-size: 12.5px;
+  line-height: 1.35;
+  padding: 8px 11px;
+  border-radius: 12px;
+  border: 1px solid #e7dcbf;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+  max-width: 320px;
+}
+.pet-preview-bubble::after {
+  content: "";
+  position: absolute;
+  left: -7px;
+  top: 14px;
+  border: 7px solid transparent;
+  border-right-color: #fffef7;
+}
+
 /* Corner mode: pet floats fixed in the viewport's bottom-right (used on pages
    with grouped/multiple tables — Прозвон, Статистика — where row-walking
    doesn't apply). Bubble sits to its left. */

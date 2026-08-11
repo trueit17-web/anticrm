@@ -153,7 +153,10 @@ model PetRule {
   id        Int      @id @default(autoincrement())
   branchId  Int
   branch    Branch   @relation(fields: [branchId], references: [id])
-  trigger   String   // no_sms | big_dep | nedozhal | stalled | custom
+  trigger   String   // no_sms | big_dep | nedozhal | stalled | status | custom
+  // For trigger "status": the exact branch status value to react to (a
+  // SelectOption of field STATUS, per-branch/customizable). Null otherwise.
+  param     String?
   message   String
   enabled   Boolean  @default(true)
   createdAt DateTime @default(now())

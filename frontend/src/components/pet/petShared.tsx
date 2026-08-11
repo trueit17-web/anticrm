@@ -1,5 +1,6 @@
 import { RefObject, useEffect, useRef, useState } from "react";
 import { PetProfile, PetSkin, PetTrigger } from "../../types";
+import { MOBILE_OPERATORS } from "../../lib/mobileOperator";
 
 export type PetEmotion = "happy" | "alert" | "cheer" | "sleep";
 
@@ -27,8 +28,20 @@ export const TRIGGER_LABELS: Record<PetTrigger, string> = {
   big_dep: "Крупный деп",
   nedozhal: "Недожал",
   stalled: "Зависла трубка",
+  status: "Статус",
+  daily_count: "Трубок за день",
+  phone_operator: "Оператор номера",
   custom: "Своё (любая строка)",
 };
+
+// Count thresholds offered for the "трубок за день" condition (matched as
+// appeals.length >= threshold; 6 reads as "больше 5").
+export const DAILY_COUNT_OPTIONS: { threshold: number; label: string }[] = [
+  { threshold: 1, label: "Трубок за день ≥ 1" },
+  { threshold: 3, label: "Трубок за день ≥ 3" },
+  { threshold: 5, label: "Трубок за день ≥ 5" },
+  { threshold: 6, label: "Трубок за день больше 5" },
+];
 
 // Built-in rules the pet always knows, so it's useful the moment the module
 // is switched on — admins add more via PetRule. Messages accept {op}, {dep},
@@ -39,6 +52,55 @@ export const DEFAULT_RULES: { trigger: PetTrigger; message: string; mood: PetEmo
 ];
 
 export const CHATTINESS_LABELS = ["Тихий", "Обычный", "Болтливый"];
+
+// Emotion a rule shows, derived from its trigger (mirrors PetAssistant).
+export function moodForTrigger(trigger: PetTrigger): PetEmotion {
+  if (trigger === "no_sms" || trigger === "big_dep") return "alert";
+  if (trigger === "nedozhal" || trigger === "stalled" || trigger === "status" || trigger === "phone_operator")
+    return "happy";
+  return "cheer"; // daily_count / custom — celebratory
+}
+
+// A guessed condition: a base trigger, plus a status value when the text names
+// one of the branch's real statuses.
+export interface GuessedCond {
+  trigger: PetTrigger;
+  param: string | null;
+}
+
+// "Teach by plain text": guess which condition an admin means from the words in
+// their tip, so they can just write the phrase and let the pet pick the rule.
+// `statuses` are the branch's real (customizable) status values — if the text
+// mentions one, we bind to that exact status. Always overridable in the UI.
+export function guessTrigger(text: string, statuses: string[] = []): GuessedCond {
+  const t = text.toLowerCase();
+  // A real branch status named in the text wins — most specific.
+  const named = statuses.find((s) => s.trim() && t.includes(s.toLowerCase()));
+  if (named) return { trigger: "status", param: named };
+  // A carrier named in the text (МТС / Билайн / …).
+  const carrier = MOBILE_OPERATORS.find((c) => t.includes(c.toLowerCase()));
+  if (carrier) return { trigger: "phone_operator", param: carrier };
+  // "N трубок за день" / "за день … N".
+  if (/за день|в день|дневн|план/.test(t)) {
+    const m = t.match(/\d+/);
+    if (m) return { trigger: "daily_count", param: m[0] };
+  }
+  // NB: no \b word boundaries — in JS regex \b is ASCII-only and never matches
+  // around Cyrillic letters, so "смс" would slip through.
+  if (/смс|sms/.test(t)) return { trigger: "no_sms", param: null };
+  if (/недож/.test(t)) return { trigger: "nedozhal", param: null };
+  if (/завис|давн|долго|не звон|молч/.test(t)) return { trigger: "stalled", param: null };
+  if (/деп|млн|тыс|руб|₽|сумм|крупн/.test(t)) return { trigger: "big_dep", param: null };
+  return { trigger: "custom", param: null };
+}
+
+// Fill placeholders with example values for the teaching preview.
+export function fillExample(msg: string): string {
+  return msg
+    .replace(/\{op\}/g, "Иванов А.")
+    .replace(/\{dep\}/g, "2 500 000 ₽")
+    .replace(/\{phone\}/g, "+7 921 000-00-00");
+}
 
 // A themeable mascot: one body, per-skin ears + color, emotion-driven face.
 export function PetSprite({

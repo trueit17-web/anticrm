@@ -29,6 +29,9 @@ const CODE_MAP: Record<string, string> = {
   "995": "Tele2",
 };
 
+// The carriers this table can identify — offered as pet-rule targets.
+export const MOBILE_OPERATORS = ["МТС", "Билайн", "МегаФон", "Tele2"] as const;
+
 export function detectMobileOperator(rawPhone: string): string {
   const digits = rawPhone.replace(/\D/g, "");
   const local = digits.length > 10 ? digits.slice(-10) : digits;
