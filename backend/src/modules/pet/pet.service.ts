@@ -149,17 +149,21 @@ export async function deleteRule(branchId: number, id: number) {
 // Stage 5 plan discussed with the admin).
 
 // Free-tier OpenRouter models to try, in order — the free catalog churns
-// (models get pulled with no notice), so we fall back rather than pin one
-// id. Only a 404 ("no endpoints for this model") advances to the next
-// entry; any other outcome (success, wrong key, out of quota, network
-// error) stops there — retrying those against a different model wouldn't
-// change the result.
+// (models get pulled with no notice, shared pools get saturated under load),
+// so we fall back rather than pin one id. Deliberately non-reasoning instruct
+// models only: a "thinking" model (e.g. the Nemotron nano *-reasoning
+// variants) burns the token budget on chain-of-thought and never reaches the
+// actual answer, which looks like a parse failure rather than what it is.
+// 404 (model pulled) or 429 (that model's upstream pool saturated) advances
+// to the next entry; anything else (bad key, timeout, garbled reply) stops —
+// switching models wouldn't fix those.
 const OPENROUTER_MODELS = [
   "google/gemma-4-31b-it:free",
-  "openai/gpt-oss-20b:free",
-  "nvidia/nemotron-3-nano-30b-a3b:free",
+  "google/gemma-4-26b-a4b-it:free",
+  "liquid/lfm-2.5-2.6b:free",
 ];
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
+const OPENROUTER_TIMEOUT_MS = 12000;
 
 // Cached per branch for a few minutes — keeps us well under the free-tier
 // rate limit and means the pet isn't re-querying an LLM every autopilot tick.
@@ -216,7 +220,7 @@ export async function getAiTips(branchId: number): Promise<string[]> {
   const requestBody = (model: string) =>
     JSON.stringify({
       model,
-      max_tokens: 200,
+      max_tokens: 300,
       messages: [
         {
           role: "system",
@@ -224,7 +228,8 @@ export async function getAiTips(branchId: number): Promise<string[]> {
             "Ты — дружелюбный питомец-талисман в CRM колл-центра. По сводке смены дай 1-2 очень короткие " +
             "живые реплики (до 100 символов каждая) — подсказку или похвалу оператору. Пиши по-русски, " +
             "разговорно, можно с эмодзи в начале строки. Никаких персональных данных ты не знаешь и не " +
-            "выдумывай их. Ответь СТРОГО в виде JSON-массива строк, без пояснений, например: " +
+            "выдумывай их. Не рассуждай вслух, не показывай ход мыслей, никаких <think> и пояснений — " +
+            "сразу и только JSON-массив строк, ничего больше, например: " +
             '["🔥 текст первой реплики", "📉 текст второй реплики"]',
         },
         {
@@ -252,7 +257,7 @@ export async function getAiTips(branchId: number): Promise<string[]> {
           "X-Title": "CRM Pet Assistant",
         },
         body: requestBody(model),
-        signal: AbortSignal.timeout(8000),
+        signal: AbortSignal.timeout(OPENROUTER_TIMEOUT_MS),
       });
       if (!res.ok) {
         // Never user-visible (the pet just skips the AI beat), but the admin
@@ -273,26 +278,34 @@ export async function getAiTips(branchId: number): Promise<string[]> {
       const text = data.choices?.[0]?.message?.content?.trim();
       if (!text) {
         console.error(`[pet] OpenRouter empty content (${model}) for branch ${branchId}: ${JSON.stringify(data).slice(0, 500)}`);
-        return [];
+        continue; // try the next model rather than give up on one bad reply
       }
 
-      // Models sometimes wrap the array in a ```json fence despite instructions.
+      // Models sometimes wrap the array in a ```json fence, or (reasoning
+      // models especially) burn the token budget on chain-of-thought and
+      // never reach an array at all — either way, move on to the next model.
       const jsonMatch = text.match(/\[[\s\S]*\]/);
       if (!jsonMatch) {
         console.error(`[pet] OpenRouter reply not a JSON array (${model}) for branch ${branchId}: ${text.slice(0, 300)}`);
-        return [];
+        continue;
       }
-      const parsed = JSON.parse(jsonMatch[0]);
-      if (!Array.isArray(parsed)) return [];
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(jsonMatch[0]);
+      } catch {
+        console.error(`[pet] OpenRouter reply had unparsable JSON (${model}) for branch ${branchId}: ${jsonMatch[0].slice(0, 300)}`);
+        continue;
+      }
+      if (!Array.isArray(parsed)) continue;
       const tips = parsed.filter((t): t is string => typeof t === "string" && t.trim().length > 0).slice(0, 2);
+      if (tips.length === 0) continue;
 
       aiTipsCache.set(branchId, { tips, expiresAt: Date.now() + AI_TIPS_TTL_MS });
       return tips;
     } catch (err) {
-      // network error, timeout, malformed JSON — the pet just skips the AI beat
+      // network error or timeout on this model — try the next one
       console.error(`[pet] OpenRouter request failed (${model}) for branch ${branchId}:`, err instanceof Error ? err.message : err);
-      return [];
     }
   }
-  return []; // every candidate model 404'd
+  return []; // every candidate model failed one way or another
 }
