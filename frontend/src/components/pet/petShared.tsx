@@ -196,6 +196,16 @@ export function PetSprite({
 // How long the pet lingers on one message before moving to the next.
 const STEP_MS = 10000;
 
+// Motivational lines rotate through a module-level cursor so the phrase keeps
+// advancing even if a pet overlay remounts (e.g. on a background data poll) —
+// which is what made it repeat the same line before.
+let motiCursor = 0;
+function pickMotivation(): string {
+  const t = MOTIVATIONAL[motiCursor % MOTIVATIONAL.length];
+  motiCursor += 1;
+  return t;
+}
+
 // Shared pet engine used by every page's assistant. Two layouts:
 //   • row-walking (corner=false): walks to a table row via rowSelector.
 //   • corner (corner=true): floats fixed in the bottom-right, reacts in place —
@@ -228,8 +238,9 @@ export function PetOverlay({
   const bubbleTimer = useRef<number | undefined>(undefined);
   const stepTimer = useRef<number | undefined>(undefined);
   const walkTimer = useRef<number | undefined>(undefined);
-  const seqPos = useRef(0);
-  const motiPos = useRef(0);
+  const tipPos = useRef(0);
+  const tipsSinceMoti = useRef(0);
+  const lastWasMoti = useRef(false);
   const collectRef = useRef(collect);
   collectRef.current = collect;
 
@@ -264,43 +275,16 @@ export function PetOverlay({
     bubbleTimer.current = window.setTimeout(() => setBubble((b) => ({ ...b, show: false })), holdMs);
   }
 
-  function nextMotivation(): string {
-    const t = MOTIVATIONAL[motiPos.current % MOTIVATIONAL.length];
-    motiPos.current += 1;
-    return t;
-  }
-
-  // Build the rotation for this tick: every applicable reaction, with a
-  // motivational slot mixed in and always one at the end.
-  function buildSequence(): (PetReaction | { motivate: true })[] {
-    const base = collectRef.current();
-    const seq: (PetReaction | { motivate: true })[] = [];
-    base.forEach((r, idx) => {
-      seq.push(r);
-      if (idx % 2 === 1) seq.push({ motivate: true });
-    });
-    seq.push({ motivate: true });
-    return seq;
-  }
-
-  function doReact(r: PetReaction) {
+  // Nothing to flag — settle down quietly instead of pacing around.
+  function restInPlace() {
     stopWalk();
-    if (!corner && r.walk) {
-      // Motivational stroll: hop from row to row while the line is read.
-      setEmo(r.mood);
-      speak(r.text);
-      const rc = Math.max(rowCount(), 1);
-      let k = 0;
-      const walk = () => {
-        const ny = rowY(k % rc);
-        if (ny !== null) setY(ny);
-        bounce();
-        k += 1;
-      };
-      walk();
-      walkTimer.current = window.setInterval(walk, 1500);
-      return;
-    }
+    setEmo("sleep");
+    setBubble((b) => ({ ...b, show: false }));
+  }
+
+  // A row-anchored (or corner) tip: walk over, then react in place.
+  function showTip(r: PetReaction) {
+    stopWalk();
     if (!corner && r.rowIndex !== undefined) {
       const ny = rowY(r.rowIndex);
       if (ny !== null) setY(ny);
@@ -316,13 +300,54 @@ export function PetOverlay({
     }
   }
 
+  // A motivational line: in row mode take ONE finite stroll along a few rows
+  // (not an endless hop), then stop; in corner mode just say it in place.
+  function showMotivation() {
+    stopWalk();
+    setEmo("cheer");
+    speak(pickMotivation());
+    const rc = rowCount();
+    if (corner || rc <= 1) {
+      bounce();
+      return;
+    }
+    const steps = Math.min(rc, 5);
+    let k = 0;
+    const walk = () => {
+      if (k >= steps) {
+        stopWalk();
+        return;
+      }
+      const ny = rowY(k % rc);
+      if (ny !== null) setY(ny);
+      bounce();
+      k += 1;
+    };
+    walk();
+    walkTimer.current = window.setInterval(walk, 1600);
+  }
+
+  // One beat of the rotation. Rule: never two motivational lines in a row;
+  // otherwise a motivational line after every two tips, or as an occasional
+  // pipe-up when there are no tips (alternating with a quiet rest).
   function advance() {
-    const seq = buildSequence();
-    if (seq.length === 0) return;
-    const slot = seq[seqPos.current % seq.length];
-    seqPos.current += 1;
-    const r: PetReaction = "motivate" in slot ? { mood: "cheer", text: nextMotivation(), walk: !corner } : slot;
-    doReact(r);
+    const tips = collectRef.current();
+    const dueForMoti = !lastWasMoti.current && (tips.length === 0 || tipsSinceMoti.current >= 2);
+    if (dueForMoti) {
+      lastWasMoti.current = true;
+      tipsSinceMoti.current = 0;
+      showMotivation();
+      return;
+    }
+    lastWasMoti.current = false;
+    if (tips.length === 0) {
+      restInPlace();
+      return;
+    }
+    const r = tips[tipPos.current % tips.length];
+    tipPos.current += 1;
+    tipsSinceMoti.current += 1;
+    showTip(r);
   }
 
   function schedule(period: number) {
