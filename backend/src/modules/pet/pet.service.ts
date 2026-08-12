@@ -240,21 +240,36 @@ export async function getAiTips(branchId: number): Promise<string[]> {
       }),
       signal: AbortSignal.timeout(8000),
     });
-    if (!res.ok) return [];
+    if (!res.ok) {
+      // Never user-visible (the pet just skips the AI beat), but the admin who
+      // configured the key can't otherwise tell "wrong key" from "no quota"
+      // from "nothing happened" — log it so `docker compose logs` shows why.
+      const body = await res.text().catch(() => "");
+      console.error(`[pet] OpenRouter ${res.status} for branch ${branchId}: ${body.slice(0, 500)}`);
+      return [];
+    }
     const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
     const text = data.choices?.[0]?.message?.content?.trim();
-    if (!text) return [];
+    if (!text) {
+      console.error(`[pet] OpenRouter empty content for branch ${branchId}: ${JSON.stringify(data).slice(0, 500)}`);
+      return [];
+    }
 
     // Models sometimes wrap the array in a ```json fence despite instructions.
     const jsonMatch = text.match(/\[[\s\S]*\]/);
-    if (!jsonMatch) return [];
+    if (!jsonMatch) {
+      console.error(`[pet] OpenRouter reply not a JSON array for branch ${branchId}: ${text.slice(0, 300)}`);
+      return [];
+    }
     const parsed = JSON.parse(jsonMatch[0]);
     if (!Array.isArray(parsed)) return [];
     const tips = parsed.filter((t): t is string => typeof t === "string" && t.trim().length > 0).slice(0, 2);
 
     aiTipsCache.set(branchId, { tips, expiresAt: Date.now() + AI_TIPS_TTL_MS });
     return tips;
-  } catch {
-    return []; // network error, timeout, bad JSON — the pet just skips the AI beat
+  } catch (err) {
+    // network error, timeout, malformed JSON — the pet just skips the AI beat
+    console.error(`[pet] OpenRouter request failed for branch ${branchId}:`, err instanceof Error ? err.message : err);
+    return [];
   }
 }
