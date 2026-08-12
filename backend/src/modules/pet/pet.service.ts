@@ -258,11 +258,15 @@ export async function getAiTips(branchId: number): Promise<string[]> {
         // Never user-visible (the pet just skips the AI beat), but the admin
         // who configured the key can't otherwise tell "wrong key" from "no
         // quota" from "nothing happened" — log it so `docker compose logs`
-        // shows why. A 404 means the free catalog dropped this model — try
-        // the next one instead of giving up.
+        // shows why. 404 = the free catalog dropped this model; 429 on a
+        // free-tier model is usually the shared upstream provider pool being
+        // saturated (not our key's own limit — each candidate is a different
+        // provider with its own pool). Both are worth trying the next model
+        // for instead of giving up; anything else (401 bad key, etc.) won't
+        // be fixed by switching models.
         const body = await res.text().catch(() => "");
         console.error(`[pet] OpenRouter ${res.status} (${model}) for branch ${branchId}: ${body.slice(0, 500)}`);
-        if (res.status === 404) continue;
+        if (res.status === 404 || res.status === 429) continue;
         return [];
       }
       const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
