@@ -10,6 +10,9 @@ export interface PetReaction {
   mood: PetEmotion;
   text: string;
   rowIndex?: number;
+  // Motivational line: in row-walking mode the pet strolls along the rows
+  // while it's read, instead of anchoring to one row.
+  walk?: boolean;
 }
 
 export const SKINS: { value: PetSkin; label: string; color: string; emoji: string }[] = [
@@ -52,6 +55,21 @@ export const DEFAULT_RULES: { trigger: PetTrigger; message: string; mood: PetEmo
 ];
 
 export const CHATTINESS_LABELS = ["Тихий", "Обычный", "Болтливый"];
+
+// Ambient motivational lines the pet mixes in between rule-based tips, so it
+// isn't only nagging — shown while it strolls along the rows.
+export const MOTIVATIONAL: string[] = [
+  "💪 Каждый звонок — шаг к результату. Погнали!",
+  "🔥 Сегодня отличный день закрыть пару трубок!",
+  "📈 Стабильность бьёт талант — работай ровно.",
+  "🤝 Вежливость и уверенность — твои лучшие инструменты.",
+  "⏰ Тёплый клиент дороже холодного — не забывай про перезвоны.",
+  "🎯 Сначала слушай, потом предлагай.",
+  "☕ Устал — сделай паузу на минуту и вернись собранным.",
+  "🏆 Лидеры недели — это привычка, а не случай.",
+  "🙂 Улыбку слышно в голосе — клиент это чувствует.",
+  "🚀 Ещё один звонок — и ты ближе к цели дня.",
+];
 
 // Emotion a rule shows, derived from its trigger (mirrors PetAssistant).
 export function moodForTrigger(trigger: PetTrigger): PetEmotion {
@@ -175,23 +193,30 @@ export function PetSprite({
   );
 }
 
+// How long the pet lingers on one message before moving to the next.
+const STEP_MS = 10000;
+
 // Shared pet engine used by every page's assistant. Two layouts:
 //   • row-walking (corner=false): walks to a table row via rowSelector.
 //   • corner (corner=true): floats fixed in the bottom-right, reacts in place —
 //     used where the page has grouped/multiple tables (Прозвон, Статистика).
-// Domain logic lives in `evaluate`, supplied by each page wrapper.
+// Domain logic lives in `collect`, supplied by each page wrapper: it returns
+// EVERY reaction that currently applies. The engine rotates through them one
+// at a time (so it never gets stuck on the first tip), sprinkles in
+// motivational lines, and — in row mode — strolls along the rows while a
+// motivational line is read.
 export function PetOverlay({
   containerRef,
   profile,
   greeting,
-  evaluate,
+  collect,
   rowSelector = ".appeals-table tbody tr",
   corner = false,
 }: {
   containerRef?: RefObject<HTMLDivElement | null>;
   profile: PetProfile;
   greeting: string;
-  evaluate: () => PetReaction | null;
+  collect: () => PetReaction[];
   rowSelector?: string;
   corner?: boolean;
 }) {
@@ -200,10 +225,17 @@ export function PetOverlay({
   const [bubble, setBubble] = useState<{ text: string; show: boolean }>({ text: "", show: false });
   const [hop, setHop] = useState(false);
 
-  const busyRef = useRef(false);
   const bubbleTimer = useRef<number | undefined>(undefined);
-  const evalRef = useRef(evaluate);
-  evalRef.current = evaluate;
+  const stepTimer = useRef<number | undefined>(undefined);
+  const walkTimer = useRef<number | undefined>(undefined);
+  const seqPos = useRef(0);
+  const motiPos = useRef(0);
+  const collectRef = useRef(collect);
+  collectRef.current = collect;
+
+  function rowCount(): number {
+    return containerRef?.current?.querySelectorAll(rowSelector).length ?? 0;
+  }
 
   function rowY(i: number): number | null {
     const c = containerRef?.current;
@@ -216,70 +248,116 @@ export function PetOverlay({
     return rRect.top - cRect.top + rRect.height / 2 - 28;
   }
 
-  function speak(text: string) {
+  function stopWalk() {
+    if (walkTimer.current) window.clearInterval(walkTimer.current);
+    walkTimer.current = undefined;
+  }
+
+  function bounce() {
+    setHop(false);
+    requestAnimationFrame(() => setHop(true));
+  }
+
+  function speak(text: string, holdMs = STEP_MS - 500) {
     setBubble({ text, show: true });
     window.clearTimeout(bubbleTimer.current);
-    bubbleTimer.current = window.setTimeout(() => setBubble((b) => ({ ...b, show: false })), 4200);
+    bubbleTimer.current = window.setTimeout(() => setBubble((b) => ({ ...b, show: false })), holdMs);
+  }
+
+  function nextMotivation(): string {
+    const t = MOTIVATIONAL[motiPos.current % MOTIVATIONAL.length];
+    motiPos.current += 1;
+    return t;
+  }
+
+  // Build the rotation for this tick: every applicable reaction, with a
+  // motivational slot mixed in and always one at the end.
+  function buildSequence(): (PetReaction | { motivate: true })[] {
+    const base = collectRef.current();
+    const seq: (PetReaction | { motivate: true })[] = [];
+    base.forEach((r, idx) => {
+      seq.push(r);
+      if (idx % 2 === 1) seq.push({ motivate: true });
+    });
+    seq.push({ motivate: true });
+    return seq;
   }
 
   function doReact(r: PetReaction) {
-    busyRef.current = true;
-    const finish = () => {
+    stopWalk();
+    if (!corner && r.walk) {
+      // Motivational stroll: hop from row to row while the line is read.
       setEmo(r.mood);
-      setHop(false);
-      requestAnimationFrame(() => setHop(true));
       speak(r.text);
-      window.setTimeout(() => {
-        busyRef.current = false;
-      }, 700);
-    };
+      const rc = Math.max(rowCount(), 1);
+      let k = 0;
+      const walk = () => {
+        const ny = rowY(k % rc);
+        if (ny !== null) setY(ny);
+        bounce();
+        k += 1;
+      };
+      walk();
+      walkTimer.current = window.setInterval(walk, 1500);
+      return;
+    }
     if (!corner && r.rowIndex !== undefined) {
       const ny = rowY(r.rowIndex);
       if (ny !== null) setY(ny);
-      window.setTimeout(finish, 820);
+      window.setTimeout(() => {
+        setEmo(r.mood);
+        bounce();
+        speak(r.text);
+      }, 800);
     } else {
-      finish();
+      setEmo(r.mood);
+      bounce();
+      speak(r.text);
     }
   }
 
-  function checkOnce(): boolean {
-    const r = evalRef.current();
-    if (r) {
-      doReact(r);
-      return true;
-    }
-    return false;
+  function advance() {
+    const seq = buildSequence();
+    if (seq.length === 0) return;
+    const slot = seq[seqPos.current % seq.length];
+    seqPos.current += 1;
+    const r: PetReaction = "motivate" in slot ? { mood: "cheer", text: nextMotivation(), walk: !corner } : slot;
+    doReact(r);
   }
 
-  // Greeting on mount.
-  useEffect(() => {
-    const t = window.setTimeout(() => {
-      setEmo("happy");
-      if (!corner) setY(8);
-      setHop(true);
-      speak(greeting);
-    }, 500);
-    return () => window.clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  function schedule(period: number) {
+    window.clearTimeout(stepTimer.current);
+    stepTimer.current = window.setTimeout(() => {
+      if (document.visibilityState === "visible") advance();
+      schedule(period);
+    }, period);
+  }
 
-  // Ambient autopilot; interval driven by chattiness (0 = off).
+  // Greeting on mount, then start the rotation (unless the pet is set to quiet).
   useEffect(() => {
     const chat = profile.chattiness;
-    if (chat <= 0) return;
-    const period = chat >= 2 ? 7000 : 12000;
-    const id = window.setInterval(() => {
-      if (busyRef.current || document.visibilityState !== "visible") return;
-      if (!checkOnce() && !corner) {
-        const ny = rowY(0);
-        if (ny !== null) {
-          setY(ny);
-          setEmo("sleep");
-          setBubble((b) => ({ ...b, show: false }));
-        }
-      }
-    }, period);
-    return () => window.clearInterval(id);
+    const greet = window.setTimeout(() => {
+      setEmo("happy");
+      if (!corner) setY(8);
+      bounce();
+      speak(greeting);
+    }, 500);
+    if (chat <= 0) {
+      return () => {
+        window.clearTimeout(greet);
+        stopWalk();
+      };
+    }
+    const period = chat >= 2 ? STEP_MS * 0.7 : STEP_MS;
+    const kickoff = window.setTimeout(() => advance(), 4200);
+    schedule(period);
+    return () => {
+      window.clearTimeout(greet);
+      window.clearTimeout(kickoff);
+      window.clearTimeout(stepTimer.current);
+      window.clearTimeout(bubbleTimer.current);
+      stopWalk();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile.chattiness]);
 
@@ -289,13 +367,12 @@ export function PetOverlay({
         className={`pet-sprite${hop ? " hop" : ""}`}
         style={corner ? undefined : { top: y }}
         onClick={() => {
-          if (!busyRef.current && !checkOnce()) {
-            setEmo("cheer");
-            setHop(true);
-            speak("Всё под контролем! 👍");
-          }
+          // Click = skip straight to the next message.
+          advance();
+          const chat = profile.chattiness;
+          if (chat > 0) schedule(chat >= 2 ? STEP_MS * 0.7 : STEP_MS);
         }}
-        title={profile.name}
+        title={`${profile.name} — нажми, чтобы следующая подсказка`}
       >
         <PetSprite skin={profile.skin} emo={emo} />
       </div>

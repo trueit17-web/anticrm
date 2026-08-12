@@ -18,31 +18,37 @@ function moodFor(trigger: PetTrigger): PetEmotion {
   return "cheer"; // daily_count / custom
 }
 
-// Returns the index of the first appeal matching a trigger, or -1.
-function matchIndex(trigger: PetTrigger, appeals: Appeal[], param: string | null): number {
+// Returns the indices of every appeal matching a trigger. Tips are personal:
+// row-addressed triggers only match the current user's own trubki, so e.g. an
+// "отправь СМС" nudge is seen only by the operator whose trubka it is — not by
+// everyone looking at the same table.
+function matchIndices(trigger: PetTrigger, appeals: Appeal[], param: string | null, userId: number): number[] {
+  const mine = (a: Appeal) => a.operator.id === userId;
+  const collect = (pred: (a: Appeal) => boolean) =>
+    appeals.reduce<number[]>((acc, a, i) => (mine(a) && pred(a) ? (acc.push(i), acc) : acc), []);
   switch (trigger) {
     case "no_sms":
-      return appeals.findIndex((a) => !a.smsSentBy);
+      return collect((a) => !a.smsSentBy);
     case "big_dep":
-      return appeals.findIndex((a) => depNumber(a.dep) >= 1_000_000);
+      return collect((a) => depNumber(a.dep) >= 1_000_000);
     case "nedozhal":
-      return appeals.findIndex((a) => /недож/i.test(a.status));
+      return collect((a) => /недож/i.test(a.status));
     case "stalled":
-      return appeals.findIndex((a) => !a.smsSentBy && Date.now() - new Date(a.createdAt).getTime() > 2 * 3600_000);
+      return collect((a) => !a.smsSentBy && Date.now() - new Date(a.createdAt).getTime() > 2 * 3600_000);
     case "status":
-      return param ? appeals.findIndex((a) => a.status === param) : -1;
+      return param ? collect((a) => a.status === param) : [];
     case "phone_operator":
-      return param ? appeals.findIndex((a) => detectMobileOperator(a.phone) === param) : -1;
+      return param ? collect((a) => detectMobileOperator(a.phone) === param) : [];
     case "daily_count": {
-      // Total trubki for the day reaching the threshold — anchors to the last
-      // row so the pet celebrates the running tally.
+      // Whole-day tally reaching the threshold — a team milestone, so it's not
+      // scoped to one operator; anchors to the last row.
       const threshold = Number(param);
-      return Number.isFinite(threshold) && appeals.length >= threshold ? appeals.length - 1 : -1;
+      return Number.isFinite(threshold) && appeals.length >= threshold ? [appeals.length - 1] : [];
     }
     case "custom":
-      return appeals.length ? Math.floor(Math.random() * appeals.length) : -1;
+      return collect(() => true);
     default:
-      return -1;
+      return [];
   }
 }
 
@@ -58,10 +64,12 @@ export function PetAssistant({
   containerRef,
   appeals,
   config,
+  currentUserId,
 }: {
   containerRef: RefObject<HTMLDivElement | null>;
   appeals: Appeal[];
   config: PetConfig;
+  currentUserId: number;
 }) {
   // Built-in rules + admin-taught ones (enabled only).
   const rules = [
@@ -71,20 +79,27 @@ export function PetAssistant({
       .map((r) => ({ trigger: r.trigger, param: r.param, message: r.message, mood: moodFor(r.trigger) })),
   ];
 
-  function evaluate(): PetReaction | null {
+  // Every applicable tip (deduped), for the engine to rotate through.
+  function collect(): PetReaction[] {
+    const out: PetReaction[] = [];
+    const seen = new Set<string>();
     for (const rule of rules) {
-      const i = matchIndex(rule.trigger, appeals, rule.param);
-      if (i >= 0) return { rowIndex: i, mood: rule.mood, text: fill(rule.message, appeals[i], appeals.length) };
+      for (const i of matchIndices(rule.trigger, appeals, rule.param, currentUserId)) {
+        const key = i + "|" + rule.message;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        out.push({ rowIndex: i, mood: rule.mood, text: fill(rule.message, appeals[i], appeals.length) });
+      }
     }
-    return null;
+    return out;
   }
 
   return (
     <PetOverlay
       containerRef={containerRef}
       profile={config.profile}
-      greeting={`Привет! Я ${config.profile.name} 🐾 Присматриваю за трубками — подскажу, если что.`}
-      evaluate={evaluate}
+      greeting={`Привет! Я ${config.profile.name} 🐾 Присматриваю за твоими трубками — подскажу и подбодрю.`}
+      collect={collect}
     />
   );
 }

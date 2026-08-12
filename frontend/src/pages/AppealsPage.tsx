@@ -425,7 +425,7 @@ export function AppealsPage() {
       {!loading && !error && !branchRequired && !showTrash && (
         <div className="table-with-fab" ref={tableAreaRef}>
           {petConfig?.enabled && (
-            <PetAssistant containerRef={tableAreaRef} appeals={appeals} config={petConfig} />
+            <PetAssistant containerRef={tableAreaRef} appeals={appeals} config={petConfig} currentUserId={user.id} />
           )}
           <button className="fab" title="Новая трубка" onClick={() => setCreating(true)}>
             +

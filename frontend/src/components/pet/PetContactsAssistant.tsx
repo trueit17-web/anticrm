@@ -13,22 +13,24 @@ function depNumber(raw: string | null): number {
 // call queue (empty queue = praise, big deposit waiting = alert, otherwise a
 // "keep going" cheer).
 export function PetContactsAssistant({ queue, config }: { queue: Contact[]; config: PetConfig }) {
-  function evaluate(): PetReaction | null {
+  function collect(): PetReaction[] {
     if (queue.length === 0) {
-      return { mood: "cheer", text: "Очередь пуста — красавцы! 🎉 Разобрали всё." };
+      return [{ mood: "cheer", text: "Очередь пуста — красавцы! 🎉 Разобрали всё." }];
     }
+    const out: PetReaction[] = [];
     let bestDep = 0;
     for (const c of queue) {
       const d = depNumber(parseExtraInfo(c.extraInfo).depositTotal);
       if (d > bestDep) bestDep = d;
     }
     if (bestDep >= 1_000_000) {
-      return {
+      out.push({
         mood: "alert",
         text: `💰 В очереди крупный клиент — деп ${formatMoney(String(bestDep))}. Берите первым!`,
-      };
+      });
     }
-    return { mood: "happy", text: `📞 В очереди ${queue.length} контактов — вперёд, разбираем! 💪` };
+    out.push({ mood: "happy", text: `📞 В очереди ${queue.length} контактов — вперёд, разбираем! 💪` });
+    return out;
   }
 
   return (
@@ -36,7 +38,7 @@ export function PetContactsAssistant({ queue, config }: { queue: Contact[]; conf
       corner
       profile={config.profile}
       greeting={`Привет! Я ${config.profile.name} 🐾 Помогу с обзвоном.`}
-      evaluate={evaluate}
+      collect={collect}
     />
   );
 }

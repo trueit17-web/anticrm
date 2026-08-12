@@ -4,7 +4,7 @@ import { PetOverlay, PetReaction } from "./petShared";
 // Corner-mode assistant for the Статистика page: praises the week's leader,
 // nudges about operators sitting at zero, and calls out the team total.
 export function PetStatsAssistant({ byOperator, config }: { byOperator: OperatorStat[]; config: PetConfig }) {
-  function evaluate(): PetReaction | null {
+  function collect(): PetReaction[] {
     const candidates: PetReaction[] = [];
 
     const ranked = [...byOperator].sort((a, b) => b.count - a.count);
@@ -23,8 +23,7 @@ export function PetStatsAssistant({ byOperator, config }: { byOperator: Operator
       candidates.push({ mood: "happy", text: `📊 Всего за период ${total} трубок. Отличная работа команды!` });
     }
 
-    if (candidates.length === 0) return null;
-    return candidates[Math.floor(Math.random() * candidates.length)];
+    return candidates;
   }
 
   return (
@@ -32,7 +31,7 @@ export function PetStatsAssistant({ byOperator, config }: { byOperator: Operator
       corner
       profile={config.profile}
       greeting={`Привет! Я ${config.profile.name} 🐾 Слежу за статистикой.`}
-      evaluate={evaluate}
+      collect={collect}
     />
   );
 }
