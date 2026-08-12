@@ -1,4 +1,4 @@
-import { RefObject, useEffect, useRef, useState } from "react";
+import { CSSProperties, PointerEvent as ReactPointerEvent, RefObject, useEffect, useRef, useState } from "react";
 import { PetProfile, PetSkin, PetTrigger } from "../../types";
 import { MOBILE_OPERATORS } from "../../lib/mobileOperator";
 
@@ -196,6 +196,31 @@ export function PetSprite({
 // How long the pet lingers on one message before moving to the next.
 const STEP_MS = 10000;
 
+// Per-browser UI prefs (shared across pages): whether the pet is paused, and a
+// pinned screen position if the user dragged it somewhere.
+const PET_PAUSED_KEY = "crm_pet_paused";
+const PET_POS_KEY = "crm_pet_pos";
+
+function loadPausedPref(): boolean {
+  try {
+    return localStorage.getItem(PET_PAUSED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+function loadPosPref(): { x: number; y: number } | null {
+  try {
+    const raw = localStorage.getItem(PET_POS_KEY);
+    if (raw) {
+      const p = JSON.parse(raw);
+      if (typeof p?.x === "number" && typeof p?.y === "number") return p;
+    }
+  } catch {
+    // ignore
+  }
+  return null;
+}
+
 // Motivational lines rotate through a module-level cursor so the phrase keeps
 // advancing even if a pet overlay remounts (e.g. on a background data poll) —
 // which is what made it repeat the same line before.
@@ -234,7 +259,16 @@ export function PetOverlay({
   const [emo, setEmo] = useState<PetEmotion>("happy");
   const [bubble, setBubble] = useState<{ text: string; show: boolean }>({ text: "", show: false });
   const [hop, setHop] = useState(false);
+  const [paused, setPaused] = useState(loadPausedPref);
+  // Non-null once the user drags the pet somewhere — it then stays pinned there
+  // (fixed to the viewport) and reacts in place instead of walking the rows.
+  const [pos, setPos] = useState<{ x: number; y: number } | null>(loadPosPref);
+  const pinned = pos !== null;
+  // Stationary = doesn't walk to rows (corner assistants, or a pinned pet).
+  const stationary = corner || pinned;
 
+  const spriteRef = useRef<HTMLDivElement>(null);
+  const drag = useRef<{ sx: number; sy: number; ox: number; oy: number; moved: boolean } | null>(null);
   const bubbleTimer = useRef<number | undefined>(undefined);
   const stepTimer = useRef<number | undefined>(undefined);
   const walkTimer = useRef<number | undefined>(undefined);
@@ -285,7 +319,7 @@ export function PetOverlay({
   // A row-anchored (or corner) tip: walk over, then react in place.
   function showTip(r: PetReaction) {
     stopWalk();
-    if (!corner && r.rowIndex !== undefined) {
+    if (!stationary && r.rowIndex !== undefined) {
       const ny = rowY(r.rowIndex);
       if (ny !== null) setY(ny);
       window.setTimeout(() => {
@@ -307,7 +341,7 @@ export function PetOverlay({
     setEmo("cheer");
     speak(pickMotivation());
     const rc = rowCount();
-    if (corner || rc <= 1) {
+    if (stationary || rc <= 1) {
       bounce();
       return;
     }
@@ -358,12 +392,20 @@ export function PetOverlay({
     }, period);
   }
 
-  // Greeting on mount, then start the rotation (unless the pet is set to quiet).
+  // Greeting on mount, then start the rotation — unless the pet is quiet
+  // (chattiness 0) or paused by the user.
   useEffect(() => {
+    if (paused) {
+      window.clearTimeout(stepTimer.current);
+      stopWalk();
+      setEmo("sleep");
+      setBubble((b) => ({ ...b, show: false }));
+      return;
+    }
     const chat = profile.chattiness;
     const greet = window.setTimeout(() => {
       setEmo("happy");
-      if (!corner) setY(8);
+      if (!stationary) setY(8);
       bounce();
       speak(greeting);
     }, 500);
@@ -384,24 +426,109 @@ export function PetOverlay({
       stopWalk();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profile.chattiness]);
+  }, [profile.chattiness, paused]);
+
+  function togglePause() {
+    setPaused((p) => {
+      const next = !p;
+      try {
+        localStorage.setItem(PET_PAUSED_KEY, next ? "1" : "0");
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  }
+
+  function unpin() {
+    setPos(null);
+    try {
+      localStorage.removeItem(PET_POS_KEY);
+    } catch {
+      // ignore
+    }
+  }
+
+  function onPointerDown(e: ReactPointerEvent) {
+    const rect = spriteRef.current?.getBoundingClientRect();
+    drag.current = {
+      sx: e.clientX,
+      sy: e.clientY,
+      ox: rect?.left ?? e.clientX,
+      oy: rect?.top ?? e.clientY,
+      moved: false,
+    };
+    spriteRef.current?.setPointerCapture?.(e.pointerId);
+  }
+
+  function onPointerMove(e: ReactPointerEvent) {
+    const d = drag.current;
+    if (!d) return;
+    const dx = e.clientX - d.sx;
+    const dy = e.clientY - d.sy;
+    if (!d.moved && Math.abs(dx) + Math.abs(dy) > 4) d.moved = true;
+    if (d.moved) setPos({ x: d.ox + dx, y: d.oy + dy });
+  }
+
+  function onPointerUp() {
+    const d = drag.current;
+    drag.current = null;
+    if (!d) return;
+    if (d.moved) {
+      // Persist the pinned position.
+      setPos((p) => {
+        if (p) {
+          try {
+            localStorage.setItem(PET_POS_KEY, JSON.stringify(p));
+          } catch {
+            // ignore
+          }
+        }
+        return p;
+      });
+    } else if (!paused) {
+      // A plain click = skip to the next message.
+      advance();
+      const chat = profile.chattiness;
+      if (chat > 0) schedule(chat >= 2 ? STEP_MS * 0.7 : STEP_MS);
+    }
+  }
+
+  const spriteStyle: CSSProperties | undefined = pinned
+    ? { position: "fixed", left: pos!.x, top: pos!.y, right: "auto", bottom: "auto" }
+    : corner
+      ? undefined
+      : { top: y };
+  const bubbleStyle: CSSProperties | undefined = pinned
+    ? { position: "fixed", left: pos!.x + 70, top: pos!.y }
+    : corner
+      ? undefined
+      : { top: y + 2 };
 
   return (
     <div className={`pet-layer${corner ? " pet-layer--corner" : ""}`} aria-hidden="true">
       <div
-        className={`pet-sprite${hop ? " hop" : ""}`}
-        style={corner ? undefined : { top: y }}
-        onClick={() => {
-          // Click = skip straight to the next message.
-          advance();
-          const chat = profile.chattiness;
-          if (chat > 0) schedule(chat >= 2 ? STEP_MS * 0.7 : STEP_MS);
-        }}
-        title={`${profile.name} — нажми, чтобы следующая подсказка`}
+        ref={spriteRef}
+        className={`pet-sprite${hop && !paused ? " hop" : ""}${pinned ? " pinned" : ""}`}
+        style={spriteStyle}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        title={`${profile.name} — тяните, чтобы переместить; клик — следующая подсказка`}
       >
         <PetSprite skin={profile.skin} emo={emo} />
+        <div className="pet-ctrls" onPointerDown={(e) => e.stopPropagation()}>
+          <button type="button" onClick={togglePause} title={paused ? "Продолжить" : "Пауза"} aria-label="Пауза">
+            {paused ? "▶" : "❚❚"}
+          </button>
+          {pinned && (
+            <button type="button" onClick={unpin} title="Вернуть к таблице" aria-label="Вернуть к таблице">
+              ⌂
+            </button>
+          )}
+        </div>
       </div>
-      <div className={`pet-bubble${bubble.show ? " show" : ""}`} style={corner ? undefined : { top: y + 2 }}>
+      <div className={`pet-bubble${bubble.show ? " show" : ""}`} style={bubbleStyle}>
         {bubble.text}
       </div>
     </div>

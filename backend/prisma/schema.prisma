@@ -141,6 +141,10 @@ model PetProfile {
   // 0 = quiet (only on explicit checks), 1 = normal, 2 = chatty (frequent
   // ambient tips). Controls the autopilot interval on the client.
   chattiness Int      @default(1)
+  // Once true, the two built-in rules have been materialized as editable
+  // PetRule rows for this branch, so we never re-seed (and never resurrect
+  // ones the admin deleted). See seedDefaultRules in pet.service.
+  seededDefaults Boolean @default(false)
   updatedAt  DateTime @updatedAt
 
   @@index([branchId])

@@ -2,7 +2,7 @@ import { RefObject } from "react";
 import { Appeal, PetConfig, PetTrigger } from "../../types";
 import { formatMoney } from "../../lib/money";
 import { detectMobileOperator } from "../../lib/mobileOperator";
-import { PetEmotion, PetOverlay, PetReaction, DEFAULT_RULES } from "./petShared";
+import { PetEmotion, PetOverlay, PetReaction } from "./petShared";
 
 // Deposit string ("2 500 000", "2,5 млн"…) → number of rubles, best-effort.
 function depNumber(dep: string | null): number {
@@ -71,13 +71,11 @@ export function PetAssistant({
   config: PetConfig;
   currentUserId: number;
 }) {
-  // Built-in rules + admin-taught ones (enabled only).
-  const rules = [
-    ...DEFAULT_RULES.map((r) => ({ ...r, param: null as string | null })),
-    ...config.rules
-      .filter((r) => r.enabled)
-      .map((r) => ({ trigger: r.trigger, param: r.param, message: r.message, mood: moodFor(r.trigger) })),
-  ];
+  // All enabled rules (the built-in starter rules now live in the DB too, so
+  // they're just regular editable rows here).
+  const rules = config.rules
+    .filter((r) => r.enabled)
+    .map((r) => ({ trigger: r.trigger, param: r.param, message: r.message, mood: moodFor(r.trigger) }));
 
   // Every applicable tip (deduped), for the engine to rotate through.
   function collect(): PetReaction[] {

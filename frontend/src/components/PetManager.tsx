@@ -1,12 +1,11 @@
 import { FormEvent, useEffect, useState } from "react";
 import { api, ApiError } from "../api/client";
 import { PetConfig, PetRule, PetTrigger, SelectOption } from "../types";
-import { IconCheck, IconTrash } from "./icons";
+import { IconCheck, IconEdit, IconTrash, IconX } from "./icons";
 import { MOBILE_OPERATORS } from "../lib/mobileOperator";
 import {
   CHATTINESS_LABELS,
   DAILY_COUNT_OPTIONS,
-  DEFAULT_RULES,
   fillExample,
   guessTrigger,
   moodForTrigger,
@@ -36,6 +35,140 @@ function ruleLabel(trigger: PetTrigger, param: string | null): string {
   if (trigger === "phone_operator") return `Оператор ${param}`;
   if (trigger === "daily_count") return param === "6" ? "Трубок за день больше 5" : `Трубок за день ≥ ${param}`;
   return TRIGGER_LABELS[trigger];
+}
+
+// The condition <select> (fixed triggers + per-branch statuses, carriers and
+// count thresholds), shared by the "teach" form and the inline rule editor.
+function CondSelect({
+  value,
+  statuses,
+  onChange,
+}: {
+  value: string;
+  statuses: string[];
+  onChange: (v: string) => void;
+}) {
+  return (
+    <select value={value} onChange={(e) => onChange(e.target.value)}>
+      {BASE_TRIGGERS.map((t) => (
+        <option key={t} value={t}>
+          {TRIGGER_LABELS[t]}
+        </option>
+      ))}
+      {statuses.length > 0 && (
+        <optgroup label="Статусы филиала">
+          {statuses.map((s) => (
+            <option key={s} value={`status:${s}`}>
+              Статус «{s}»
+            </option>
+          ))}
+        </optgroup>
+      )}
+      <optgroup label="Оператор номера">
+        {MOBILE_OPERATORS.map((c) => (
+          <option key={c} value={`phone_operator:${c}`}>
+            Оператор {c}
+          </option>
+        ))}
+      </optgroup>
+      <optgroup label="Трубок за день">
+        {DAILY_COUNT_OPTIONS.map((o) => (
+          <option key={o.threshold} value={`daily_count:${o.threshold}`}>
+            {o.label}
+          </option>
+        ))}
+      </optgroup>
+    </select>
+  );
+}
+
+// One rule row: read-only by default, switches to an inline editor (message +
+// condition) on the pencil. Toggle and delete work in both states.
+function RuleRow({
+  rule,
+  statuses,
+  onToggle,
+  onDelete,
+  onSaved,
+}: {
+  rule: PetRule;
+  statuses: string[];
+  onToggle: (r: PetRule) => void;
+  onDelete: (id: number) => void;
+  onSaved: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [message, setMessage] = useState(rule.message);
+  const [cond, setCond] = useState(encodeCond(rule.trigger, rule.param));
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function save() {
+    if (!message.trim()) return;
+    const { trigger, param } = decodeCond(cond);
+    setBusy(true);
+    setErr(null);
+    try {
+      await api.patch(`/pet/rules/${rule.id}`, { trigger, param, message: message.trim() });
+      setEditing(false);
+      onSaved();
+    } catch (e) {
+      setErr(e instanceof ApiError ? e.message : "Не удалось сохранить");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function cancel() {
+    setMessage(rule.message);
+    setCond(encodeCond(rule.trigger, rule.param));
+    setErr(null);
+    setEditing(false);
+  }
+
+  if (editing) {
+    return (
+      <li className="pet-rule-editing">
+        <div className="pet-rule-edit">
+          <input value={message} onChange={(e) => setMessage(e.target.value)} maxLength={200} autoFocus />
+          <div className="pet-teach-row">
+            <label className="pet-teach-cond">
+              При:{" "}
+              <CondSelect value={cond} statuses={statuses} onChange={setCond} />
+            </label>
+            <button type="button" className="btn-save" onClick={save} disabled={busy || !message.trim()}>
+              <IconCheck width={14} height={14} />
+              {busy ? "..." : "Сохранить"}
+            </button>
+            <button type="button" className="btn-cancel" onClick={cancel} disabled={busy}>
+              <IconX width={14} height={14} />
+              Отмена
+            </button>
+          </div>
+          {err && <p className="error-text">{err}</p>}
+        </div>
+      </li>
+    );
+  }
+
+  return (
+    <li style={{ opacity: rule.enabled ? 1 : 0.5 }}>
+      <span>
+        <span className="pet-rule-tag">{ruleLabel(rule.trigger, rule.param)}</span> {rule.message}
+      </span>
+      <span className="admin-option-actions">
+        <button className="icon-btn" title="Редактировать" aria-label="Редактировать" onClick={() => setEditing(true)}>
+          <IconEdit width={15} height={15} />
+        </button>
+        <label className="toggle-inline" title={rule.enabled ? "Выключить правило" : "Включить правило"}>
+          <input type="checkbox" checked={rule.enabled} onChange={() => onToggle(rule)} />
+        </label>
+        <button className="icon-btn" title="Удалить" aria-label="Удалить" onClick={() => onDelete(rule.id)}>
+          <IconTrash width={15} height={15} />
+        </button>
+      </span>
+    </li>
+  );
 }
 
 export function PetManager() {
@@ -184,36 +317,22 @@ export function PetManager() {
       <section className="admin-field-card fit-content">
         <h2>Правила-подсказки</h2>
         <p className="muted">
-          Питомец применяет правила к строкам таблицы. Базовые правила встроены; здесь можно добавить
-          свои. В тексте доступны подстановки <code>{"{op}"}</code> (оператор), <code>{"{dep}"}</code>{" "}
-          (деп), <code>{"{phone}"}</code>.
+          Питомец применяет правила к строкам таблицы. Стандартные правила уже добавлены — их можно
+          редактировать (карандаш), выключать или удалять, как и свои. В тексте доступны подстановки{" "}
+          <code>{"{op}"}</code> (оператор), <code>{"{dep}"}</code> (деп), <code>{"{phone}"}</code>.
         </p>
 
         <ul className="admin-option-list">
-          {DEFAULT_RULES.map((r, i) => (
-            <li key={"def" + i}>
-              <span>
-                <span className="pet-rule-tag">{TRIGGER_LABELS[r.trigger]}</span> {r.message}
-              </span>
-              <span className="muted" style={{ fontSize: 11 }}>
-                базовое
-              </span>
-            </li>
-          ))}
+          {config?.rules.length === 0 && <li className="muted">Правил пока нет — научите питомца ниже.</li>}
           {config?.rules.map((r) => (
-            <li key={r.id} style={{ opacity: r.enabled ? 1 : 0.5 }}>
-              <span>
-                <span className="pet-rule-tag">{ruleLabel(r.trigger, r.param)}</span> {r.message}
-              </span>
-              <span className="admin-option-actions">
-                <label className="toggle-inline" title={r.enabled ? "Выключить правило" : "Включить правило"}>
-                  <input type="checkbox" checked={r.enabled} onChange={() => toggleRule(r)} />
-                </label>
-                <button className="icon-btn" title="Удалить" aria-label="Удалить" onClick={() => deleteRule(r.id)}>
-                  <IconTrash width={15} height={15} />
-                </button>
-              </span>
-            </li>
+            <RuleRow
+              key={r.id}
+              rule={r}
+              statuses={statuses}
+              onToggle={toggleRule}
+              onDelete={deleteRule}
+              onSaved={load}
+            />
           ))}
         </ul>
 
@@ -234,42 +353,14 @@ export function PetManager() {
           <div className="pet-teach-row">
             <label className="pet-teach-cond">
               Питомец покажет это при:{" "}
-              <select
+              <CondSelect
                 value={cond}
-                onChange={(e) => {
-                  setCond(e.target.value);
+                statuses={statuses}
+                onChange={(v) => {
+                  setCond(v);
                   setCondTouched(true);
                 }}
-              >
-                {BASE_TRIGGERS.map((t) => (
-                  <option key={t} value={t}>
-                    {TRIGGER_LABELS[t]}
-                  </option>
-                ))}
-                {statuses.length > 0 && (
-                  <optgroup label="Статусы филиала">
-                    {statuses.map((s) => (
-                      <option key={s} value={`status:${s}`}>
-                        Статус «{s}»
-                      </option>
-                    ))}
-                  </optgroup>
-                )}
-                <optgroup label="Оператор номера">
-                  {MOBILE_OPERATORS.map((c) => (
-                    <option key={c} value={`phone_operator:${c}`}>
-                      Оператор {c}
-                    </option>
-                  ))}
-                </optgroup>
-                <optgroup label="Трубок за день">
-                  {DAILY_COUNT_OPTIONS.map((o) => (
-                    <option key={o.threshold} value={`daily_count:${o.threshold}`}>
-                      {o.label}
-                    </option>
-                  ))}
-                </optgroup>
-              </select>
+              />
             </label>
             <button type="submit" disabled={adding || !message.trim()}>
               {adding ? "..." : "Научить"}

@@ -20,12 +20,48 @@ export const PARAM_TRIGGERS: readonly PetTrigger[] = ["status", "daily_count", "
 
 const DEFAULT_PROFILE = { name: "Кеша", skin: "fox", chattiness: 1 };
 
+// The starter rules every branch gets — materialized as ordinary PetRule rows
+// (once) so admins can edit or delete them like any other. Kept in sync with
+// the labels shown on the frontend.
+const DEFAULT_PET_RULES: { trigger: PetTrigger; message: string; param: string | null }[] = [
+  { trigger: "no_sms", message: "📵 {op}: трубка без СМС — отправьте клиенту, пока горячо!", param: null },
+  { trigger: "big_dep", message: "💰 Крупный деп {dep} у {op} — проверьте код!", param: null },
+];
+
+// Advisory-lock namespace so concurrent first-time config loads don't seed the
+// starter rules twice ("PET " as an int32).
+const PET_SEED_LOCK = 0x50455420;
+
+// Seeds the built-in rules once per branch. Fast path: a single indexed read
+// that short-circuits on every call after the first. Slow path is serialized
+// per branch via a transaction-scoped advisory lock.
+async function ensureSeeded(branchId: number) {
+  const pre = await prisma.petProfile.findUnique({ where: { branchId }, select: { seededDefaults: true } });
+  if (pre?.seededDefaults) return;
+  await prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(${PET_SEED_LOCK}::int, ${branchId}::int)`;
+    const p = await tx.petProfile.findUnique({ where: { branchId }, select: { seededDefaults: true } });
+    if (p?.seededDefaults) return; // another request won the race
+    if (p) {
+      await tx.petProfile.update({ where: { branchId }, data: { seededDefaults: true } });
+    } else {
+      await tx.petProfile.create({ data: { branchId, ...DEFAULT_PROFILE, seededDefaults: true } });
+    }
+    await tx.petRule.createMany({ data: DEFAULT_PET_RULES.map((r) => ({ branchId, ...r })) });
+  });
+}
+
 export async function isPetEnabled(branchId: number): Promise<boolean> {
   const b = await prisma.branch.findUnique({ where: { id: branchId }, select: { petEnabled: true } });
   return b?.petEnabled ?? false;
 }
 
 export async function getPetConfig(branchId: number) {
+  // Only materialize starter rules where the module is actually on, so a plain
+  // read doesn't create profiles for every branch.
+  const enabledNow = await prisma.branch.findUnique({ where: { id: branchId }, select: { petEnabled: true } });
+  if (enabledNow?.petEnabled) await ensureSeeded(branchId);
+
   const [branch, profile, rules] = await Promise.all([
     prisma.branch.findUnique({ where: { id: branchId }, select: { petEnabled: true } }),
     prisma.petProfile.findUnique({
