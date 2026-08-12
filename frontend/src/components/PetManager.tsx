@@ -33,7 +33,7 @@ function ruleLabel(trigger: PetTrigger, param: string | null): string {
   if (!param) return TRIGGER_LABELS[trigger];
   if (trigger === "status") return `Статус «${param}»`;
   if (trigger === "phone_operator") return `Оператор ${param}`;
-  if (trigger === "daily_count") return param === "6" ? "Трубок за день больше 5" : `Трубок за день ≥ ${param}`;
+  if (trigger === "daily_count") return param === "6" ? "Трубок за день больше 5" : `Трубок за день = ${param}`;
   return TRIGGER_LABELS[trigger];
 }
 

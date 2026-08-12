@@ -14,6 +14,10 @@ export interface PetReaction {
   // Motivational line: in row-walking mode the pet strolls along the rows
   // while it's read, instead of anchoring to one row.
   walk?: boolean;
+  // Called once this reaction is actually spoken (not just returned by
+  // collect()) — e.g. daily_count milestones use this to persist "already
+  // shown today" so they fire exactly once.
+  onShown?: () => void;
 }
 
 export const SKINS: { value: PetSkin; label: string; color: string; emoji: string }[] = [
@@ -38,12 +42,17 @@ export const TRIGGER_LABELS: Record<PetTrigger, string> = {
   custom: "Своё (любая строка)",
 };
 
-// Count thresholds offered for the "трубок за день" condition (matched as
-// appeals.length >= threshold; 6 reads as "больше 5").
+// Count thresholds offered for the "трубок за день" condition — one entry
+// per personal milestone (own trubki today, not the whole branch's). Each
+// fires once per operator per day, the moment their count first reaches it;
+// see matchIndices in PetAssistant.tsx for the fire-once bookkeeping. 6 reads
+// as "больше 5" (the catch-all for anyone past the named milestones).
 export const DAILY_COUNT_OPTIONS: { threshold: number; label: string }[] = [
-  { threshold: 1, label: "Трубок за день ≥ 1" },
-  { threshold: 3, label: "Трубок за день ≥ 3" },
-  { threshold: 5, label: "Трубок за день ≥ 5" },
+  { threshold: 1, label: "Трубок за день = 1" },
+  { threshold: 2, label: "Трубок за день = 2" },
+  { threshold: 3, label: "Трубок за день = 3" },
+  { threshold: 4, label: "Трубок за день = 4" },
+  { threshold: 5, label: "Трубок за день = 5" },
   { threshold: 6, label: "Трубок за день больше 5" },
 ];
 
@@ -346,6 +355,7 @@ export function PetOverlay({
   // A row-anchored (or corner) tip: walk over, then react in place.
   function showTip(r: PetReaction) {
     stopWalk();
+    r.onShown?.();
     if (!stationary && r.rowIndex !== undefined) {
       const ny = rowY(r.rowIndex);
       if (ny !== null) setY(ny);

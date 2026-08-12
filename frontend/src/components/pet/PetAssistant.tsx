@@ -39,12 +39,11 @@ function matchIndices(trigger: PetTrigger, appeals: Appeal[], param: string | nu
       return param ? collect((a) => a.status === param) : [];
     case "phone_operator":
       return param ? collect((a) => detectMobileOperator(a.phone) === param) : [];
-    case "daily_count": {
-      // Whole-day tally reaching the threshold — a team milestone, so it's not
-      // scoped to one operator; anchors to the last row.
-      const threshold = Number(param);
-      return Number.isFinite(threshold) && appeals.length >= threshold ? [appeals.length - 1] : [];
-    }
+    // daily_count is handled separately in collect() below — it needs the
+    // fire-once bookkeeping (see markThresholdShown), which doesn't fit this
+    // stateless index-matching shape.
+    case "daily_count":
+      return [];
     case "custom":
       return collect(() => true);
     default:
@@ -58,6 +57,38 @@ function fill(msg: string, a: Appeal, count: number): string {
     .replace(/\{dep\}/g, formatMoney(a.dep))
     .replace(/\{phone\}/g, a.phone)
     .replace(/\{count\}/g, String(count));
+}
+
+// "Трубок за день" milestones fire exactly once per operator per day — a
+// polling engine has no "on create" hook, so we persist which thresholds
+// have already been shown (per user, per calendar day) and skip them on
+// every later check, even across reloads the same day.
+function todayKey(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+function dailyShownStorageKey(userId: number): string {
+  return `crm_pet_daily_shown_${userId}_${todayKey()}`;
+}
+function loadShownThresholds(userId: number): Set<number> {
+  try {
+    const raw = localStorage.getItem(dailyShownStorageKey(userId));
+    if (raw) {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) return new Set(arr.filter((n): n is number => typeof n === "number"));
+    }
+  } catch {
+    // ignore — worst case a milestone repeats once
+  }
+  return new Set();
+}
+function markThresholdShown(userId: number, threshold: number) {
+  const set = loadShownThresholds(userId);
+  set.add(threshold);
+  try {
+    localStorage.setItem(dailyShownStorageKey(userId), JSON.stringify([...set]));
+  } catch {
+    // ignore
+  }
 }
 
 export function PetAssistant({
@@ -81,7 +112,37 @@ export function PetAssistant({
   function collect(): PetReaction[] {
     const out: PetReaction[] = [];
     const seen = new Set<string>();
+    const shownThresholds = loadShownThresholds(currentUserId);
+
     for (const rule of rules) {
+      if (rule.trigger === "daily_count") {
+        const threshold = Number(rule.param);
+        if (!Number.isFinite(threshold) || shownThresholds.has(threshold)) continue;
+        // Own trubki only — a personal milestone, not a team tally.
+        let count = 0;
+        let lastOwnIndex = -1;
+        for (let i = 0; i < appeals.length; i++) {
+          if (appeals[i].operator.id === currentUserId) {
+            count++;
+            lastOwnIndex = i;
+          }
+        }
+        if (count < threshold || lastOwnIndex === -1) continue;
+        const appeal = appeals[lastOwnIndex];
+        const key = lastOwnIndex + "|" + rule.message;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        // Name always leads the line, regardless of whether the admin's
+        // template happens to include {op} elsewhere.
+        const text = `${appeal.operator.fullName}: ${fill(rule.message, appeal, count)}`;
+        out.push({
+          rowIndex: lastOwnIndex,
+          mood: rule.mood,
+          text,
+          onShown: () => markThresholdShown(currentUserId, threshold),
+        });
+        continue;
+      }
       for (const i of matchIndices(rule.trigger, appeals, rule.param, currentUserId)) {
         const key = i + "|" + rule.message;
         if (seen.has(key)) continue;

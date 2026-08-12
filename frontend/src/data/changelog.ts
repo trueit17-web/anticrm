@@ -10,6 +10,14 @@ export interface ChangelogEntry {
 // separately, so there's only one place to update.
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.29.0",
+    date: "2026-08-13",
+    changes: [
+      "Питомец: триггеры «трубок за день» — теперь 1, 2, 3, 4, 5 и больше 5, считаются лично у каждого оператора (не у филиала целиком)",
+      "Питомец: реплика по трубкам за день всегда начинается с имени оператора и срабатывает ровно один раз в день на каждый порог",
+    ],
+  },
+  {
     version: "1.28.0",
     date: "2026-08-13",
     changes: [
