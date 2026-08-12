@@ -10,6 +10,14 @@ export interface ChangelogEntry {
 // separately, so there's only one place to update.
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.28.0",
+    date: "2026-08-13",
+    changes: [
+      "Питомец: этап 5 — необязательный ИИ-слой (OpenRouter, бесплатная модель). Питомец изредка добавляет живую подсказку по обезличенной сводке смены (без телефонов, имён и данных клиентов), не заменяя обычные правила",
+      "Админка → «Питомец»: включение ИИ-подсказок и ключ OpenRouter API (write-only, как остальные секреты)",
+    ],
+  },
+  {
     version: "1.27.0",
     date: "2026-08-11",
     changes: [

@@ -1,6 +1,7 @@
 import { CSSProperties, PointerEvent as ReactPointerEvent, RefObject, useEffect, useRef, useState } from "react";
 import { PetProfile, PetSkin, PetTrigger } from "../../types";
 import { MOBILE_OPERATORS } from "../../lib/mobileOperator";
+import { api } from "../../api/client";
 
 export type PetEmotion = "happy" | "alert" | "cheer" | "sleep";
 
@@ -278,6 +279,32 @@ export function PetOverlay({
   const collectRef = useRef(collect);
   collectRef.current = collect;
 
+  // Stage 5: AI-generated tips (OpenRouter, over obscured shift aggregates —
+  // see backend pet.service.getAiTips), fetched lazily and drip-fed into the
+  // rotation alongside rule tips and motivation. Empty array = AI layer is
+  // off, unconfigured, or the request failed — the rest of the rotation
+  // covers the gap silently.
+  const aiTipsQueue = useRef<string[]>([]);
+  useEffect(() => {
+    if (!profile.aiEnabled) return;
+    let cancelled = false;
+    function fetchTips() {
+      api
+        .get<{ tips: string[] }>("/pet/ai-tips")
+        .then((res) => {
+          if (!cancelled && res.tips.length) aiTipsQueue.current = [...aiTipsQueue.current, ...res.tips];
+        })
+        .catch(() => {});
+    }
+    fetchTips();
+    const id = window.setInterval(fetchTips, 6 * 60 * 1000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile.aiEnabled]);
+
   function rowCount(): number {
     return containerRef?.current?.querySelectorAll(rowSelector).length ?? 0;
   }
@@ -361,16 +388,23 @@ export function PetOverlay({
     walkTimer.current = window.setInterval(walk, 1600);
   }
 
-  // One beat of the rotation. Rule: never two motivational lines in a row;
-  // otherwise a motivational line after every two tips, or as an occasional
-  // pipe-up when there are no tips (alternating with a quiet rest).
+  // One beat of the rotation. Rule: never two motivational/AI lines in a row;
+  // otherwise one of those after every two rule tips, or as an occasional
+  // pipe-up when there are no tips (alternating with a quiet rest). A queued
+  // AI tip takes that slot instead of a canned motivational line, when there
+  // is one.
   function advance() {
     const tips = collectRef.current();
     const dueForMoti = !lastWasMoti.current && (tips.length === 0 || tipsSinceMoti.current >= 2);
     if (dueForMoti) {
       lastWasMoti.current = true;
       tipsSinceMoti.current = 0;
-      showMotivation();
+      const aiTip = aiTipsQueue.current.shift();
+      if (aiTip) {
+        showTip({ mood: "cheer", text: aiTip });
+      } else {
+        showMotivation();
+      }
       return;
     }
     lastWasMoti.current = false;

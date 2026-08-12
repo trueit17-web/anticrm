@@ -5,6 +5,7 @@ import { asyncHandler } from "../../utils/asyncHandler";
 import {
   addRuleHandler,
   deleteRuleHandler,
+  getAiTipsHandler,
   getPetConfigHandler,
   updateProfileHandler,
   updateRuleHandler,
@@ -16,6 +17,7 @@ petRouter.use(requireAuth);
 
 // Every role reads the config — the pet overlay is shown to operators too.
 petRouter.get("/config", asyncHandler(getPetConfigHandler));
+petRouter.get("/ai-tips", asyncHandler(getAiTipsHandler));
 
 // Configuring the pet (profile + learnable rules) is admin-only.
 petRouter.patch("/profile", requireRole(Role.ADMIN, Role.SUPERADMIN), asyncHandler(updateProfileHandler));

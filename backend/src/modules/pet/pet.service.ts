@@ -19,6 +19,7 @@ export type PetTrigger = (typeof PET_TRIGGERS)[number];
 export const PARAM_TRIGGERS: readonly PetTrigger[] = ["status", "daily_count", "phone_operator"];
 
 const DEFAULT_PROFILE = { name: "Кеша", skin: "fox", chattiness: 1 };
+const DEFAULT_AI_PROFILE_FIELDS = { aiEnabled: false, hasOpenRouterApiKey: false };
 
 // The starter rules every branch gets — materialized as ordinary PetRule rows
 // (once) so admins can edit or delete them like any other. Kept in sync with
@@ -66,7 +67,7 @@ export async function getPetConfig(branchId: number) {
     prisma.branch.findUnique({ where: { id: branchId }, select: { petEnabled: true } }),
     prisma.petProfile.findUnique({
       where: { branchId },
-      select: { name: true, skin: true, chattiness: true },
+      select: { name: true, skin: true, chattiness: true, aiEnabled: true, openRouterApiKey: true },
     }),
     prisma.petRule.findMany({
       where: { branchId },
@@ -76,22 +77,42 @@ export async function getPetConfig(branchId: number) {
   ]);
   return {
     enabled: branch?.petEnabled ?? false,
-    profile: profile ?? DEFAULT_PROFILE,
+    profile: profile
+      ? {
+          name: profile.name,
+          skin: profile.skin,
+          chattiness: profile.chattiness,
+          aiEnabled: profile.aiEnabled,
+          // Write-only secret: never send the key itself, only whether one is set.
+          hasOpenRouterApiKey: !!profile.openRouterApiKey?.trim(),
+        }
+      : { ...DEFAULT_PROFILE, ...DEFAULT_AI_PROFILE_FIELDS },
     rules,
   };
 }
 
+// aiEnabled: boolean toggle. openRouterApiKey: undefined = leave unchanged,
+// null = clear, string = set (write-only secret, never read back).
 export async function updateProfile(
   branchId: number,
-  patch: { name?: string; skin?: string; chattiness?: number }
+  patch: { name?: string; skin?: string; chattiness?: number; aiEnabled?: boolean; openRouterApiKey?: string | null }
 ) {
+  const { openRouterApiKey, ...rest } = patch;
+  const data: Record<string, unknown> = { ...rest };
+  if (openRouterApiKey !== undefined) data.openRouterApiKey = openRouterApiKey;
   const profile = await prisma.petProfile.upsert({
     where: { branchId },
-    create: { branchId, ...DEFAULT_PROFILE, ...patch },
-    update: patch,
-    select: { name: true, skin: true, chattiness: true },
+    create: { branchId, ...DEFAULT_PROFILE, ...data },
+    update: data,
+    select: { name: true, skin: true, chattiness: true, aiEnabled: true, openRouterApiKey: true },
   });
-  return profile;
+  return {
+    name: profile.name,
+    skin: profile.skin,
+    chattiness: profile.chattiness,
+    aiEnabled: profile.aiEnabled,
+    hasOpenRouterApiKey: !!profile.openRouterApiKey?.trim(),
+  };
 }
 
 export function addRule(branchId: number, trigger: PetTrigger, message: string, param: string | null) {
@@ -117,4 +138,123 @@ export async function updateRule(
 export async function deleteRule(branchId: number, id: number) {
   const result = await prisma.petRule.deleteMany({ where: { id, branchId } });
   return result.count > 0;
+}
+
+// --- Stage 5: AI layer (OpenRouter) ---
+//
+// The pet can ask an LLM for a couple of fresh, situational lines instead of
+// only the fixed rule set. What leaves this server is a handful of counters
+// for TODAY on this branch — no phone numbers, no client data, no operator
+// names. Aggregates only, by design (see the "Питомец" project memory / the
+// Stage 5 plan discussed with the admin).
+
+const OPENROUTER_MODEL = "google/gemini-2.0-flash-exp:free";
+const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
+
+// Cached per branch for a few minutes — keeps us well under the free-tier
+// rate limit and means the pet isn't re-querying an LLM every autopilot tick.
+const AI_TIPS_TTL_MS = 6 * 60 * 1000;
+const aiTipsCache = new Map<number, { tips: string[]; expiresAt: number }>();
+
+function dayStartUtc(): Date {
+  const d = new Date();
+  d.setUTCHours(0, 0, 0, 0);
+  return d;
+}
+
+function depToNumber(dep: string | null): number {
+  if (!dep) return 0;
+  const n = Number(dep.replace(/[^\d]/g, ""));
+  return Number.isFinite(n) ? n : 0;
+}
+
+async function collectShiftAggregates(branchId: number) {
+  const from = dayStartUtc();
+  const rows = await prisma.appeal.findMany({
+    where: { branchId, date: { gte: from }, deletedAt: null },
+    select: { dep: true, status: true, smsSentById: true },
+  });
+  const total = rows.length;
+  const noSms = rows.filter((r) => !r.smsSentById).length;
+  const bigDeps = rows.filter((r) => depToNumber(r.dep) >= 1_000_000).length;
+  const nedozhal = rows.filter((r) => /недож/i.test(r.status)).length;
+  return { total, noSms, bigDeps, nedozhal };
+}
+
+async function getOpenRouterKey(branchId: number): Promise<string | null> {
+  const p = await prisma.petProfile.findUnique({
+    where: { branchId },
+    select: { aiEnabled: true, openRouterApiKey: true },
+  });
+  if (!p?.aiEnabled) return null;
+  return p.openRouterApiKey?.trim() || null;
+}
+
+// Returns 1–2 short, situational lines the pet can say, or [] if the AI
+// layer is off, unconfigured, or the request fails — the rule engine always
+// covers the gap, so a failure here is never user-visible as an error.
+export async function getAiTips(branchId: number): Promise<string[]> {
+  const cached = aiTipsCache.get(branchId);
+  if (cached && cached.expiresAt > Date.now()) return cached.tips;
+
+  const apiKey = await getOpenRouterKey(branchId);
+  if (!apiKey) return [];
+
+  const agg = await collectShiftAggregates(branchId);
+  if (agg.total === 0) return [];
+
+  try {
+    const res = await fetch(OPENROUTER_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+        // Required by OpenRouter for free-tier attribution — harmless placeholders.
+        "HTTP-Referer": "https://anticrm.local",
+        "X-Title": "CRM Pet Assistant",
+      },
+      body: JSON.stringify({
+        model: OPENROUTER_MODEL,
+        max_tokens: 200,
+        messages: [
+          {
+            role: "system",
+            content:
+              "Ты — дружелюбный питомец-талисман в CRM колл-центра. По сводке смены дай 1-2 очень короткие " +
+              "живые реплики (до 100 символов каждая) — подсказку или похвалу оператору. Пиши по-русски, " +
+              "разговорно, можно с эмодзи в начале строки. Никаких персональных данных ты не знаешь и не " +
+              "выдумывай их. Ответь СТРОГО в виде JSON-массива строк, без пояснений, например: " +
+              '["🔥 текст первой реплики", "📉 текст второй реплики"]',
+          },
+          {
+            role: "user",
+            content: JSON.stringify({
+              период: "сегодня",
+              трубок_всего: agg.total,
+              без_смс: agg.noSms,
+              крупных_депов: agg.bigDeps,
+              недожал: agg.nedozhal,
+            }),
+          },
+        ],
+      }),
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) return [];
+    const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+    const text = data.choices?.[0]?.message?.content?.trim();
+    if (!text) return [];
+
+    // Models sometimes wrap the array in a ```json fence despite instructions.
+    const jsonMatch = text.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) return [];
+    const parsed = JSON.parse(jsonMatch[0]);
+    if (!Array.isArray(parsed)) return [];
+    const tips = parsed.filter((t): t is string => typeof t === "string" && t.trim().length > 0).slice(0, 2);
+
+    aiTipsCache.set(branchId, { tips, expiresAt: Date.now() + AI_TIPS_TTL_MS });
+    return tips;
+  } catch {
+    return []; // network error, timeout, bad JSON — the pet just skips the AI beat
+  }
 }

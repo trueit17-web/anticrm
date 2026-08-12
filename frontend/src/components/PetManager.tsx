@@ -184,6 +184,14 @@ export function PetManager() {
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileSaved, setProfileSaved] = useState(false);
 
+  // AI layer draft (Stage 5 — OpenRouter)
+  const [aiEnabled, setAiEnabled] = useState(false);
+  const [openRouterKey, setOpenRouterKey] = useState("");
+  const [clearOpenRouterKey, setClearOpenRouterKey] = useState(false);
+  const [savingAi, setSavingAi] = useState(false);
+  const [aiSaved, setAiSaved] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+
   // new rule draft — `cond` is the encoded dropdown value (see encodeCond).
   const [cond, setCond] = useState<string>("no_sms");
   // Once the admin picks a condition by hand we stop auto-guessing it from the
@@ -211,6 +219,7 @@ export function PetManager() {
         setName(res.profile.name);
         setSkin(res.profile.skin);
         setChattiness(res.profile.chattiness);
+        setAiEnabled(res.profile.aiEnabled);
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : "Не удалось загрузить"))
       .finally(() => setLoading(false));
@@ -238,6 +247,28 @@ export function PetManager() {
       setError(err instanceof ApiError ? err.message : "Не удалось сохранить");
     } finally {
       setSavingProfile(false);
+    }
+  }
+
+  async function saveAi(e: FormEvent) {
+    e.preventDefault();
+    setSavingAi(true);
+    setAiSaved(false);
+    setAiError(null);
+    try {
+      await api.patch("/pet/profile", {
+        aiEnabled,
+        openRouterApiKey: clearOpenRouterKey ? null : openRouterKey.trim() || undefined,
+      });
+      setOpenRouterKey("");
+      setClearOpenRouterKey(false);
+      setAiSaved(true);
+      setTimeout(() => setAiSaved(false), 2000);
+      load();
+    } catch (err) {
+      setAiError(err instanceof ApiError ? err.message : "Не удалось сохранить");
+    } finally {
+      setSavingAi(false);
     }
   }
 
@@ -312,6 +343,59 @@ export function PetManager() {
             {savingProfile ? "..." : profileSaved ? "Сохранено" : "Сохранить"}
           </button>
         </form>
+      </section>
+
+      <section className="admin-field-card fit-content">
+        <h2>ИИ-подсказки</h2>
+        <p className="muted">
+          Дополнительно к правилам питомец может изредка спрашивать ИИ (через{" "}
+          <a href="https://openrouter.ai/" target="_blank" rel="noreferrer">
+            OpenRouter
+          </a>
+          , бесплатная модель) — он видит только обезличенную сводку смены за сегодня (сколько трубок,
+          без СМС, крупных депов, недожал — без телефонов, имён и данных клиентов) и предлагает 1-2
+          живые реплики. Правила работают всегда, ИИ — необязательная надстройка.
+        </p>
+        <form className="inline-form" onSubmit={saveAi}>
+          <label className="toggle-inline" title={aiEnabled ? "Выключить ИИ-подсказки" : "Включить ИИ-подсказки"}>
+            <input type="checkbox" checked={aiEnabled} onChange={(e) => setAiEnabled(e.target.checked)} />
+            Включить ИИ-подсказки
+          </label>
+          <input
+            type="password"
+            placeholder={
+              config?.profile.hasOpenRouterApiKey
+                ? "Ключ OpenRouter задан — оставьте пустым, чтобы не менять"
+                : "Ключ OpenRouter API"
+            }
+            value={openRouterKey}
+            onChange={(e) => setOpenRouterKey(e.target.value)}
+            disabled={clearOpenRouterKey}
+            style={{ minWidth: 320 }}
+          />
+          {config?.profile.hasOpenRouterApiKey && (
+            <label className="toggle-inline" title="Убрать ключ — ИИ-подсказки перестанут работать">
+              <input
+                type="checkbox"
+                checked={clearOpenRouterKey}
+                onChange={(e) => setClearOpenRouterKey(e.target.checked)}
+              />
+              Удалить ключ
+            </label>
+          )}
+          <button type="submit" className="btn-save" disabled={savingAi}>
+            <IconCheck width={15} height={15} />
+            {savingAi ? "..." : aiSaved ? "Сохранено" : "Сохранить"}
+          </button>
+        </form>
+        <p className="muted">
+          Ключ бесплатный —{" "}
+          <a href="https://openrouter.ai/keys" target="_blank" rel="noreferrer">
+            openrouter.ai/keys
+          </a>
+          . {config?.profile.hasOpenRouterApiKey ? "Ключ задан." : "Ключ не задан — ИИ-подсказки не работают."}
+        </p>
+        {aiError && <p className="error-text">{aiError}</p>}
       </section>
 
       <section className="admin-field-card fit-content">

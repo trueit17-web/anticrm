@@ -145,6 +145,11 @@ model PetProfile {
   // PetRule rows for this branch, so we never re-seed (and never resurrect
   // ones the admin deleted). See seedDefaultRules in pet.service.
   seededDefaults Boolean @default(false)
+  // Stage 5 — optional AI layer: the pet asks an LLM (via OpenRouter) for a
+  // couple of fresh tips based on obscured, aggregate shift stats (no PII).
+  // Off by default; needs both the toggle and a key to actually call out.
+  aiEnabled        Boolean @default(false)
+  openRouterApiKey String?
   updatedAt  DateTime @updatedAt
 
   @@index([branchId])

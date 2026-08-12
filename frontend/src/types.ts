@@ -78,6 +78,11 @@ export interface PetProfile {
   skin: PetSkin;
   // 0 = quiet, 1 = normal, 2 = chatty (controls the ambient tip interval).
   chattiness: number;
+  // Stage 5: optional AI layer (OpenRouter) — a couple of fresh tips based on
+  // obscured shift aggregates, mixed into the rule-based rotation.
+  aiEnabled: boolean;
+  // Write-only secret: only whether a key is currently set, never the key itself.
+  hasOpenRouterApiKey: boolean;
 }
 
 export interface PetRule {
