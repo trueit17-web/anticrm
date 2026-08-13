@@ -1,4 +1,6 @@
 import { prisma } from "../../lib/prisma";
+import { getStatsForRange } from "../appeals/appeals.service";
+import { getContactStatsForRange } from "../contacts/contacts.service";
 
 // Fixed set of client-side heuristics a rule can hang off. Kept in sync with
 // the PetAssistant rule engine on the frontend.
@@ -182,17 +184,61 @@ function depToNumber(dep: string | null): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-async function collectShiftAggregates(branchId: number) {
+// Builds the obscured shift summary sent to the LLM — real numbers, no
+// client/operator identifiers. Deliberately sparse: only keys that actually
+// have something to report survive, so the prompt never asks the pet to
+// comment on e.g. "0 недожал" for a branch that doesn't even use that status,
+// and the model isn't nudged toward inventing filler about empty categories.
+async function collectShiftAggregates(branchId: number): Promise<Record<string, unknown>> {
   const from = dayStartUtc();
-  const rows = await prisma.appeal.findMany({
-    where: { branchId, date: { gte: from }, deletedAt: null },
-    select: { dep: true, status: true, smsSentById: true },
-  });
-  const total = rows.length;
-  const noSms = rows.filter((r) => !r.smsSentById).length;
-  const bigDeps = rows.filter((r) => depToNumber(r.dep) >= 1_000_000).length;
-  const nedozhal = rows.filter((r) => /недож/i.test(r.status)).length;
-  return { total, noSms, bigDeps, nedozhal };
+  const to = new Date(from);
+  to.setUTCDate(to.getUTCDate() + 1);
+
+  const [rangeStats, contactStats, smsRows] = await Promise.all([
+    getStatsForRange(branchId, from, to),
+    // The Прозвон module may be off for this branch — that's not an error,
+    // just nothing to add to "передано в трубку".
+    getContactStatsForRange(branchId, from, to).catch(() => null),
+    prisma.appeal.findMany({
+      where: { branchId, date: { gte: from, lt: to }, deletedAt: null },
+      select: { dep: true, smsSentById: true },
+    }),
+  ]);
+
+  const noSms = smsRows.filter((r) => !r.smsSentById).length;
+  const bigDeps = smsRows.filter((r) => depToNumber(r.dep) >= 1_000_000).length;
+
+  const out: Record<string, unknown> = { период: "сегодня" };
+  if (rangeStats.total > 0) out.трубок_всего = rangeStats.total;
+  if (noSms > 0) out.без_смс = noSms;
+  if (bigDeps > 0) out.крупных_депов = bigDeps;
+  if (contactStats && contactStats.reached > 0) out.передано_в_трубку = contactStats.reached;
+
+  // Real statuses actually in use today, whatever they're named on this
+  // branch — no fixed "недожал"-style field baked in.
+  const statusEntries = rangeStats.byStatus.filter((s) => s.count > 0);
+  if (statusEntries.length > 0) {
+    out.по_статусам = Object.fromEntries(statusEntries.map((s) => [s.value, s.count]));
+  }
+
+  // ТФ (telephony line) broken down by time-of-day period — mirrors the
+  // Статистика page's И/II/III/IV windows. Only telephonies and periods that
+  // actually had trubki today are included.
+  const tfEntries = rangeStats.byTf
+    .map((t) => {
+      const periods: Record<string, number> = {};
+      if (t.I > 0) periods.I = t.I;
+      if (t.II > 0) periods.II = t.II;
+      if (t.III > 0) periods.III = t.III;
+      if (t.IV > 0) periods.IV = t.IV;
+      return [t.value, periods] as const;
+    })
+    .filter(([, periods]) => Object.keys(periods).length > 0);
+  if (tfEntries.length > 0) {
+    out.по_тф_и_периодам = Object.fromEntries(tfEntries);
+  }
+
+  return out;
 }
 
 async function getOpenRouterKey(branchId: number): Promise<string | null> {
@@ -215,7 +261,8 @@ export async function getAiTips(branchId: number): Promise<string[]> {
   if (!apiKey) return [];
 
   const agg = await collectShiftAggregates(branchId);
-  if (agg.total === 0) return [];
+  // Only "период" present means nothing happened today — nothing to say.
+  if (Object.keys(agg).length <= 1) return [];
 
   const requestBody = (model: string) =>
     JSON.stringify({
@@ -225,22 +272,19 @@ export async function getAiTips(branchId: number): Promise<string[]> {
         {
           role: "system",
           content:
-            "Ты — дружелюбный питомец-талисман в CRM колл-центра. По сводке смены дай 1-2 очень короткие " +
-            "живые реплики (до 100 символов каждая) — подсказку или похвалу оператору. Пиши по-русски, " +
-            "разговорно, можно с эмодзи в начале строки. Никаких персональных данных ты не знаешь и не " +
-            "выдумывай их. Не рассуждай вслух, не показывай ход мыслей, никаких <think> и пояснений — " +
-            "сразу и только JSON-массив строк, ничего больше, например: " +
-            '["🔥 текст первой реплики", "📉 текст второй реплики"]',
+            "Ты — дружелюбный питомец-талисман в CRM колл-центра. Тебе дают сводку смены в JSON — только те " +
+            "поля, по которым реально есть данные (пустых/нулевых категорий там не будет). Основывайся " +
+            "только на них: статусы — реальные названия статусов этого филиала, «по_тф_и_периодам» — " +
+            "трубки по телефонным линиям с разбивкой на периоды дня I/II/III/IV, «передано_в_трубку» — " +
+            "сколько прозвонов сегодня превратилось в трубку. По этой сводке дай 1-2 очень короткие живые " +
+            "реплики (до 100 символов каждая) — подсказку или похвалу оператору. Пиши по-русски, разговорно, " +
+            "можно с эмодзи в начале строки. Никаких персональных данных ты не знаешь и не выдумывай их. " +
+            "Не рассуждай вслух, не показывай ход мыслей, никаких <think> и пояснений — сразу и только " +
+            'JSON-массив строк, ничего больше, например: ["🔥 текст первой реплики", "📉 текст второй реплики"]',
         },
         {
           role: "user",
-          content: JSON.stringify({
-            период: "сегодня",
-            трубок_всего: agg.total,
-            без_смс: agg.noSms,
-            крупных_депов: agg.bigDeps,
-            недожал: agg.nedozhal,
-          }),
+          content: JSON.stringify(agg),
         },
       ],
     });
