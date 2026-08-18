@@ -319,6 +319,15 @@ export function AppealsPage() {
     }
   }
 
+  async function handleInlineDescriptionChange(appeal: Appeal, description: string) {
+    setAppeals((prev) => prev.map((a) => (a.id === appeal.id ? { ...a, description } : a)));
+    try {
+      await api.patch(`/appeals/${appeal.id}`, { description });
+    } finally {
+      await loadAppeals();
+    }
+  }
+
   async function handleInlineStatusChange(appeal: Appeal, status: string) {
     setAppeals((prev) => prev.map((a) => (a.id === appeal.id ? { ...a, status } : a)));
     try {
@@ -438,6 +447,7 @@ export function AppealsPage() {
             onToggleIntake={handleToggleIntake}
             onInlineTagChange={handleInlineTagChange}
             onInlineStatusChange={handleInlineStatusChange}
+            onInlineDescriptionChange={handleInlineDescriptionChange}
             onDelete={user.role === "SUPERADMIN" ? handleDeleteAppeal : undefined}
             govOptions={optionValues(options, "GOV")}
             cbOptions={optionValues(options, "CB")}

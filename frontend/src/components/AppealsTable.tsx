@@ -201,6 +201,73 @@ function NewAppealRow({
   );
 }
 
+// Editable "Описание" cell — double-click to open a textarea, Enter/blur to
+// save, Escape to cancel. The edit buffer is seeded from `appeal.description`
+// only when editing starts (startEdit), never synced continuously from the
+// live prop — so a background poll refreshing `appeals` mid-edit (the main
+// table re-fetches every 5s) re-renders this component with a new `appeal`
+// object but leaves `value`/`editing` untouched, since it's the same
+// component instance (React reconciles by position inside the row's stable
+// `key={appeal.id}`). Whatever the operator is typing survives the refresh.
+function DescriptionCell({
+  appeal,
+  editable,
+  onChange,
+}: {
+  appeal: Appeal;
+  editable: boolean;
+  onChange: (appeal: Appeal, value: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState("");
+
+  function startEdit() {
+    if (!editable) return;
+    setValue(appeal.description ?? "");
+    setEditing(true);
+  }
+
+  function save() {
+    setEditing(false);
+    if (value !== (appeal.description ?? "")) onChange(appeal, value);
+  }
+
+  function handleKeyDown(e: KeyboardEvent) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      save();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      setEditing(false);
+    }
+  }
+
+  if (editing) {
+    return (
+      <td className="wrap-cell description-cell-editing">
+        <textarea
+          autoFocus
+          rows={2}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={handleKeyDown}
+          onBlur={save}
+        />
+      </td>
+    );
+  }
+
+  return (
+    <td
+      className={`wrap-cell${editable ? " editable-cell" : ""}`}
+      title={appeal.description ?? undefined}
+      onDoubleClick={startEdit}
+    >
+      {appeal.description || "—"}
+    </td>
+  );
+}
+
 export function AppealsTable({
   appeals,
   currentUser,
@@ -209,6 +276,7 @@ export function AppealsTable({
   onToggleIntake,
   onInlineTagChange,
   onInlineStatusChange,
+  onInlineDescriptionChange,
   onDelete,
   govOptions,
   cbOptions,
@@ -230,6 +298,7 @@ export function AppealsTable({
   onToggleIntake: (appeal: Appeal, intake: boolean) => void;
   onInlineTagChange: (appeal: Appeal, field: TagField, value: string | null) => void;
   onInlineStatusChange: (appeal: Appeal, value: string) => void;
+  onInlineDescriptionChange: (appeal: Appeal, value: string) => void;
   // Only passed for roles allowed to delete straight from this table
   // (currently SUPERADMIN, so they can clean up any date's trubki).
   onDelete?: (appeal: Appeal) => void;
@@ -411,9 +480,7 @@ export function AppealsTable({
                     <span className="status-pill">{appeal.status}</span>
                   )}
                 </td>
-                <td className="wrap-cell" title={appeal.description ?? undefined}>
-                  {appeal.description || "—"}
-                </td>
+                <DescriptionCell appeal={appeal} editable={editable} onChange={onInlineDescriptionChange} />
                 <td className="col-center">{renderTagSelect(appeal, "cb", cbOptions)}</td>
                 <td className="col-center">{renderTagSelect(appeal, "fsb", fsbOptions)}</td>
                 <td className="col-center">{renderTagSelect(appeal, "closer", closerOptions)}</td>

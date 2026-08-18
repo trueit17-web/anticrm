@@ -610,6 +610,26 @@ body.col-resizing .col-resizer {
   cursor: default;
 }
 
+.appeals-table td.wrap-cell.editable-cell {
+  cursor: text;
+}
+.appeals-table td.wrap-cell.editable-cell:hover {
+  background: rgba(207, 154, 68, 0.1);
+}
+.appeals-table td.description-cell-editing {
+  white-space: normal;
+  overflow: visible;
+  padding: 3px;
+}
+.appeals-table td.description-cell-editing textarea {
+  width: 100%;
+  box-sizing: border-box;
+  font-size: 12px;
+  font-family: inherit;
+  padding: 4px 6px;
+  resize: vertical;
+}
+
 .appeals-table th:last-child,
 .appeals-table td:last-child {
   position: sticky;

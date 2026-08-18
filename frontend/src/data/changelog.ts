@@ -10,6 +10,14 @@ export interface ChangelogEntry {
 // separately, so there's only one place to update.
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.31.0",
+    date: "2026-08-18",
+    changes: [
+      "Страница «Трубки»: описание обращения теперь редактируется прямо в таблице — двойной клик по ячейке открывает поле, Enter сохраняет, Esc отменяет",
+      "Ввод в редактируемых полях больше не сбрасывается фоновым обновлением списка — то, что уже набрано, не теряется",
+    ],
+  },
+  {
     version: "1.30.0",
     date: "2026-08-13",
     changes: [
