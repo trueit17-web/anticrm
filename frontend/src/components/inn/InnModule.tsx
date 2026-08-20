@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { api, ApiError } from "../../api/client";
-import { InnEntry } from "../../types";
+import { InnCheckResult, InnEntry } from "../../types";
 import { IconSheets } from "../icons";
 import { InnEntriesTable } from "./InnEntriesTable";
 
@@ -10,11 +10,19 @@ function todayInputValue(): string {
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 }
 
+function shiftDate(value: string, days: number): string {
+  const d = new Date(`${value}T00:00:00`);
+  d.setDate(d.getDate() + days);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
 // Dock icon fixed at the left edge + a left-side drawer with the operator's
 // personal "ИНН" log for the picked day. Open/close mirrors
 // EmployeeCardPopover's pattern (EmployeeCard.tsx): click-outside, Escape,
 // and — per this module's own spec — a repeat Enter press while focus isn't
-// inside a text field.
+// inside a text field. Records may be created/edited/deleted for any day,
+// not just today — the ‹ › arrows just move which day's log is in view.
 export function InnModule() {
   const [open, setOpen] = useState(false);
   const [date, setDate] = useState(todayInputValue());
@@ -62,6 +70,13 @@ export function InnModule() {
     };
   }, [open]);
 
+  // Pre-save check for the create/update forms: does this ИНН already show
+  // up recently for the branch? Used to confirm with the operator before
+  // actually writing anything.
+  function checkWarning(inn: string): Promise<InnCheckResult> {
+    return api.get<InnCheckResult>(`/inn/check?inn=${encodeURIComponent(inn)}&date=${date}`);
+  }
+
   function handleCreate(data: { inn: string; contactsCount: number; transferredCount: number }) {
     api
       .post<{ entry: InnEntry }>("/inn", { ...data, date })
@@ -98,8 +113,16 @@ export function InnModule() {
           <div className="inn-drawer" ref={drawerRef}>
             <header className="inn-drawer-header">
               <h2>ИНН</h2>
-              <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
             </header>
+            <div className="inn-date-nav">
+              <button type="button" onClick={() => setDate((d) => shiftDate(d, -1))} title="Предыдущий день" aria-label="Предыдущий день">
+                ‹
+              </button>
+              <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+              <button type="button" onClick={() => setDate((d) => shiftDate(d, 1))} title="Следующий день" aria-label="Следующий день">
+                ›
+              </button>
+            </div>
             {error && <p className="error-text">{error}</p>}
             {loading ? <p className="muted">Загрузка...</p> : (
               <InnEntriesTable
@@ -107,6 +130,7 @@ export function InnModule() {
                 onCreate={handleCreate}
                 onUpdate={handleUpdate}
                 onDelete={handleDelete}
+                checkWarning={checkWarning}
               />
             )}
           </div>

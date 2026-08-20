@@ -8,7 +8,9 @@ import {
   deleteInnEntry,
   getInnStatsSummary,
   getMyInnStats,
+  getOperatorInnEntries,
   listMyInnEntries,
+  previewInnWarning,
   updateInnEntry,
 } from "./inn.service";
 
@@ -136,9 +138,38 @@ export async function getMyInnStatsHandler(req: Request, res: Response) {
 export async function getInnStatsHandler(req: Request, res: Response) {
   const branchId = await resolveBranchId(req);
   if (branchId === null) {
-    return res.json({ totalEntries: 0, totalContacts: 0, totalTransferred: 0, byOperator: [] });
+    return res.json({ totalEntries: 0, totalContacts: 0, totalTransferred: 0, totalRepeats: 0, byOperator: [] });
   }
   const { from, to } = parseRangeParams(req);
   const stats = await getInnStatsSummary(branchId, from, to);
   res.json(stats);
+}
+
+const checkSchema = z.object({ inn: z.string().min(1), date: z.coerce.date().optional() });
+
+// Pre-save "have we seen this ИНН recently" preview — the frontend calls
+// this before create/update and, if it comes back with a warningLevel,
+// confirms with the operator before actually saving.
+export async function checkInnHandler(req: Request, res: Response) {
+  const parsed = checkSchema.safeParse(req.query);
+  if (!parsed.success) {
+    return res.status(400).json({ error: "Укажите ИНН" });
+  }
+  const branchId = await resolveBranchId(req);
+  if (branchId === null) {
+    return res.json({ warningLevel: null, lastDate: null });
+  }
+  const result = await previewInnWarning(branchId, parsed.data.inn.trim(), parsed.data.date ?? new Date());
+  res.json(result);
+}
+
+export async function getOperatorInnEntriesHandler(req: Request, res: Response) {
+  const operatorId = Number(req.params.operatorId);
+  const branchId = await resolveBranchId(req);
+  if (branchId === null) {
+    return res.json({ entries: [] });
+  }
+  const { from, to } = parseRangeParams(req);
+  const entries = await getOperatorInnEntries(branchId, operatorId, from, to);
+  res.json({ entries });
 }

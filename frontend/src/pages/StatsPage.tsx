@@ -667,17 +667,6 @@ export function StatsPage() {
 
   const [petConfig, setPetConfig] = useState<PetConfig | null>(null);
 
-  // Same from/to the appeals stats effect below computes — reused as-is for
-  // the ИНН stats tab so both tabs stay scoped to the same Период selector.
-  const weekMondayForStats = mondayOfWeek(todayInputValue());
-  const statsFrom = period === "today" ? todayInputValue() : period === "week" ? weekMondayForStats : customFrom;
-  const statsTo =
-    period === "custom"
-      ? addDays(customTo, 1)
-      : period === "week"
-        ? addDays(weekMondayForStats, 6)
-        : addDays(todayInputValue(), 1);
-
   useEffect(() => {
     if (period === "custom" && (!customFrom || !customTo || customFrom > customTo)) {
       return;
@@ -800,7 +789,7 @@ export function StatsPage() {
       )}
 
       {activeTab === "inn" ? (
-        <InnStatsSection isAdmin={isAdmin} from={statsFrom} to={statsTo} />
+        <InnStatsSection isAdmin={isAdmin} />
       ) : (
         <>
       <div className="stats-toolbar">
@@ -894,7 +883,7 @@ export function StatsPage() {
         Версия {APP_VERSION} (сборка {APP_BUILD}) · <Link to="/changelog">История версий и обновлений</Link>
       </footer>
 
-      {petConfig?.enabled && <PetStatsAssistant byOperator={byOperator} config={petConfig} />}
+      {activeTab === "appeals" && petConfig?.enabled && <PetStatsAssistant byOperator={byOperator} config={petConfig} />}
     </div>
   );
 }

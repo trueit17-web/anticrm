@@ -46,7 +46,8 @@ body {
 .modal-card,
 .auth-card,
 .inline-form,
-.appeals-table {
+.appeals-table,
+.inn-drawer {
   color: var(--text);
 }
 
@@ -820,9 +821,9 @@ body.col-resizing .col-resizer {
 .inn-drawer {
   background: var(--card);
   padding: 24px;
-  width: 45vw;
-  min-width: 380px;
-  max-width: 720px;
+  width: 50vw;
+  min-width: 420px;
+  max-width: 900px;
   height: 100vh;
   overflow-y: auto;
   display: flex;
@@ -848,9 +849,28 @@ body.col-resizing .col-resizer {
   gap: 12px;
 }
 
+.inn-date-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+}
+
+.inn-date-nav button {
+  min-height: 30px;
+  min-width: 30px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  line-height: 1;
+}
+
 .inn-entries-table {
   width: 100%;
   border-collapse: collapse;
+  table-layout: fixed;
 }
 
 .inn-entries-table th,
@@ -869,7 +889,16 @@ body.col-resizing .col-resizer {
 }
 
 .inn-entries-table input[type="number"] {
-  width: 80px;
+  width: 100%;
+}
+
+.inn-col-name,
+.inn-col-region {
+  width: 27%;
+}
+
+.inn-col-inn {
+  width: 14%;
 }
 
 .inn-col-center {
@@ -882,12 +911,17 @@ body.col-resizing .col-resizer {
   justify-content: center;
 }
 
-.inn-cell-warn-red input {
+.inn-row-warn-red {
   background: rgba(220, 38, 38, 0.15);
 }
 
-.inn-cell-warn-yellow input {
+.inn-row-warn-yellow {
   background: rgba(217, 164, 6, 0.18);
+}
+
+.inn-row-warn-red input,
+.inn-row-warn-yellow input {
+  background: transparent;
 }
 
 .modal-card > form {
@@ -1518,6 +1552,27 @@ body.col-resizing .col-resizer {
   flex: 1;
   height: 1px;
   background: linear-gradient(90deg, rgba(231, 201, 138, 0.55), rgba(231, 201, 138, 0));
+}
+
+.stats-eyebrow-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.stats-eyebrow-row .stats-eyebrow {
+  margin-bottom: 0;
+  flex: 1;
+}
+
+.inn-operator-row {
+  cursor: pointer;
+}
+
+.inn-operator-row:hover {
+  background: rgba(207, 154, 68, 0.1);
 }
 
 .kpi-grid {

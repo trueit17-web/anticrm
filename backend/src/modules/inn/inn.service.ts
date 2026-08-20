@@ -47,6 +47,26 @@ async function getInnWarningLevel(
   return null;
 }
 
+// Pre-save preview for the create/update form: "would this ИНН trigger a
+// warning if saved right now with this date?" — same red/yellow rule as
+// getInnWarningLevel, but there's no row (and so no id/createdAt) yet, so it
+// just looks at the latest existing row for this ИНН in the branch.
+export async function previewInnWarning(
+  branchId: number,
+  inn: string,
+  entryDate: Date
+): Promise<{ warningLevel: InnWarningLevel; lastDate: Date | null }> {
+  const prior = await prisma.innEntry.findFirst({
+    where: { branchId, inn },
+    orderBy: { date: "desc" },
+    select: { date: true },
+  });
+  if (!prior) return { warningLevel: null, lastDate: null };
+  const days = (entryDate.getTime() - prior.date.getTime()) / (1000 * 60 * 60 * 24);
+  const warningLevel: InnWarningLevel = days < 30 ? "red" : days < 60 ? "yellow" : null;
+  return { warningLevel, lastDate: prior.date };
+}
+
 export async function listMyInnEntries(branchId: number, operatorId: number, date: Date) {
   const { start, end } = dayRange(date);
   const entries = await prisma.innEntry.findMany({
@@ -137,6 +157,10 @@ export async function getInnStatsSummary(branchId: number, from: Date, to: Date)
   const entries = await prisma.innEntry.findMany({
     where: { branchId, date: { gte: from, lt: to } },
     select: {
+      id: true,
+      date: true,
+      createdAt: true,
+      inn: true,
       operatorId: true,
       contactsCount: true,
       transferredCount: true,
@@ -146,24 +170,36 @@ export async function getInnStatsSummary(branchId: number, from: Date, to: Date)
 
   const byOperatorMap = new Map<
     number,
-    { operatorId: number; operatorName: string; entries: number; contacts: number; transferred: number }
+    {
+      operatorId: number;
+      operatorName: string;
+      entries: number;
+      contacts: number;
+      transferred: number;
+      repeats: number;
+    }
   >();
   let totalContacts = 0;
   let totalTransferred = 0;
+  let totalRepeats = 0;
 
   for (const entry of entries) {
     totalContacts += entry.contactsCount;
     totalTransferred += entry.transferredCount;
+    const warningLevel = await getInnWarningLevel(branchId, entry.inn, entry.date, entry.id, entry.createdAt);
+    if (warningLevel) totalRepeats += 1;
     const bucket = byOperatorMap.get(entry.operatorId) ?? {
       operatorId: entry.operatorId,
       operatorName: entry.operator.fullName,
       entries: 0,
       contacts: 0,
       transferred: 0,
+      repeats: 0,
     };
     bucket.entries += 1;
     bucket.contacts += entry.contactsCount;
     bucket.transferred += entry.transferredCount;
+    if (warningLevel) bucket.repeats += 1;
     byOperatorMap.set(entry.operatorId, bucket);
   }
 
@@ -171,6 +207,22 @@ export async function getInnStatsSummary(branchId: number, from: Date, to: Date)
     totalEntries: entries.length,
     totalContacts,
     totalTransferred,
+    totalRepeats,
     byOperator: Array.from(byOperatorMap.values()).sort((a, b) => a.operatorName.localeCompare(b.operatorName)),
   };
+}
+
+// Detailed ИНН log for one operator in a period — powers the expand-on-click
+// row in the ADMIN/SUPERADMIN summary table.
+export async function getOperatorInnEntries(branchId: number, operatorId: number, from: Date, to: Date) {
+  const entries = await prisma.innEntry.findMany({
+    where: { branchId, operatorId, date: { gte: from, lt: to } },
+    orderBy: [{ date: "asc" }, { id: "asc" }],
+  });
+  return Promise.all(
+    entries.map(async (entry) => ({
+      ...entry,
+      warningLevel: await getInnWarningLevel(branchId, entry.inn, entry.date, entry.id, entry.createdAt),
+    }))
+  );
 }

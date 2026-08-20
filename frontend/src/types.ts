@@ -85,7 +85,20 @@ export interface InnStatsMine {
 }
 
 export interface InnStatsSummary extends InnStatsMine {
-  byOperator: { operatorId: number; operatorName: string; entries: number; contacts: number; transferred: number }[];
+  totalRepeats: number;
+  byOperator: {
+    operatorId: number;
+    operatorName: string;
+    entries: number;
+    contacts: number;
+    transferred: number;
+    repeats: number;
+  }[];
+}
+
+export interface InnCheckResult {
+  warningLevel: "red" | "yellow" | null;
+  lastDate: string | null;
 }
 
 // --- "Питомец" (AI mascot assistant) ---
