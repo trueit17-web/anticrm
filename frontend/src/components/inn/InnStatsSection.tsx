@@ -17,10 +17,24 @@ function addDays(value: string, days: number): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
+function mondayOfWeek(isoDate: string): string {
+  const d = new Date(`${isoDate}T00:00:00Z`);
+  const day = d.getUTCDay(); // 0=Sun..6=Sat
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  d.setUTCDate(d.getUTCDate() + diffToMonday);
+  return d.toISOString().slice(0, 10);
+}
+
 function periodRange(period: InnPeriod): { from: string; to: string } {
   const today = todayInputValue();
   if (period === "day") return { from: today, to: addDays(today, 1) };
-  if (period === "week") return { from: addDays(today, -6), to: addDays(today, 1) };
+  if (period === "week") {
+    // Calendar week (Пн–Вс) containing today, not just "last 6 days" — so
+    // entries already logged for a later day this week (the drawer lets
+    // you navigate to any date, including future ones) are counted too.
+    const monday = mondayOfWeek(today);
+    return { from: monday, to: addDays(monday, 7) };
+  }
   return { from: addDays(today, -29), to: addDays(today, 1) };
 }
 

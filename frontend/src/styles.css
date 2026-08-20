@@ -926,6 +926,12 @@ body.col-resizing .col-resizer {
   table-layout: fixed;
 }
 
+.inn-col-truncate {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .inn-entries-table th,
 .inn-entries-table td {
   padding: 6px 8px;

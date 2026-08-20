@@ -86,10 +86,20 @@ function EntryRow({
 
   return (
     <tr className={classes.filter(Boolean).join(" ")} data-inn-entry-id={entry.id}>
-      <td className="inn-col-name">{entry.companyName || "—"}</td>
-      <td className="inn-col-region">{entry.region || "—"}</td>
+      <td className="inn-col-name inn-col-truncate" title={entry.companyName || undefined}>
+        {entry.companyName || "—"}
+      </td>
+      <td className="inn-col-region inn-col-truncate" title={entry.region || undefined}>
+        {entry.region || "—"}
+      </td>
       <td className="inn-col-inn">
-        <input value={inn} maxLength={10} onChange={(e) => setInn(e.target.value)} onKeyDown={handleKeyDown} />
+        <input
+          value={inn}
+          maxLength={10}
+          onChange={(e) => setInn(e.target.value)}
+          onKeyDown={handleKeyDown}
+          onBlur={apply}
+        />
       </td>
       <td className="inn-col-center">
         <input
@@ -98,6 +108,7 @@ function EntryRow({
           value={contacts}
           onChange={(e) => setContacts(e.target.value)}
           onKeyDown={handleKeyDown}
+          onBlur={apply}
         />
       </td>
       <td className="inn-col-center">
@@ -107,6 +118,7 @@ function EntryRow({
           value={transferred}
           onChange={(e) => setTransferred(e.target.value)}
           onKeyDown={handleKeyDown}
+          onBlur={apply}
         />
       </td>
       <td className="inn-col-center inn-row-actions">
