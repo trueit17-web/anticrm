@@ -48,7 +48,7 @@ function OperatorEntriesList({ entries }: { entries: InnEntry[] }) {
             <th>Название</th>
             <th>Регион</th>
             <th>ИНН</th>
-            <th className="col-num">Контактов</th>
+            <th className="col-num">Чел.</th>
             <th className="col-num">Передано</th>
             <th className="col-num">Прозвонена</th>
           </tr>
@@ -126,7 +126,7 @@ function AdminSummary({ from, to }: { from: string; to: string }) {
               <tr>
                 <th>Оператор</th>
                 <th className="col-num">Записей</th>
-                <th className="col-num">Контактов</th>
+                <th className="col-num">Чел.</th>
                 <th className="col-num">Передано</th>
                 <th className="col-num">Повторов</th>
                 <th className="col-num">Прозвонено</th>

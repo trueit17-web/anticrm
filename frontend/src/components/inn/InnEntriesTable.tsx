@@ -255,7 +255,7 @@ export function InnEntriesTable({
           <th>Название</th>
           <th>Регион</th>
           <th>ИНН</th>
-          <th>Контактов</th>
+          <th>Чел.</th>
           <th>Передано</th>
           <th></th>
           <th></th>

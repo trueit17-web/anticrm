@@ -945,13 +945,16 @@ body.col-resizing .col-resizer {
   width: 100%;
 }
 
-.inn-col-name,
-.inn-col-region {
+.inn-col-name {
   width: 27%;
 }
 
+.inn-col-region {
+  width: 22%;
+}
+
 .inn-col-inn {
-  width: 14%;
+  width: 19%;
 }
 
 .inn-col-center {
