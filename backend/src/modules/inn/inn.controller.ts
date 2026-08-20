@@ -11,6 +11,7 @@ import {
   getOperatorInnEntries,
   listMyInnEntries,
   previewInnWarning,
+  searchInnEntry,
   updateInnEntry,
 } from "./inn.service";
 
@@ -52,6 +53,7 @@ const createSchema = z.object({
   inn: z.string().trim().min(1).max(20),
   contactsCount: z.number().int().min(0).default(0),
   transferredCount: z.number().int().min(0).default(0),
+  called: z.boolean().default(false),
 });
 
 export async function createInnEntryHandler(req: Request, res: Response) {
@@ -70,6 +72,7 @@ export async function createInnEntryHandler(req: Request, res: Response) {
     inn: parsed.data.inn,
     contactsCount: parsed.data.contactsCount,
     transferredCount: parsed.data.transferredCount,
+    called: parsed.data.called,
   });
   res.status(201).json({ entry });
 }
@@ -78,6 +81,7 @@ const updateSchema = z.object({
   inn: z.string().trim().min(1).max(20).optional(),
   contactsCount: z.number().int().min(0).optional(),
   transferredCount: z.number().int().min(0).optional(),
+  called: z.boolean().optional(),
 });
 
 export async function updateInnEntryHandler(req: Request, res: Response) {
@@ -128,7 +132,7 @@ export async function lookupInnHandler(req: Request, res: Response) {
 export async function getMyInnStatsHandler(req: Request, res: Response) {
   const branchId = await resolveBranchId(req);
   if (branchId === null) {
-    return res.json({ totalEntries: 0, totalContacts: 0, totalTransferred: 0 });
+    return res.json({ totalEntries: 0, totalContacts: 0, totalTransferred: 0, totalCalled: 0 });
   }
   const { from, to } = parseRangeParams(req);
   const stats = await getMyInnStats(branchId, req.user!.id, from, to);
@@ -138,7 +142,14 @@ export async function getMyInnStatsHandler(req: Request, res: Response) {
 export async function getInnStatsHandler(req: Request, res: Response) {
   const branchId = await resolveBranchId(req);
   if (branchId === null) {
-    return res.json({ totalEntries: 0, totalContacts: 0, totalTransferred: 0, totalRepeats: 0, byOperator: [] });
+    return res.json({
+      totalEntries: 0,
+      totalContacts: 0,
+      totalTransferred: 0,
+      totalRepeats: 0,
+      totalCalled: 0,
+      byOperator: [],
+    });
   }
   const { from, to } = parseRangeParams(req);
   const stats = await getInnStatsSummary(branchId, from, to);
@@ -161,6 +172,24 @@ export async function checkInnHandler(req: Request, res: Response) {
   }
   const result = await previewInnWarning(branchId, parsed.data.inn.trim(), parsed.data.date ?? new Date());
   res.json(result);
+}
+
+const searchSchema = z.object({ inn: z.string().min(1) });
+
+// Search box in the drawer: finds the operator's own most recent matching
+// row across any date and tells the frontend which date to jump the
+// drawer's date picker to and which row to highlight there.
+export async function searchInnEntryHandler(req: Request, res: Response) {
+  const parsed = searchSchema.safeParse(req.query);
+  if (!parsed.success) {
+    return res.status(400).json({ error: "Укажите ИНН" });
+  }
+  const branchId = await resolveBranchId(req);
+  if (branchId === null) {
+    return res.json({ entry: null });
+  }
+  const entry = await searchInnEntry(branchId, req.user!.id, parsed.data.inn.trim());
+  res.json({ entry });
 }
 
 export async function getOperatorInnEntriesHandler(req: Request, res: Response) {

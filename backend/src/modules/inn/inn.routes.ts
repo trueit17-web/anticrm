@@ -13,6 +13,7 @@ import {
   getOperatorInnEntriesHandler,
   listMyInnEntriesHandler,
   lookupInnHandler,
+  searchInnEntryHandler,
   updateInnEntryHandler,
 } from "./inn.controller";
 
@@ -36,6 +37,7 @@ innRouter.use(
 
 innRouter.get("/mine", asyncHandler(listMyInnEntriesHandler));
 innRouter.get("/check", asyncHandler(checkInnHandler));
+innRouter.get("/search", asyncHandler(searchInnEntryHandler));
 innRouter.post("/", asyncHandler(createInnEntryHandler));
 innRouter.patch("/:id", asyncHandler(updateInnEntryHandler));
 innRouter.delete("/:id", asyncHandler(deleteInnEntryHandler));

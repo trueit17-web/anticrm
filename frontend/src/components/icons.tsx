@@ -151,12 +151,47 @@ export function IconX(props: IconProps) {
   );
 }
 
-// Two stacked sheets — the "ИНН" module dock icon.
+// Two stacked sheets — kept as a fallback/reuse elsewhere if needed.
 export function IconSheets(props: IconProps) {
   return (
     <svg {...base} {...props}>
       <rect x="4.5" y="7.5" width="13" height="12" rx="1.4" />
       <path d="M7.5 4.5h13a1.4 1.4 0 0 1 1.4 1.4v10.6" />
+    </svg>
+  );
+}
+
+// Spiral notepad + pencil, full color (not currentColor-driven like the
+// other icons here) — the "ИНН" module dock icon.
+export function IconNotepadPencil(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 100 100" width={28} height={28} {...props}>
+      <rect x="10" y="6" width="62" height="88" rx="8" fill="#fff" stroke="#000" strokeWidth="6" />
+      <circle cx="41" cy="8" r="2.5" fill="#000" />
+      <g stroke="#000" strokeWidth="6" fill="#fff">
+        <circle cx="22" cy="24" r="7" />
+        <circle cx="22" cy="42" r="7" />
+        <circle cx="22" cy="60" r="7" />
+        <circle cx="22" cy="78" r="7" />
+      </g>
+      <g stroke="#000" strokeWidth="4" strokeLinecap="round">
+        <line x1="10" y1="24" x2="15" y2="24" />
+        <line x1="10" y1="42" x2="15" y2="42" />
+        <line x1="10" y1="60" x2="15" y2="60" />
+        <line x1="10" y1="78" x2="15" y2="78" />
+      </g>
+      <g stroke="#000" strokeWidth="6" strokeLinecap="round">
+        <line x1="34" y1="24" x2="60" y2="24" />
+        <line x1="34" y1="42" x2="60" y2="42" />
+        <line x1="34" y1="60" x2="56" y2="60" />
+        <line x1="34" y1="78" x2="48" y2="78" />
+      </g>
+      <g transform="rotate(45 60 60)">
+        <rect x="52" y="20" width="16" height="60" rx="3" fill="#FFCC66" stroke="#000" strokeWidth="4" />
+        <path d="M52 20 h16 l-3 -14 a5 5 0 0 0 -10 0 z" fill="#FF4D6D" stroke="#000" strokeWidth="4" strokeLinejoin="round" />
+        <path d="M52 80 l8 16 l8 -16 z" fill="#000" />
+        <path d="M56 80 l4 10 l4 -10 z" fill="#F2C9A0" />
+      </g>
     </svg>
   );
 }

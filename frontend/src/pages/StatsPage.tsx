@@ -637,6 +637,7 @@ export function StatsPage() {
   const isAdmin = user?.role === "ADMIN" || user?.role === "SUPERADMIN";
 
   const [activeTab, setActiveTab] = useState<"appeals" | "inn">("appeals");
+  const [innPeriod, setInnPeriod] = useState<"day" | "week" | "month">("day");
   // Defaults to disabled — unlike other flags on this page there's no
   // "assume enabled while loading" concern, since the tab simply appears
   // once /branches/mine resolves (same load pattern as ContactsPage).
@@ -772,24 +773,36 @@ export function StatsPage() {
       </header>
 
       {innModuleEnabled && (
-        <div className="admin-tabs">
-          <button
-            className={`admin-tab${activeTab === "appeals" ? " admin-tab-active" : ""}`}
-            onClick={() => setActiveTab("appeals")}
-          >
-            Обращения
-          </button>
-          <button
-            className={`admin-tab${activeTab === "inn" ? " admin-tab-active" : ""}`}
-            onClick={() => setActiveTab("inn")}
-          >
-            ИНН
-          </button>
+        <div className="stats-tabs-row">
+          <div className="admin-tabs">
+            <button
+              className={`admin-tab${activeTab === "appeals" ? " admin-tab-active" : ""}`}
+              onClick={() => setActiveTab("appeals")}
+            >
+              Обращения
+            </button>
+            <button
+              className={`admin-tab${activeTab === "inn" ? " admin-tab-active" : ""}`}
+              onClick={() => setActiveTab("inn")}
+            >
+              ИНН
+            </button>
+          </div>
+          {activeTab === "inn" && (
+            <label className="stats-tabs-period">
+              Период
+              <select value={innPeriod} onChange={(e) => setInnPeriod(e.target.value as "day" | "week" | "month")}>
+                <option value="day">День</option>
+                <option value="week">Неделя</option>
+                <option value="month">Месяц</option>
+              </select>
+            </label>
+          )}
         </div>
       )}
 
       {activeTab === "inn" ? (
-        <InnStatsSection isAdmin={isAdmin} />
+        <InnStatsSection isAdmin={isAdmin} period={innPeriod} />
       ) : (
         <>
       <div className="stats-toolbar">

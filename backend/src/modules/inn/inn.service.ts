@@ -88,6 +88,7 @@ export async function createInnEntry(params: {
   inn: string;
   contactsCount: number;
   transferredCount: number;
+  called: boolean;
 }) {
   const apiKey = await getDadataApiKey(params.branchId);
   const { name, region } = await lookupOrganizationByInn(params.inn, apiKey);
@@ -101,6 +102,7 @@ export async function createInnEntry(params: {
       region,
       contactsCount: params.contactsCount,
       transferredCount: params.transferredCount,
+      called: params.called,
     },
   });
   const warningLevel = await getInnWarningLevel(params.branchId, entry.inn, entry.date, entry.id, entry.createdAt);
@@ -111,7 +113,7 @@ export async function updateInnEntry(params: {
   id: number;
   branchId: number;
   operatorId: number;
-  data: Partial<{ inn: string; contactsCount: number; transferredCount: number }>;
+  data: Partial<{ inn: string; contactsCount: number; transferredCount: number; called: boolean }>;
 }) {
   const existing = await prisma.innEntry.findUnique({ where: { id: params.id } });
   if (!existing || existing.branchId !== params.branchId || existing.operatorId !== params.operatorId) {
@@ -141,16 +143,31 @@ export async function deleteInnEntry(id: number, branchId: number, operatorId: n
 }
 
 export async function getMyInnStats(branchId: number, operatorId: number, from: Date, to: Date) {
-  const agg = await prisma.innEntry.aggregate({
-    where: { branchId, operatorId, date: { gte: from, lt: to } },
-    _count: { _all: true },
-    _sum: { contactsCount: true, transferredCount: true },
-  });
+  const [agg, calledCount] = await Promise.all([
+    prisma.innEntry.aggregate({
+      where: { branchId, operatorId, date: { gte: from, lt: to } },
+      _count: { _all: true },
+      _sum: { contactsCount: true, transferredCount: true },
+    }),
+    prisma.innEntry.count({ where: { branchId, operatorId, date: { gte: from, lt: to }, called: true } }),
+  ]);
   return {
     totalEntries: agg._count._all,
     totalContacts: agg._sum.contactsCount ?? 0,
     totalTransferred: agg._sum.transferredCount ?? 0,
+    totalCalled: calledCount,
   };
+}
+
+// Finds the operator's own most recent ИНН entry matching the search text
+// (substring match — the search box needs to find "796" inside
+// "7736207543", not just exact ИНН), across every date, so the frontend can
+// jump the drawer's date picker to it and highlight the row.
+export async function searchInnEntry(branchId: number, operatorId: number, query: string) {
+  return prisma.innEntry.findFirst({
+    where: { branchId, operatorId, inn: { contains: query } },
+    orderBy: { date: "desc" },
+  });
 }
 
 export async function getInnStatsSummary(branchId: number, from: Date, to: Date) {
@@ -164,6 +181,7 @@ export async function getInnStatsSummary(branchId: number, from: Date, to: Date)
       operatorId: true,
       contactsCount: true,
       transferredCount: true,
+      called: true,
       operator: { select: { fullName: true } },
     },
   });
@@ -177,15 +195,18 @@ export async function getInnStatsSummary(branchId: number, from: Date, to: Date)
       contacts: number;
       transferred: number;
       repeats: number;
+      called: number;
     }
   >();
   let totalContacts = 0;
   let totalTransferred = 0;
   let totalRepeats = 0;
+  let totalCalled = 0;
 
   for (const entry of entries) {
     totalContacts += entry.contactsCount;
     totalTransferred += entry.transferredCount;
+    if (entry.called) totalCalled += 1;
     const warningLevel = await getInnWarningLevel(branchId, entry.inn, entry.date, entry.id, entry.createdAt);
     if (warningLevel) totalRepeats += 1;
     const bucket = byOperatorMap.get(entry.operatorId) ?? {
@@ -195,11 +216,13 @@ export async function getInnStatsSummary(branchId: number, from: Date, to: Date)
       contacts: 0,
       transferred: 0,
       repeats: 0,
+      called: 0,
     };
     bucket.entries += 1;
     bucket.contacts += entry.contactsCount;
     bucket.transferred += entry.transferredCount;
     if (warningLevel) bucket.repeats += 1;
+    if (entry.called) bucket.called += 1;
     byOperatorMap.set(entry.operatorId, bucket);
   }
 
@@ -208,6 +231,7 @@ export async function getInnStatsSummary(branchId: number, from: Date, to: Date)
     totalContacts,
     totalTransferred,
     totalRepeats,
+    totalCalled,
     byOperator: Array.from(byOperatorMap.values()).sort((a, b) => a.operatorName.localeCompare(b.operatorName)),
   };
 }

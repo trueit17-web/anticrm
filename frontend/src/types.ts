@@ -72,6 +72,7 @@ export interface InnEntry {
   region: string | null;
   contactsCount: number;
   transferredCount: number;
+  called: boolean;
   operatorId: number;
   warningLevel: "red" | "yellow" | null;
   createdAt: string;
@@ -82,6 +83,7 @@ export interface InnStatsMine {
   totalEntries: number;
   totalContacts: number;
   totalTransferred: number;
+  totalCalled: number;
 }
 
 export interface InnStatsSummary extends InnStatsMine {
@@ -93,6 +95,7 @@ export interface InnStatsSummary extends InnStatsMine {
     contacts: number;
     transferred: number;
     repeats: number;
+    called: number;
   }[];
 }
 

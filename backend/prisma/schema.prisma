@@ -110,6 +110,9 @@ model InnEntry {
 
   contactsCount    Int @default(0)
   transferredCount Int @default(0)
+  // "Прозвонена?" checkbox on the row — feeds the "прозвонено" count in
+  // Статистика, separate from contactsCount/transferredCount.
+  called           Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

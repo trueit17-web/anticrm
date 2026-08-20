@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { api, ApiError } from "../../api/client";
 import { InnCheckResult, InnEntry } from "../../types";
-import { IconSheets } from "../icons";
+import { IconNotepadPencil } from "../icons";
 import { InnEntriesTable } from "./InnEntriesTable";
 
 function todayInputValue(): string {
@@ -30,6 +30,11 @@ export function InnModule() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const drawerRef = useRef<HTMLDivElement>(null);
+
+  const [searchInn, setSearchInn] = useState("");
+  const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [highlightId, setHighlightId] = useState<number | null>(null);
 
   function load() {
     setLoading(true);
@@ -70,6 +75,16 @@ export function InnModule() {
     };
   }, [open]);
 
+  // Scrolls to + temporarily highlights the row a search just landed on,
+  // once it's actually present in the (possibly just-reloaded) entries list.
+  useEffect(() => {
+    if (highlightId === null) return;
+    const el = document.querySelector(`[data-inn-entry-id="${highlightId}"]`);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+    const t = setTimeout(() => setHighlightId(null), 4000);
+    return () => clearTimeout(t);
+  }, [highlightId, entries]);
+
   // Pre-save check for the create/update forms: does this ИНН already show
   // up recently for the branch? Used to confirm with the operator before
   // actually writing anything.
@@ -77,14 +92,40 @@ export function InnModule() {
     return api.get<InnCheckResult>(`/inn/check?inn=${encodeURIComponent(inn)}&date=${date}`);
   }
 
-  function handleCreate(data: { inn: string; contactsCount: number; transferredCount: number }) {
+  // Finds the operator's own most recent entry for this ИНН across any
+  // date, jumps the date picker there, and highlights the matched row.
+  function handleSearch() {
+    const query = searchInn.trim();
+    if (!query || searching) return;
+    setSearching(true);
+    setSearchError(null);
+    api
+      .get<{ entry: InnEntry | null }>(`/inn/search?inn=${encodeURIComponent(query)}`)
+      .then((res) => {
+        if (!res.entry) {
+          setSearchError("Не найдено");
+          return;
+        }
+        const entryDate = res.entry.date.slice(0, 10);
+        setHighlightId(res.entry.id);
+        if (entryDate === date) load();
+        else setDate(entryDate);
+      })
+      .catch((err) => setSearchError(err instanceof ApiError ? err.message : "Не удалось найти"))
+      .finally(() => setSearching(false));
+  }
+
+  function handleCreate(data: { inn: string; contactsCount: number; transferredCount: number; called: boolean }) {
     api
       .post<{ entry: InnEntry }>("/inn", { ...data, date })
       .then((res) => setEntries((prev) => [...prev, res.entry]))
       .catch((err) => setError(err instanceof ApiError ? err.message : "Не удалось сохранить"));
   }
 
-  function handleUpdate(id: number, data: { inn?: string; contactsCount?: number; transferredCount?: number }) {
+  function handleUpdate(
+    id: number,
+    data: { inn?: string; contactsCount?: number; transferredCount?: number; called?: boolean }
+  ) {
     api
       .patch<{ entry: InnEntry }>(`/inn/${id}`, data)
       .then((res) => setEntries((prev) => prev.map((e) => (e.id === id ? res.entry : e))))
@@ -106,23 +147,50 @@ export function InnModule() {
         title="ИНН"
         aria-label="ИНН"
       >
-        <IconSheets />
+        <IconNotepadPencil width={30} height={30} />
       </button>
       {open && (
         <div className="inn-drawer-overlay">
           <div className="inn-drawer" ref={drawerRef}>
             <header className="inn-drawer-header">
               <h2>ИНН</h2>
+              <div className="inn-date-nav">
+                <button
+                  type="button"
+                  onClick={() => setDate((d) => shiftDate(d, -1))}
+                  title="Предыдущий день"
+                  aria-label="Предыдущий день"
+                >
+                  ‹
+                </button>
+                <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+                <button
+                  type="button"
+                  onClick={() => setDate((d) => shiftDate(d, 1))}
+                  title="Следующий день"
+                  aria-label="Следующий день"
+                >
+                  ›
+                </button>
+              </div>
+              <div className="inn-search">
+                <input
+                  value={searchInn}
+                  onChange={(e) => setSearchInn(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleSearch();
+                    }
+                  }}
+                  placeholder="Поиск по ИНН"
+                />
+                <button type="button" onClick={handleSearch} disabled={!searchInn.trim() || searching}>
+                  Найти
+                </button>
+              </div>
             </header>
-            <div className="inn-date-nav">
-              <button type="button" onClick={() => setDate((d) => shiftDate(d, -1))} title="Предыдущий день" aria-label="Предыдущий день">
-                ‹
-              </button>
-              <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-              <button type="button" onClick={() => setDate((d) => shiftDate(d, 1))} title="Следующий день" aria-label="Следующий день">
-                ›
-              </button>
-            </div>
+            {searchError && <p className="error-text">{searchError}</p>}
             {error && <p className="error-text">{error}</p>}
             {loading ? <p className="muted">Загрузка...</p> : (
               <InnEntriesTable
@@ -131,6 +199,7 @@ export function InnModule() {
                 onUpdate={handleUpdate}
                 onDelete={handleDelete}
                 checkWarning={checkWarning}
+                highlightId={highlightId}
               />
             )}
           </div>

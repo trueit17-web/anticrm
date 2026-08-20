@@ -50,19 +50,19 @@ function OperatorEntriesList({ entries }: { entries: InnEntry[] }) {
             <th>ИНН</th>
             <th className="col-num">Контактов</th>
             <th className="col-num">Передано</th>
+            <th className="col-num">Прозвонена</th>
           </tr>
         </thead>
         <tbody>
           {entries.map((entry) => (
             <tr
               key={entry.id}
-              className={
-                entry.warningLevel === "red"
-                  ? "inn-row-warn-red"
-                  : entry.warningLevel === "yellow"
-                    ? "inn-row-warn-yellow"
-                    : ""
-              }
+              className={[
+                entry.warningLevel === "red" ? "inn-row-warn-red" : entry.warningLevel === "yellow" ? "inn-row-warn-yellow" : "",
+                entry.called ? "inn-row-called" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
             >
               <td>{formatDay(entry.date)}</td>
               <td>{entry.companyName || "—"}</td>
@@ -70,6 +70,7 @@ function OperatorEntriesList({ entries }: { entries: InnEntry[] }) {
               <td>{entry.inn}</td>
               <td className="col-num">{entry.contactsCount}</td>
               <td className="col-num">{entry.transferredCount}</td>
+              <td className="col-num">{entry.called ? "да" : "—"}</td>
             </tr>
           ))}
         </tbody>
@@ -116,6 +117,7 @@ function AdminSummary({ from, to }: { from: string; to: string }) {
         <Kpi value={summary?.totalContacts ?? 0} label="контактов" />
         <Kpi value={summary?.totalTransferred ?? 0} label="передано" />
         <Kpi value={summary?.totalRepeats ?? 0} label="повторов ИНН" />
+        <Kpi value={summary?.totalCalled ?? 0} label="прозвонено" />
       </div>
       {summary && summary.byOperator.length > 0 ? (
         <div className="table-scroll">
@@ -127,6 +129,7 @@ function AdminSummary({ from, to }: { from: string; to: string }) {
                 <th className="col-num">Контактов</th>
                 <th className="col-num">Передано</th>
                 <th className="col-num">Повторов</th>
+                <th className="col-num">Прозвонено</th>
               </tr>
             </thead>
             <tbody>
@@ -138,10 +141,11 @@ function AdminSummary({ from, to }: { from: string; to: string }) {
                     <td className="col-num">{row.contacts}</td>
                     <td className="col-num">{row.transferred}</td>
                     <td className="col-num">{row.repeats}</td>
+                    <td className="col-num">{row.called}</td>
                   </tr>
                   {expanded === row.operatorId && (
                     <tr>
-                      <td colSpan={5}>
+                      <td colSpan={6}>
                         {loadingOperator === row.operatorId ? (
                           <p className="muted">Загрузка...</p>
                         ) : (
@@ -177,6 +181,7 @@ function MineSummary({ from, to }: { from: string; to: string }) {
       <Kpi value={mine?.totalEntries ?? 0} label="записей ИНН" />
       <Kpi value={mine?.totalContacts ?? 0} label="контактов" />
       <Kpi value={mine?.totalTransferred ?? 0} label="передано" />
+      <Kpi value={mine?.totalCalled ?? 0} label="прозвонено" />
     </div>
   );
 }
@@ -184,27 +189,16 @@ function MineSummary({ from, to }: { from: string; to: string }) {
 // USER sees only their own ИНН log totals; ADMIN/SUPERADMIN see the summary
 // for the branch currently picked in BranchSwitcher ("отдел" in this
 // project has no separate entity — it is the selected branch), broken down
-// by operator, with a per-operator expandable detail list and its own
-// день/неделя/месяц period (independent of the "Обращения" tab's period).
-export function InnStatsSection({ isAdmin }: { isAdmin: boolean }) {
-  const [period, setPeriod] = useState<InnPeriod>("day");
+// by operator, with a per-operator expandable detail list. `period` is
+// owned by StatsPage (rendered next to the Обращения/ИНН tab switcher,
+// centered on the page) so it lives at the same level as the tabs rather
+// than duplicated inside this section.
+export function InnStatsSection({ isAdmin, period }: { isAdmin: boolean; period: InnPeriod }) {
   const { from, to } = periodRange(period);
 
   return (
     <section className="stats-section">
-      <div className="stats-eyebrow-row">
-        <p className="stats-eyebrow">{isAdmin ? "ИНН — сводка по филиалу" : "ИНН — моя статистика"}</p>
-        <div className="inline-form">
-          <label>
-            Период
-            <select value={period} onChange={(e) => setPeriod(e.target.value as InnPeriod)}>
-              <option value="day">День</option>
-              <option value="week">Неделя</option>
-              <option value="month">Месяц</option>
-            </select>
-          </label>
-        </div>
-      </div>
+      <p className="stats-eyebrow">{isAdmin ? "ИНН — сводка по филиалу" : "ИНН — моя статистика"}</p>
       {isAdmin ? <AdminSummary from={from} to={to} /> : <MineSummary from={from} to={to} />}
     </section>
   );
