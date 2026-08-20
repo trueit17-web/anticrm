@@ -55,9 +55,37 @@ export interface Branch {
   walletCountEnabled: boolean;
   // "Питомец" (AI mascot) module toggle (SUPERADMIN, Филиалы page).
   petEnabled: boolean;
+  // "ИНН" module toggle (SUPERADMIN, Филиалы page).
+  innEnabled: boolean;
   // The actual key is never sent to the client (write-only) — only whether
   // one is currently set.
   hasDadataApiKey: boolean;
+}
+
+// --- "ИНН" module ---
+
+export interface InnEntry {
+  id: number;
+  date: string;
+  inn: string;
+  companyName: string | null;
+  region: string | null;
+  contactsCount: number;
+  transferredCount: number;
+  operatorId: number;
+  warningLevel: "red" | "yellow" | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface InnStatsMine {
+  totalEntries: number;
+  totalContacts: number;
+  totalTransferred: number;
+}
+
+export interface InnStatsSummary extends InnStatsMine {
+  byOperator: { operatorId: number; operatorName: string; entries: number; contacts: number; transferred: number }[];
 }
 
 // --- "Питомец" (AI mascot assistant) ---

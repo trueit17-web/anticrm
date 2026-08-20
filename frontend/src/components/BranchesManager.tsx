@@ -137,6 +137,16 @@ export function BranchesManager() {
     }
   }
 
+  async function handleToggleInn(branch: Branch) {
+    setBranches((prev) => prev.map((b) => (b.id === branch.id ? { ...b, innEnabled: !b.innEnabled } : b)));
+    try {
+      await api.patch(`/branches/${branch.id}`, { innEnabled: !branch.innEnabled });
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Не удалось сохранить");
+      load();
+    }
+  }
+
   async function handleCreate(e: FormEvent) {
     e.preventDefault();
     setFormError(null);
@@ -215,6 +225,14 @@ export function BranchesManager() {
                       onChange={() => handleTogglePet(b)}
                     />
                     Питомец
+                  </label>
+                  <label className="toggle-inline" title="Личный журнал операторов: ИНН контрагента, контактов за день">
+                    <input
+                      type="checkbox"
+                      checked={b.innEnabled}
+                      onChange={() => handleToggleInn(b)}
+                    />
+                    ИНН
                   </label>
                   <button
                     className="icon-btn"

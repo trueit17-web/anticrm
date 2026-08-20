@@ -12,6 +12,7 @@ const branchPublicSelect = {
   contactsEnabled: true,
   walletCountEnabled: true,
   petEnabled: true,
+  innEnabled: true,
   createdAt: true,
 } satisfies Prisma.BranchSelect;
 
@@ -43,6 +44,7 @@ export async function updateBranch(
     contactsEnabled?: boolean;
     walletCountEnabled?: boolean;
     petEnabled?: boolean;
+    innEnabled?: boolean;
     dadataApiKey?: string | null;
   }
 ) {
@@ -60,6 +62,13 @@ export async function updateBranch(
 export async function isContactsEnabled(branchId: number): Promise<boolean> {
   const branch = await prisma.branch.findUnique({ where: { id: branchId }, select: { contactsEnabled: true } });
   return branch?.contactsEnabled ?? false;
+}
+
+// Gate checked by every /inn route — a branch with the module off 403s the
+// whole thing, not just a hidden dock icon.
+export async function isInnEnabled(branchId: number): Promise<boolean> {
+  const branch = await prisma.branch.findUnique({ where: { id: branchId }, select: { innEnabled: true } });
+  return branch?.innEnabled ?? false;
 }
 
 // The "ИНН ЮЛ → название организации" lookup's key — a branch may set its

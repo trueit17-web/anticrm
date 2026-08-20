@@ -31,6 +31,7 @@ const updateSchema = z.object({
   contactsEnabled: z.boolean().optional(),
   walletCountEnabled: z.boolean().optional(),
   petEnabled: z.boolean().optional(),
+  innEnabled: z.boolean().optional(),
   dadataApiKey: z.string().nullable().optional(),
 });
 

@@ -4,6 +4,7 @@ import { api, ApiError, getActiveBranchId, getSelectedDate } from "../api/client
 import { formatRuDate, todayInputValue } from "../lib/dateUtils";
 import { Appeal, OperatorStat, PetConfig, SelectOption } from "../types";
 import { PetAssistant } from "../components/pet/PetAssistant";
+import { InnModule } from "../components/inn/InnModule";
 import { AppealsTable, NewAppealValues } from "../components/AppealsTable";
 import { AppealFormModal, AppealFormValues } from "../components/AppealFormModal";
 import { CallCardModal } from "../components/CallCardModal";
@@ -203,6 +204,7 @@ export function AppealsPage() {
   // Defaults to enabled so the nav doesn't flicker while /branches/mine
   // loads — the backend enforces the flag regardless of this.
   const contactsModuleEnabled = !branchesLoaded || currentBranch === null || currentBranch.contactsEnabled;
+  const innModuleEnabled = !branchesLoaded || currentBranch === null || currentBranch.innEnabled;
   // Only SUPERADMIN can browse a date other than today — picked from the
   // Админка page (see AdminPage.tsx) and persisted via getSelectedDate();
   // everyone else always works off today's trubki regardless of what's
@@ -436,6 +438,7 @@ export function AppealsPage() {
           {petConfig?.enabled && (
             <PetAssistant containerRef={tableAreaRef} appeals={appeals} config={petConfig} currentUserId={user.id} />
           )}
+          {innModuleEnabled && <InnModule />}
           <button className="fab" title="Новая трубка" onClick={() => setCreating(true)}>
             +
           </button>

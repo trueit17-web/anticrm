@@ -70,6 +70,12 @@ model Branch {
   // staff. Off by default; off means every /pet endpoint 403s for this branch.
   petEnabled Boolean @default(false)
 
+  // SUPERADMIN-controlled toggle (Филиалы page) for the "ИНН" module — a
+  // per-operator daily log of legal entities looked up by INN (via the same
+  // dadataApiKey as the contacts module). Off by default; off means every
+  // /inn endpoint 403s for this branch, not just a hidden dock icon.
+  innEnabled Boolean @default(false)
+
   users         User[]
   appeals       Appeal[]
   selectOptions SelectOption[]
@@ -80,6 +86,37 @@ model Branch {
   walletSources    WalletSource[]
   petProfile     PetProfile?
   petRules       PetRule[]
+  innEntries     InnEntry[]
+}
+
+// One row an operator logs on the "ИНН" module for a given day — a legal
+// entity looked up by INN plus how many contacts came from it and how many
+// were передано. Personal to the operator who created it (not a shared
+// branch directory): USER sees only their own rows, ADMIN/SUPERADMIN see
+// every operator's rows for the branch when building the Статистика summary.
+model InnEntry {
+  id   Int      @id @default(autoincrement())
+  date DateTime @default(now())
+
+  branchId Int
+  branch   Branch @relation(fields: [branchId], references: [id])
+
+  operatorId Int
+  operator   User @relation("OperatorInnEntries", fields: [operatorId], references: [id])
+
+  inn         String
+  companyName String?
+  region      String?
+
+  contactsCount    Int @default(0)
+  transferredCount Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([branchId, date])
+  @@index([operatorId, date])
+  @@index([branchId, inn])
 }
 
 // A source TRON (T...) address whose OUTGOING USDT transfers are counted for
@@ -243,6 +280,7 @@ model User {
   appealsAsOperator  Appeal[]        @relation("OperatorAppeals")
   appealsAsSmsSender Appeal[]        @relation("SmsSender")
   historyEntries     AppealHistory[] @relation("HistoryChangedBy")
+  innEntriesAsOperator InnEntry[]    @relation("OperatorInnEntries")
   branchAccess       UserBranchAccess[]
   loginEvents        LoginEvent[]
   uploadedContactBatches ContactBatch[] @relation("ContactBatchUploader")

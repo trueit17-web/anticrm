@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { api, ApiError } from "../api/client";
 import {
   Appeal,
+  Branch,
   ContactManagerStat,
   ContactRangeStats,
   DailyStat,
@@ -21,7 +22,9 @@ import { BranchSwitcher } from "../components/BranchSwitcher";
 import { IconBack } from "../components/icons";
 import { EmployeeNameButton } from "../components/EmployeeCard";
 import { PetStatsAssistant } from "../components/pet/PetStatsAssistant";
+import { InnStatsSection } from "../components/inn/InnStatsSection";
 import { APP_BUILD, APP_VERSION } from "../data/changelog";
+import { getActiveBranchId } from "../api/client";
 
 type Period = "today" | "week" | "custom";
 
@@ -633,6 +636,12 @@ export function StatsPage() {
   const { user } = useAuth();
   const isAdmin = user?.role === "ADMIN" || user?.role === "SUPERADMIN";
 
+  const [activeTab, setActiveTab] = useState<"appeals" | "inn">("appeals");
+  // Defaults to disabled — unlike other flags on this page there's no
+  // "assume enabled while loading" concern, since the tab simply appears
+  // once /branches/mine resolves (same load pattern as ContactsPage).
+  const [innModuleEnabled, setInnModuleEnabled] = useState(false);
+
   const [period, setPeriod] = useState<Period>("today");
   const [customFrom, setCustomFrom] = useState(todayInputValue());
   const [customTo, setCustomTo] = useState(todayInputValue());
@@ -657,6 +666,17 @@ export function StatsPage() {
   const [dayLoading, setDayLoading] = useState(false);
 
   const [petConfig, setPetConfig] = useState<PetConfig | null>(null);
+
+  // Same from/to the appeals stats effect below computes — reused as-is for
+  // the ИНН stats tab so both tabs stay scoped to the same Период selector.
+  const weekMondayForStats = mondayOfWeek(todayInputValue());
+  const statsFrom = period === "today" ? todayInputValue() : period === "week" ? weekMondayForStats : customFrom;
+  const statsTo =
+    period === "custom"
+      ? addDays(customTo, 1)
+      : period === "week"
+        ? addDays(weekMondayForStats, 6)
+        : addDays(todayInputValue(), 1);
 
   useEffect(() => {
     if (period === "custom" && (!customFrom || !customTo || customFrom > customTo)) {
@@ -711,6 +731,18 @@ export function StatsPage() {
       .get<PetConfig>("/pet/config")
       .then(setPetConfig)
       .catch(() => {});
+    api
+      .get<{ branches: Branch[] }>("/branches/mine")
+      .then((res) => {
+        const activeId = getActiveBranchId();
+        const active = activeId
+          ? res.branches.find((b) => b.id === activeId)
+          : res.branches.length === 1
+            ? res.branches[0]
+            : null;
+        if (active) setInnModuleEnabled(active.innEnabled);
+      })
+      .catch(() => {});
   }, []);
 
   function loadDay(day: string) {
@@ -750,6 +782,27 @@ export function StatsPage() {
         </div>
       </header>
 
+      {innModuleEnabled && (
+        <div className="admin-tabs">
+          <button
+            className={`admin-tab${activeTab === "appeals" ? " admin-tab-active" : ""}`}
+            onClick={() => setActiveTab("appeals")}
+          >
+            Обращения
+          </button>
+          <button
+            className={`admin-tab${activeTab === "inn" ? " admin-tab-active" : ""}`}
+            onClick={() => setActiveTab("inn")}
+          >
+            ИНН
+          </button>
+        </div>
+      )}
+
+      {activeTab === "inn" ? (
+        <InnStatsSection isAdmin={isAdmin} from={statsFrom} to={statsTo} />
+      ) : (
+        <>
       <div className="stats-toolbar">
         <div className="inline-form">
           <label>
@@ -832,6 +885,8 @@ export function StatsPage() {
 
           {callStats && <CallStatsSection stats={callStats} />}
           {walletStats && <WalletStatsSection stats={walletStats} />}
+        </>
+      )}
         </>
       )}
 

@@ -7,6 +7,7 @@ import { parseExtraInfo } from "../lib/contactExtraInfo";
 import { formatMoney } from "../lib/money";
 import { BranchSwitcher } from "../components/BranchSwitcher";
 import { IconBack, IconCheck, IconTrash, IconX } from "../components/icons";
+import { InnModule } from "../components/inn/InnModule";
 import { EmployeeNameButton } from "../components/EmployeeCard";
 import { PetContactsAssistant } from "../components/pet/PetContactsAssistant";
 
@@ -572,6 +573,7 @@ export function ContactsPage() {
   // Defaults to enabled so the page doesn't flash a "disabled" message while
   // /branches/mine is still loading — the backend enforces the flag anyway.
   const [moduleEnabled, setModuleEnabled] = useState(true);
+  const [innModuleEnabled, setInnModuleEnabled] = useState(false);
 
   const [batches, setBatches] = useState<ContactBatch[]>([]);
   const [batchesLoading, setBatchesLoading] = useState(isAdmin);
@@ -636,7 +638,10 @@ export function ContactsPage() {
           : res.branches.length === 1
             ? res.branches[0]
             : null;
-        if (active) setModuleEnabled(active.contactsEnabled);
+        if (active) {
+          setModuleEnabled(active.contactsEnabled);
+          setInnModuleEnabled(active.innEnabled);
+        }
       })
       .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -665,6 +670,8 @@ export function ContactsPage() {
           </Link>
         </div>
       </header>
+
+      {innModuleEnabled && <InnModule />}
 
       {!moduleEnabled ? (
         <p className="empty-state">

@@ -150,3 +150,13 @@ export function IconX(props: IconProps) {
     </svg>
   );
 }
+
+// Two stacked sheets — the "ИНН" module dock icon.
+export function IconSheets(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <rect x="4.5" y="7.5" width="13" height="12" rx="1.4" />
+      <path d="M7.5 4.5h13a1.4 1.4 0 0 1 1.4 1.4v10.6" />
+    </svg>
+  );
+}

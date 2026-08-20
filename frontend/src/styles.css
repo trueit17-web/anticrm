@@ -784,6 +784,112 @@ body.col-resizing .col-resizer {
   }
 }
 
+.inn-dock-icon {
+  position: fixed;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 16px 10px 14px;
+  border: none;
+  border-radius: 0 10px 10px 0;
+  background: var(--primary);
+  color: white;
+  cursor: pointer;
+  box-shadow: 4px 0 14px rgba(0, 0, 0, 0.25);
+}
+
+.inn-dock-icon:hover {
+  background: var(--primary-dark);
+}
+
+.inn-drawer-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: stretch;
+  justify-content: flex-start;
+  z-index: 55;
+  animation: overlay-fade-in 0.2s ease-out;
+}
+
+.inn-drawer {
+  background: var(--card);
+  padding: 24px;
+  width: 45vw;
+  min-width: 380px;
+  max-width: 720px;
+  height: 100vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: 8px 0 24px rgba(15, 23, 42, 0.12);
+  animation: inn-drawer-slide-in 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes inn-drawer-slide-in {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.inn-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.inn-entries-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.inn-entries-table th,
+.inn-entries-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  text-align: left;
+}
+
+.inn-entries-table input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 4px 6px;
+  font-size: 13px;
+  font-family: inherit;
+}
+
+.inn-entries-table input[type="number"] {
+  width: 80px;
+}
+
+.inn-col-center {
+  text-align: center;
+}
+
+.inn-row-actions {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+}
+
+.inn-cell-warn-red input {
+  background: rgba(220, 38, 38, 0.15);
+}
+
+.inn-cell-warn-yellow input {
+  background: rgba(217, 164, 6, 0.18);
+}
+
 .modal-card > form {
   display: flex;
   flex-direction: column;
@@ -2447,6 +2553,11 @@ textarea:hover {
 @media (max-width: 720px) {
   .page {
     padding: 10px 10px 28px;
+  }
+
+  .inn-drawer {
+    width: 90vw;
+    min-width: 0;
   }
 
   .page-header,
