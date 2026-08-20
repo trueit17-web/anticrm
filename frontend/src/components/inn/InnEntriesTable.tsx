@@ -286,8 +286,8 @@ export function InnEntriesTable({
         <col className="inn-col-name" />
         <col className="inn-col-region" />
         <col className="inn-col-inn" />
-        <col />
-        <col />
+        <col className="inn-col-num" />
+        <col className="inn-col-num" />
         <col />
         <col />
       </colgroup>

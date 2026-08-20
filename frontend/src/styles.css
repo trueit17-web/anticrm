@@ -849,9 +849,9 @@ body.col-resizing .col-resizer {
 .inn-drawer {
   background: var(--card);
   padding: 24px;
-  width: 50vw;
+  width: 60vw;
   min-width: 420px;
-  max-width: 900px;
+  max-width: 1080px;
   height: 100vh;
   overflow-y: auto;
   display: flex;
@@ -949,18 +949,32 @@ body.col-resizing .col-resizer {
 
 .inn-entries-table input[type="number"] {
   width: 100%;
+  /* Hide the native up/down spinners — Chrome/Safari/Edge. */
+  -webkit-appearance: none;
+  appearance: textfield;
+  margin: 0;
+}
+
+.inn-entries-table input[type="number"]::-webkit-outer-spin-button,
+.inn-entries-table input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
 .inn-col-name {
-  width: 27%;
+  width: 24%;
 }
 
 .inn-col-region {
-  width: 22%;
+  width: 19%;
 }
 
 .inn-col-inn {
-  width: 19%;
+  width: 16%;
+}
+
+.inn-col-num {
+  width: 13%;
 }
 
 .inn-col-center {

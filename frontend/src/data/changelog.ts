@@ -10,6 +10,13 @@ export interface ChangelogEntry {
 // separately, so there's only one place to update.
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.36.1",
+    date: "2026-08-20",
+    changes: [
+      "Модуль «ИНН»: окно расширено до 60% экрана, поля «Чел.» и «Передано» стали шире, убраны стрелки-счётчики у числовых полей",
+    ],
+  },
+  {
     version: "1.36.0",
     date: "2026-08-20",
     changes: [
