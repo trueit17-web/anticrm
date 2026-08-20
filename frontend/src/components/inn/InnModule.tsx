@@ -147,7 +147,9 @@ export function InnModule() {
         title="ИНН"
         aria-label="ИНН"
       >
-        <IconNotepadPencil width={30} height={30} />
+        <span className="inn-dock-icon-badge">
+          <IconNotepadPencil width={30} height={30} />
+        </span>
       </button>
       {open && (
         <div className="inn-drawer-overlay">

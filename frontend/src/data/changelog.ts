@@ -10,6 +10,13 @@ export interface ChangelogEntry {
 // separately, so there's only one place to update.
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.34.1",
+    date: "2026-08-20",
+    changes: [
+      "Модуль «ИНН»: иконка вызова оформлена как золотой язычок у края экрана с круглой белой подложкой под значком блокнота — вместо плоского прямоугольника",
+    ],
+  },
+  {
     version: "1.34.0",
     date: "2026-08-20",
     changes: [

@@ -792,20 +792,47 @@ body.col-resizing .col-resizer {
   transform: translateY(-50%);
   z-index: 50;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 6px;
   min-height: 114px;
-  padding: 10px 16px 10px 14px;
+  width: 58px;
+  padding: 12px 8px;
   border: none;
-  border-radius: 0 10px 10px 0;
-  background: var(--primary);
+  border-radius: 0 20px 20px 0;
+  background: linear-gradient(160deg, var(--primary) 0%, var(--primary-dark) 100%);
   color: white;
   cursor: pointer;
-  box-shadow: 4px 0 14px rgba(0, 0, 0, 0.25);
+  box-shadow: 3px 0 3px rgba(0, 0, 0, 0.12), 6px 0 20px rgba(0, 0, 0, 0.3);
+  transition: width 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.inn-dock-icon::after {
+  content: "";
+  position: absolute;
+  inset: 6px 6px 6px 0;
+  border-radius: 0 15px 15px 0;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  pointer-events: none;
+}
+
+.inn-dock-icon-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--card);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.28), inset 0 0 0 2px rgba(255, 255, 255, 0.6);
+  flex-shrink: 0;
 }
 
 .inn-dock-icon:hover {
-  background: var(--primary-dark);
+  width: 66px;
+  box-shadow: 4px 0 4px rgba(0, 0, 0, 0.16), 8px 0 26px rgba(0, 0, 0, 0.36);
+  transform: translateY(-50%) scale(1.02);
 }
 
 .inn-drawer-overlay {
