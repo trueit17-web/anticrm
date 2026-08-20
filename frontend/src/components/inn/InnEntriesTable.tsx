@@ -1,4 +1,4 @@
-import { KeyboardEvent, useState } from "react";
+import { ClipboardEvent, KeyboardEvent, useState } from "react";
 import { InnCheckResult, InnEntry } from "../../types";
 import { IconCheck, IconTrash } from "../icons";
 
@@ -136,11 +136,23 @@ function EntryRow({
   );
 }
 
+// Splits pasted text into individual ИНН — accepts one per line (typical
+// when copying a column out of Excel) or separated by commas/semicolons/
+// spaces. Only tokens that look like a real ИНН (10 or 12 digits) count.
+function extractInnList(text: string): string[] {
+  return text
+    .split(/[\s,;]+/)
+    .map((t) => t.trim())
+    .filter((t) => /^\d{10}$|^\d{12}$/.test(t));
+}
+
 function NewEntryRow({
   onCreate,
+  onCreateMany,
   checkWarning,
 }: {
   onCreate: (data: { inn: string; contactsCount: number; transferredCount: number; called: boolean }) => void;
+  onCreateMany: (inns: string[]) => void;
   checkWarning: (inn: string) => Promise<InnCheckResult>;
 }) {
   const [inn, setInn] = useState("");
@@ -169,6 +181,20 @@ function NewEntryRow({
     }
   }
 
+  // Pasting a whole list of ИНН (one per line, or comma/space-separated —
+  // the usual shape when copying a column out of a spreadsheet) creates a
+  // separate row for each one instead of dumping the raw text into the
+  // field. A single pasted ИНН falls through to the normal one-at-a-time
+  // flow so the operator can still review/confirm it before saving.
+  function handlePaste(e: ClipboardEvent<HTMLInputElement>) {
+    const text = e.clipboardData.getData("text");
+    const list = extractInnList(text);
+    if (list.length > 1) {
+      e.preventDefault();
+      onCreateMany(list);
+    }
+  }
+
   return (
     <tr className={called ? "inn-new-row inn-row-called" : "inn-new-row"}>
       <td className="inn-col-name">—</td>
@@ -179,7 +205,8 @@ function NewEntryRow({
           maxLength={10}
           onChange={(e) => setInn(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Новый ИНН"
+          onPaste={handlePaste}
+          placeholder="Новый ИНН (можно вставить список)"
         />
       </td>
       <td className="inn-col-center">
@@ -227,6 +254,7 @@ function NewEntryRow({
 export function InnEntriesTable({
   entries,
   onCreate,
+  onCreateMany,
   onUpdate,
   onDelete,
   checkWarning,
@@ -234,6 +262,7 @@ export function InnEntriesTable({
 }: {
   entries: InnEntry[];
   onCreate: (data: { inn: string; contactsCount: number; transferredCount: number; called: boolean }) => void;
+  onCreateMany: (inns: string[]) => void;
   onUpdate: (id: number, data: { inn?: string; contactsCount?: number; transferredCount?: number; called?: boolean }) => void;
   onDelete: (id: number) => void;
   checkWarning: (inn: string) => Promise<InnCheckResult>;
@@ -272,7 +301,7 @@ export function InnEntriesTable({
             highlightId={highlightId}
           />
         ))}
-        <NewEntryRow onCreate={onCreate} checkWarning={checkWarning} />
+        <NewEntryRow onCreate={onCreate} onCreateMany={onCreateMany} checkWarning={checkWarning} />
       </tbody>
     </table>
   );

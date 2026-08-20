@@ -122,6 +122,31 @@ export function InnModule() {
       .catch((err) => setError(err instanceof ApiError ? err.message : "Не удалось сохранить"));
   }
 
+  // Pasting a whole list of ИНН creates one row per value, sequentially —
+  // each still hits the same POST /inn (so each gets its own dadata lookup
+  // and repeat-warning), just without a confirm() prompt per row: asking
+  // "сохранить всё равно?" dozens of times for a pasted batch would be
+  // unusable. The warning still shows up as the usual row highlight once
+  // saved, so nothing is silently hidden — it just doesn't block.
+  async function handleCreateMany(inns: string[]) {
+    let failed = 0;
+    for (const value of inns) {
+      try {
+        const res = await api.post<{ entry: InnEntry }>("/inn", {
+          inn: value,
+          contactsCount: 0,
+          transferredCount: 0,
+          called: false,
+          date,
+        });
+        setEntries((prev) => [...prev, res.entry]);
+      } catch {
+        failed++;
+      }
+    }
+    if (failed > 0) setError(`Не удалось сохранить ${failed} из ${inns.length} ИНН из списка`);
+  }
+
   function handleUpdate(
     id: number,
     data: { inn?: string; contactsCount?: number; transferredCount?: number; called?: boolean }
@@ -198,6 +223,7 @@ export function InnModule() {
               <InnEntriesTable
                 entries={entries}
                 onCreate={handleCreate}
+                onCreateMany={handleCreateMany}
                 onUpdate={handleUpdate}
                 onDelete={handleDelete}
                 checkWarning={checkWarning}

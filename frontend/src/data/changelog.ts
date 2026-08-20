@@ -10,6 +10,13 @@ export interface ChangelogEntry {
 // separately, so there's only one place to update.
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.35.0",
+    date: "2026-08-20",
+    changes: [
+      "Модуль «ИНН»: в поле «Новый ИНН» можно вставить сразу список ИНН (по одному на строку или через запятую/пробел) — каждый превратится в отдельную запись",
+    ],
+  },
+  {
     version: "1.34.2",
     date: "2026-08-20",
     changes: [
