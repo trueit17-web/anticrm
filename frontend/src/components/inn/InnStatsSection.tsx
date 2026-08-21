@@ -402,11 +402,13 @@ function BulkEditList({
   to,
   categories,
   operators,
+  search,
 }: {
   from: string;
   to: string;
   categories: string[];
   operators: UserSummary[];
+  search: string;
 }) {
   const [entries, setEntries] = useState<InnEntryWithOperator[]>([]);
   const [loading, setLoading] = useState(true);
@@ -458,9 +460,10 @@ function BulkEditList({
   }
 
   if (loading) return <p className="muted">Загрузка...</p>;
+  const filtered = search.trim() ? entries.filter((e) => e.inn.includes(search.trim())) : entries;
   return (
     <StatsEntriesTable
-      entries={entries}
+      entries={filtered}
       editable
       showOperator
       categories={categories}
@@ -619,11 +622,13 @@ export function InnStatsSection({
   period,
   date,
   bulkEdit,
+  search,
 }: {
   isAdmin: boolean;
   period: InnPeriod;
   date: string;
   bulkEdit: boolean;
+  search: string;
 }) {
   const { from, to } = periodRange(period, date);
   const [categories, setCategories] = useState<string[]>([]);
@@ -652,7 +657,7 @@ export function InnStatsSection({
     <section className="stats-section">
       <p className="stats-eyebrow">{isAdmin ? "ИНН — сводка по филиалу" : "ИНН — моя статистика"}</p>
       {isAdmin && bulkEdit ? (
-        <BulkEditList from={from} to={to} categories={categories} operators={operators} />
+        <BulkEditList from={from} to={to} categories={categories} operators={operators} search={search} />
       ) : isAdmin ? (
         <AdminSummary from={from} to={to} categories={categories} />
       ) : (

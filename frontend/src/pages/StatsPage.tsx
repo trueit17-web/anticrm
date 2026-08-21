@@ -640,6 +640,7 @@ export function StatsPage() {
   const [innPeriod, setInnPeriod] = useState<"date" | "week" | "month">("date");
   const [innStatsDate, setInnStatsDate] = useState(todayInputValue());
   const [innBulkEdit, setInnBulkEdit] = useState(false);
+  const [innSearch, setInnSearch] = useState("");
   // Defaults to disabled — unlike other flags on this page there's no
   // "assume enabled while loading" concern, since the tab simply appears
   // once /branches/mine resolves (same load pattern as ContactsPage).
@@ -812,6 +813,15 @@ export function StatsPage() {
           </div>
           <div className="stats-tabs-side stats-tabs-side-end">
             {activeTab === "inn" && isAdmin && (
+              <input
+                type="text"
+                className="stats-tabs-inn-search"
+                placeholder="Поиск по ИНН"
+                value={innSearch}
+                onChange={(e) => setInnSearch(e.target.value)}
+              />
+            )}
+            {activeTab === "inn" && isAdmin && (
               <button
                 type="button"
                 className={`admin-tab${innBulkEdit ? " admin-tab-active" : ""}`}
@@ -825,7 +835,13 @@ export function StatsPage() {
       )}
 
       {activeTab === "inn" ? (
-        <InnStatsSection isAdmin={isAdmin} period={innPeriod} date={innStatsDate} bulkEdit={innBulkEdit} />
+        <InnStatsSection
+          isAdmin={isAdmin}
+          period={innPeriod}
+          date={innStatsDate}
+          bulkEdit={innBulkEdit}
+          search={innSearch}
+        />
       ) : (
         <>
       <div className="stats-toolbar">

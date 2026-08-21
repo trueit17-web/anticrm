@@ -1577,6 +1577,12 @@ body.col-resizing .col-resizer {
   padding: 4px 8px;
 }
 
+.stats-tabs-inn-search {
+  min-height: 34px;
+  padding: 4px 10px;
+  width: 160px;
+}
+
 .admin-tabs-divider {
   width: 1px;
   align-self: stretch;
