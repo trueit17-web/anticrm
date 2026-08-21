@@ -203,15 +203,18 @@ function StatsEntryRow({
           formatDay(entry.date)
         )}
       </td>
-      <td>
+      <td className="inn-stats-col-name">
         {editable ? (
           <input
             value={companyName}
             onChange={(e) => setCompanyName(e.target.value)}
             onBlur={() => saveField({ companyName: companyName.trim() || null })}
+            title={companyName || undefined}
           />
         ) : (
-          entry.companyName || "—"
+          <span className="inn-col-truncate" title={entry.companyName || undefined}>
+            {entry.companyName || "—"}
+          </span>
         )}
       </td>
       <td>
@@ -340,7 +343,20 @@ function StatsEntriesTable({
   if (entries.length === 0) return <p className="empty-state">За период записей нет.</p>;
   return (
     <div className="table-scroll">
-      <table className="appeals-table stats-manager-table">
+      <table className="appeals-table stats-manager-table inn-stats-table">
+        <colgroup>
+          {showOperator && <col className="inn-stats-col-operator" />}
+          <col className="inn-stats-col-date" />
+          <col className="inn-stats-col-name" />
+          <col className="inn-stats-col-region" />
+          <col className="inn-stats-col-inn" />
+          <col className="inn-stats-col-num" />
+          <col className="inn-stats-col-num" />
+          <col className="inn-stats-col-num" />
+          <col className="inn-stats-col-cat" />
+          <col className="inn-stats-col-note" />
+          <col className="inn-stats-col-actions" />
+        </colgroup>
         <thead>
           <tr>
             {showOperator && <th>Оператор</th>}

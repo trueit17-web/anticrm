@@ -1803,6 +1803,32 @@ body.col-resizing .col-resizer {
   margin-top: 4px;
 }
 
+/* ИНН — статистика: table-layout:fixed so «Название» can take the leftover
+   space instead of «Регион»/«ИНН» sitting mostly empty. */
+.inn-stats-table {
+  table-layout: fixed;
+}
+.inn-stats-col-operator { width: 9%; }
+.inn-stats-col-date { width: 7%; }
+.inn-stats-col-name { width: 22%; }
+.inn-stats-col-region { width: 8%; }
+.inn-stats-col-inn { width: 11%; }
+.inn-stats-col-num { width: 6%; }
+.inn-stats-col-cat { width: 8%; }
+.inn-stats-col-note { width: 12%; }
+.inn-stats-col-actions { width: 5%; }
+
+.inn-stats-table .inn-col-truncate {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inn-stats-table .inn-stats-col-name input {
+  text-overflow: ellipsis;
+}
+
 /* Manager leaderboard for Прозвон — дозвон column reads green, total bold. */
 .stats-manager-table .stat-reached {
   color: var(--success);

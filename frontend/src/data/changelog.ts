@@ -10,6 +10,13 @@ export interface ChangelogEntry {
 // separately, so there's only one place to update.
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.38.6",
+    date: "2026-08-21",
+    changes: [
+      "«Статистика» → ИНН: колонка «Название» стала заметно шире за счёт «Регион»/«ИНН», длинный текст обрезается многоточием — полное название видно в подсказке при наведении",
+    ],
+  },
+  {
     version: "1.38.5",
     date: "2026-08-21",
     changes: [
