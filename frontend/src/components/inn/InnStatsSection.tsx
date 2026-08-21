@@ -94,6 +94,7 @@ type AdminUpdateData = Partial<{
 function StatsEntryRow({
   entry,
   editable,
+  adminFields,
   showOperator,
   categories,
   operators,
@@ -104,6 +105,11 @@ function StatsEntryRow({
 }: {
   entry: InnEntryWithOperator | InnEntry;
   editable: boolean;
+  // Company name/region/date are only editable in the ADMIN bulk-edit view
+  // (cleaning up bulk-imported data) — a manager's own "массовое
+  // редактирование" mirrors what the personal drawer already lets them
+  // touch: ИНН/counts/called/category/note, never these three.
+  adminFields: boolean;
   showOperator: boolean;
   categories: string[];
   operators: UserSummary[];
@@ -190,7 +196,7 @@ function StatsEntryRow({
         </td>
       )}
       <td>
-        {editable ? (
+        {editable && adminFields ? (
           <input
             type="date"
             value={date}
@@ -204,7 +210,7 @@ function StatsEntryRow({
         )}
       </td>
       <td className="inn-stats-col-name">
-        {editable ? (
+        {editable && adminFields ? (
           <input
             value={companyName}
             onChange={(e) => setCompanyName(e.target.value)}
@@ -218,7 +224,7 @@ function StatsEntryRow({
         )}
       </td>
       <td>
-        {editable ? (
+        {editable && adminFields ? (
           <input
             value={region}
             onChange={(e) => setRegion(e.target.value)}
@@ -322,6 +328,7 @@ function StatsEntryRow({
 function StatsEntriesTable({
   entries,
   editable,
+  adminFields = true,
   showOperator,
   categories,
   operators,
@@ -332,6 +339,7 @@ function StatsEntriesTable({
 }: {
   entries: (InnEntryWithOperator | InnEntry)[];
   editable: boolean;
+  adminFields?: boolean;
   showOperator: boolean;
   categories: string[];
   operators: UserSummary[];
@@ -378,6 +386,7 @@ function StatsEntriesTable({
               key={entry.id}
               entry={entry}
               editable={editable}
+              adminFields={adminFields}
               showOperator={showOperator}
               categories={categories}
               operators={operators}
@@ -468,6 +477,85 @@ function BulkEditList({
       showOperator
       categories={categories}
       operators={operators}
+      onSave={handleSave}
+      onRefresh={handleRefresh}
+      onDistribute={handleDistribute}
+      onDelete={handleDelete}
+    />
+  );
+}
+
+// A regular manager's own "массовое редактирование" — same table/UX as
+// BulkEditList, but scoped to the operator's own rows via the personal
+// /inn/:id endpoints (own-only on the backend) instead of the ADMIN-only
+// /inn/admin/:id ones, and without the operator column/reassignment or
+// company/region/date editing (see adminFields on StatsEntryRow).
+function MyBulkEditList({
+  from,
+  to,
+  categories,
+  search,
+}: {
+  from: string;
+  to: string;
+  categories: string[];
+  search: string;
+}) {
+  const [entries, setEntries] = useState<InnEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    api
+      .get<{ entries: InnEntry[] }>(`/inn/stats/mine/entries?from=${from}&to=${to}`)
+      .then((res) => setEntries(res.entries))
+      .catch(() => setEntries([]))
+      .finally(() => setLoading(false));
+  }, [from, to]);
+
+  function handleSave(id: number, data: AdminUpdateData) {
+    api
+      .patch<{ entry: InnEntry }>(`/inn/${id}`, data)
+      .then((res) => setEntries((prev) => prev.map((e) => (e.id === id ? res.entry : e))))
+      .catch(() => {});
+  }
+
+  function handleRefresh(id: number) {
+    return api
+      .post<{ entry: InnEntry }>(`/inn/${id}/refresh`, {})
+      .then((res) => setEntries((prev) => prev.map((e) => (e.id === id ? res.entry : e))))
+      .catch(() => {});
+  }
+
+  async function handleDistribute(fromId: number, field: "contactsCount" | "transferredCount", values: number[]) {
+    const startIndex = entries.findIndex((e) => e.id === fromId);
+    if (startIndex === -1) return;
+    for (let i = 0; i < values.length && startIndex + i < entries.length; i++) {
+      const target = entries[startIndex + i];
+      await api
+        .patch<{ entry: InnEntry }>(`/inn/${target.id}`, { [field]: values[i] })
+        .then((res) => setEntries((prev) => prev.map((e) => (e.id === target.id ? res.entry : e))))
+        .catch(() => {});
+    }
+  }
+
+  function handleDelete(id: number) {
+    api
+      .delete(`/inn/${id}`)
+      .then(() => setEntries((prev) => prev.filter((e) => e.id !== id)))
+      .catch(() => {});
+  }
+
+  if (loading) return <p className="muted">Загрузка...</p>;
+  const filtered = search.trim() ? entries.filter((e) => e.inn.includes(search.trim())) : entries;
+  return (
+    <StatsEntriesTable
+      entries={filtered}
+      editable
+      adminFields={false}
+      showOperator={false}
+      categories={categories}
+      operators={[]}
       onSave={handleSave}
       onRefresh={handleRefresh}
       onDistribute={handleDistribute}
@@ -635,7 +723,6 @@ export function InnStatsSection({
   const [operators, setOperators] = useState<UserSummary[]>([]);
 
   useEffect(() => {
-    if (!isAdmin) return;
     api
       .get<{ options: SelectOption[] }>("/select-options")
       .then((res) =>
@@ -647,6 +734,10 @@ export function InnStatsSection({
         )
       )
       .catch(() => setCategories([]));
+  }, []);
+
+  useEffect(() => {
+    if (!isAdmin) return;
     api
       .get<{ users: UserSummary[] }>("/users")
       .then((res) => setOperators(res.users.filter((u) => u.active)))
@@ -660,6 +751,8 @@ export function InnStatsSection({
         <BulkEditList from={from} to={to} categories={categories} operators={operators} search={search} />
       ) : isAdmin ? (
         <AdminSummary from={from} to={to} categories={categories} />
+      ) : bulkEdit ? (
+        <MyBulkEditList from={from} to={to} categories={categories} search={search} />
       ) : (
         <MineSummary from={from} to={to} />
       )}

@@ -15,6 +15,7 @@ import {
   getOperatorInnEntriesHandler,
   listBranchInnEntriesHandler,
   listMyInnEntriesHandler,
+  listMyInnEntriesInRangeHandler,
   lookupInnHandler,
   refreshInnEntryHandler,
   searchInnEntryHandler,
@@ -47,6 +48,7 @@ innRouter.patch("/:id", asyncHandler(updateInnEntryHandler));
 innRouter.delete("/:id", asyncHandler(deleteInnEntryHandler));
 innRouter.post("/lookup", asyncHandler(lookupInnHandler));
 innRouter.get("/stats/mine", asyncHandler(getMyInnStatsHandler));
+innRouter.get("/stats/mine/entries", asyncHandler(listMyInnEntriesInRangeHandler));
 innRouter.get("/stats/summary", requireRole(Role.ADMIN, Role.SUPERADMIN), asyncHandler(getInnStatsHandler));
 innRouter.get(
   "/stats/operator/:operatorId",
@@ -56,4 +58,6 @@ innRouter.get(
 innRouter.get("/stats/entries", requireRole(Role.ADMIN, Role.SUPERADMIN), asyncHandler(listBranchInnEntriesHandler));
 innRouter.patch("/admin/:id", requireRole(Role.ADMIN, Role.SUPERADMIN), asyncHandler(adminUpdateInnEntryHandler));
 innRouter.delete("/admin/:id", requireRole(Role.ADMIN, Role.SUPERADMIN), asyncHandler(adminDeleteInnEntryHandler));
-innRouter.post("/:id/refresh", requireRole(Role.ADMIN, Role.SUPERADMIN), asyncHandler(refreshInnEntryHandler));
+// Any operator can refresh their own row from dadata (handler scopes
+// non-admins to their own operatorId); ADMIN/SUPERADMIN can refresh any row.
+innRouter.post("/:id/refresh", asyncHandler(refreshInnEntryHandler));

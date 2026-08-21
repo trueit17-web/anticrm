@@ -223,9 +223,10 @@ export async function adminUpdateInnEntry(params: {
 // Статистика, for entries whose company data is missing or stale (e.g.
 // looked up before a dadata key was configured, or from the bulk historical
 // import which trusted the spreadsheet's own values as-is).
-export async function refreshInnEntryFromDadata(id: number, branchId: number) {
+export async function refreshInnEntryFromDadata(id: number, branchId: number, operatorId?: number) {
   const entry = await prisma.innEntry.findUnique({ where: { id } });
   if (!entry || entry.branchId !== branchId) return null;
+  if (operatorId !== undefined && entry.operatorId !== operatorId) return null;
   const apiKey = await getDadataApiKey(branchId);
   const { name, region } = await lookupOrganizationByInn(entry.inn, apiKey);
   const updated = await prisma.innEntry.update({

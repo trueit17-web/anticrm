@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { Role } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../../lib/prisma";
 import { resolveBranchId } from "../../utils/branchScope";
@@ -219,6 +220,20 @@ export async function searchInnEntryHandler(req: Request, res: Response) {
   res.json({ entry });
 }
 
+// Personal counterpart to listBranchInnEntriesHandler for the "массовое
+// редактирование" view — every non-admin operator gets the same flat,
+// editable list, just scoped to their own entries (no operatorId column,
+// no reassignment) instead of the whole branch.
+export async function listMyInnEntriesInRangeHandler(req: Request, res: Response) {
+  const branchId = await resolveBranchId(req);
+  if (branchId === null) {
+    return res.json({ entries: [] });
+  }
+  const { from, to } = parseRangeParams(req);
+  const entries = await getOperatorInnEntries(branchId, req.user!.id, from, to);
+  res.json({ entries });
+}
+
 export async function getOperatorInnEntriesHandler(req: Request, res: Response) {
   const operatorId = Number(req.params.operatorId);
   const branchId = await resolveBranchId(req);
@@ -284,13 +299,17 @@ export async function adminUpdateInnEntryHandler(req: Request, res: Response) {
   res.json({ entry });
 }
 
+// Available to any operator for their own rows (the "массовое
+// редактирование" view managers now get); ADMIN/SUPERADMIN can refresh any
+// row in the branch, so they're not passed an operatorId to scope by.
 export async function refreshInnEntryHandler(req: Request, res: Response) {
   const id = Number(req.params.id);
   const branchId = await resolveBranchId(req);
   if (branchId === null) {
     return res.status(400).json({ error: "Выберите филиал" });
   }
-  const entry = await refreshInnEntryFromDadata(id, branchId);
+  const isAdmin = req.user!.role === Role.ADMIN || req.user!.role === Role.SUPERADMIN;
+  const entry = await refreshInnEntryFromDadata(id, branchId, isAdmin ? undefined : req.user!.id);
   if (!entry) {
     return res.status(404).json({ error: "Запись не найдена" });
   }
