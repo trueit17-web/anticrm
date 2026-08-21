@@ -821,7 +821,7 @@ export function StatsPage() {
                 onChange={(e) => setInnSearch(e.target.value)}
               />
             )}
-            {activeTab === "inn" && (
+            {activeTab === "inn" && isAdmin && (
               <button
                 type="button"
                 className={`admin-tab${innBulkEdit ? " admin-tab-active" : ""}`}

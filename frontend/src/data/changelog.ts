@@ -10,6 +10,13 @@ export interface ChangelogEntry {
 // separately, so there's only one place to update.
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.39.1",
+    date: "2026-08-21",
+    changes: [
+      "«Статистика» → ИНН: менеджеры видят свои записи сразу под цифрами, без захода в «Массовое редактирование», и могут менять у них дату — запись переносится на выбранный день",
+    ],
+  },
+  {
     version: "1.39.0",
     date: "2026-08-21",
     changes: [

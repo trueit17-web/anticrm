@@ -144,6 +144,7 @@ export async function updateInnEntry(params: {
   operatorId: number;
   data: Partial<{
     inn: string;
+    date: Date;
     contactsCount: number;
     transferredCount: number;
     called: boolean;

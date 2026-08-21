@@ -95,6 +95,7 @@ function StatsEntryRow({
   entry,
   editable,
   adminFields,
+  dateEditable = true,
   showOperator,
   categories,
   operators,
@@ -105,11 +106,15 @@ function StatsEntryRow({
 }: {
   entry: InnEntryWithOperator | InnEntry;
   editable: boolean;
-  // Company name/region/date are only editable in the ADMIN bulk-edit view
-  // (cleaning up bulk-imported data) — a manager's own "массовое
-  // редактирование" mirrors what the personal drawer already lets them
-  // touch: ИНН/counts/called/category/note, never these three.
+  // Company name/region are only editable in the ADMIN bulk-edit view
+  // (cleaning up bulk-imported data) — a manager's own list mirrors what
+  // the personal drawer already lets them touch: ИНН/counts/called/
+  // category/note, never these two.
   adminFields: boolean;
+  // Date is separate from adminFields: managers may move their own entry's
+  // date (the "перенос вручную" the drawer's date-nav doesn't offer) even
+  // though they can't touch company/region.
+  dateEditable?: boolean;
   showOperator: boolean;
   categories: string[];
   operators: UserSummary[];
@@ -196,7 +201,7 @@ function StatsEntryRow({
         </td>
       )}
       <td>
-        {editable && adminFields ? (
+        {editable && dateEditable ? (
           <input
             type="date"
             value={date}
@@ -485,12 +490,14 @@ function BulkEditList({
   );
 }
 
-// A regular manager's own "массовое редактирование" — same table/UX as
+// A regular manager's own editable entries list — same table/UX as
 // BulkEditList, but scoped to the operator's own rows via the personal
 // /inn/:id endpoints (own-only on the backend) instead of the ADMIN-only
 // /inn/admin/:id ones, and without the operator column/reassignment or
-// company/region/date editing (see adminFields on StatsEntryRow).
-function MyBulkEditList({
+// company/region editing (see adminFields on StatsEntryRow). Shown directly
+// under the KPI cards in MineSummary — no separate "массовое
+// редактирование" toggle for managers, unlike the admin view.
+function MyEntriesList({
   from,
   to,
   categories,
@@ -678,7 +685,21 @@ function AdminSummary({ from, to, categories }: { from: string; to: string; cate
   );
 }
 
-function MineSummary({ from, to }: { from: string; to: string }) {
+// Manager's own ИНН — KPI cards plus their editable entries directly below,
+// with no separate "массовое редактирование" step: they only ever see and
+// touch their own rows anyway, so there's nothing a toggle would protect
+// against here (unlike the ADMIN branch-wide view, which stays opt-in).
+function MineSummary({
+  from,
+  to,
+  categories,
+  search,
+}: {
+  from: string;
+  to: string;
+  categories: string[];
+  search: string;
+}) {
   const [mine, setMine] = useState<InnStatsMine | null>(null);
 
   useEffect(() => {
@@ -689,12 +710,15 @@ function MineSummary({ from, to }: { from: string; to: string }) {
   }, [from, to]);
 
   return (
-    <div className="kpi-grid">
-      <Kpi value={mine?.totalEntries ?? 0} label="записей ИНН" />
-      <Kpi value={mine?.totalContacts ?? 0} label="контактов" />
-      <Kpi value={mine?.totalTransferred ?? 0} label="передано" />
-      <Kpi value={mine?.totalCalled ?? 0} label="прозвонено" />
-    </div>
+    <>
+      <div className="kpi-grid">
+        <Kpi value={mine?.totalEntries ?? 0} label="записей ИНН" />
+        <Kpi value={mine?.totalContacts ?? 0} label="контактов" />
+        <Kpi value={mine?.totalTransferred ?? 0} label="передано" />
+        <Kpi value={mine?.totalCalled ?? 0} label="прозвонено" />
+      </div>
+      <MyEntriesList from={from} to={to} categories={categories} search={search} />
+    </>
   );
 }
 
@@ -751,10 +775,8 @@ export function InnStatsSection({
         <BulkEditList from={from} to={to} categories={categories} operators={operators} search={search} />
       ) : isAdmin ? (
         <AdminSummary from={from} to={to} categories={categories} />
-      ) : bulkEdit ? (
-        <MyBulkEditList from={from} to={to} categories={categories} search={search} />
       ) : (
-        <MineSummary from={from} to={to} />
+        <MineSummary from={from} to={to} categories={categories} search={search} />
       )}
     </section>
   );

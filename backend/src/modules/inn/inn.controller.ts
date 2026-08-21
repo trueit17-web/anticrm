@@ -90,6 +90,7 @@ export async function createInnEntryHandler(req: Request, res: Response) {
 
 const updateSchema = z.object({
   inn: z.string().trim().min(1).max(20).optional(),
+  date: z.coerce.date().optional(),
   contactsCount: z.number().int().min(0).optional(),
   transferredCount: z.number().int().min(0).optional(),
   called: z.boolean().optional(),
