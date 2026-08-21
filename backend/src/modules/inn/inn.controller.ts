@@ -5,6 +5,7 @@ import { resolveBranchId } from "../../utils/branchScope";
 import { getDadataApiKey } from "../branches/branches.service";
 import { lookupOrganizationByInn } from "../../utils/dadataLookup";
 import {
+  adminDeleteInnEntry,
   adminUpdateInnEntry,
   createInnEntry,
   deleteInnEntry,
@@ -119,6 +120,21 @@ export async function deleteInnEntryHandler(req: Request, res: Response) {
     return res.status(400).json({ error: "Выберите филиал" });
   }
   const ok = await deleteInnEntry(id, branchId, req.user!.id);
+  if (!ok) {
+    return res.status(404).json({ error: "Запись не найдена" });
+  }
+  res.status(204).end();
+}
+
+// ADMIN/SUPERADMIN deleting any operator's row from the Статистика
+// bulk-edit view.
+export async function adminDeleteInnEntryHandler(req: Request, res: Response) {
+  const id = Number(req.params.id);
+  const branchId = await resolveBranchId(req);
+  if (branchId === null) {
+    return res.status(400).json({ error: "Выберите филиал" });
+  }
+  const ok = await adminDeleteInnEntry(id, branchId);
   if (!ok) {
     return res.status(404).json({ error: "Запись не найдена" });
   }

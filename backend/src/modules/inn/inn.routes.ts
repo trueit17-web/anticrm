@@ -5,6 +5,7 @@ import { asyncHandler } from "../../utils/asyncHandler";
 import { resolveBranchId } from "../../utils/branchScope";
 import { isInnEnabled } from "../branches/branches.service";
 import {
+  adminDeleteInnEntryHandler,
   adminUpdateInnEntryHandler,
   checkInnHandler,
   createInnEntryHandler,
@@ -54,4 +55,5 @@ innRouter.get(
 );
 innRouter.get("/stats/entries", requireRole(Role.ADMIN, Role.SUPERADMIN), asyncHandler(listBranchInnEntriesHandler));
 innRouter.patch("/admin/:id", requireRole(Role.ADMIN, Role.SUPERADMIN), asyncHandler(adminUpdateInnEntryHandler));
+innRouter.delete("/admin/:id", requireRole(Role.ADMIN, Role.SUPERADMIN), asyncHandler(adminDeleteInnEntryHandler));
 innRouter.post("/:id/refresh", requireRole(Role.ADMIN, Role.SUPERADMIN), asyncHandler(refreshInnEntryHandler));

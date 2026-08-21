@@ -10,6 +10,13 @@ export interface ChangelogEntry {
 // separately, so there's only one place to update.
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.38.3",
+    date: "2026-08-21",
+    changes: [
+      "«Статистика» → ИНН, массовое редактирование: вернули удаление записи (корзина рядом с кнопкой обновления из dadata), с подтверждением перед удалением",
+    ],
+  },
+  {
     version: "1.38.2",
     date: "2026-08-21",
     changes: [

@@ -153,6 +153,13 @@ export async function deleteInnEntry(id: number, branchId: number, operatorId: n
   return result.count > 0;
 }
 
+// ADMIN/SUPERADMIN deleting any operator's entry from the Статистика
+// bulk-edit view — branch-scoped only, not the caller's own operatorId.
+export async function adminDeleteInnEntry(id: number, branchId: number): Promise<boolean> {
+  const result = await prisma.innEntry.deleteMany({ where: { id, branchId } });
+  return result.count > 0;
+}
+
 // ADMIN/SUPERADMIN editing another operator's entry from the Статистика
 // bulk-edit view — unlike updateInnEntry, not scoped to the caller's own
 // operatorId. ИНН itself is deliberately not editable here (see

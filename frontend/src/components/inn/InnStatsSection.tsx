@@ -1,7 +1,7 @@
 import { ClipboardEvent, Fragment, useEffect, useState } from "react";
 import { api } from "../../api/client";
 import { InnEntry, InnEntryWithOperator, InnStatsMine, InnStatsSummary, SelectOption, UserSummary } from "../../types";
-import { IconRestore } from "../icons";
+import { IconRestore, IconTrash } from "../icons";
 
 export type InnPeriod = "date" | "week" | "month";
 
@@ -100,6 +100,7 @@ function StatsEntryRow({
   onSave,
   onRefresh,
   onDistribute,
+  onDelete,
 }: {
   entry: InnEntryWithOperator | InnEntry;
   editable: boolean;
@@ -109,6 +110,7 @@ function StatsEntryRow({
   onSave: (id: number, data: AdminUpdateData) => void;
   onRefresh: (id: number) => void;
   onDistribute: (fromId: number, field: "contactsCount" | "transferredCount", values: number[]) => void;
+  onDelete: (id: number) => void;
 }) {
   const [companyName, setCompanyName] = useState(entry.companyName ?? "");
   const [region, setRegion] = useState(entry.region ?? "");
@@ -153,6 +155,10 @@ function StatsEntryRow({
     } finally {
       setRefreshing(false);
     }
+  }
+
+  function handleDelete() {
+    if (window.confirm(`Удалить запись по ИНН ${entry.inn}?`)) onDelete(entry.id);
   }
 
   return (
@@ -300,6 +306,11 @@ function StatsEntryRow({
         >
           <IconRestore width={15} height={15} />
         </button>
+        {editable && (
+          <button className="icon-btn" onClick={handleDelete} title="Удалить" aria-label="Удалить">
+            <IconTrash width={15} height={15} />
+          </button>
+        )}
       </td>
     </tr>
   );
@@ -314,6 +325,7 @@ function StatsEntriesTable({
   onSave,
   onRefresh,
   onDistribute,
+  onDelete,
 }: {
   entries: (InnEntryWithOperator | InnEntry)[];
   editable: boolean;
@@ -323,6 +335,7 @@ function StatsEntriesTable({
   onSave: (id: number, data: AdminUpdateData) => void;
   onRefresh: (id: number) => void;
   onDistribute: (fromId: number, field: "contactsCount" | "transferredCount", values: number[]) => void;
+  onDelete: (id: number) => void;
 }) {
   if (entries.length === 0) return <p className="empty-state">За период записей нет.</p>;
   return (
@@ -355,6 +368,7 @@ function StatsEntriesTable({
               onSave={onSave}
               onRefresh={onRefresh}
               onDistribute={onDistribute}
+              onDelete={onDelete}
             />
           ))}
         </tbody>
@@ -420,6 +434,13 @@ function BulkEditList({
     }
   }
 
+  function handleDelete(id: number) {
+    api
+      .delete(`/inn/admin/${id}`)
+      .then(() => setEntries((prev) => prev.filter((e) => e.id !== id)))
+      .catch(() => {});
+  }
+
   if (loading) return <p className="muted">Загрузка...</p>;
   return (
     <StatsEntriesTable
@@ -431,6 +452,7 @@ function BulkEditList({
       onSave={handleSave}
       onRefresh={handleRefresh}
       onDistribute={handleDistribute}
+      onDelete={handleDelete}
     />
   );
 }
@@ -476,6 +498,7 @@ function OperatorEntriesList({
       onSave={() => {}}
       onRefresh={handleRefresh}
       onDistribute={() => {}}
+      onDelete={() => {}}
     />
   );
 }
