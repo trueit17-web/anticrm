@@ -10,6 +10,20 @@ export interface ChangelogEntry {
 // separately, so there's only one place to update.
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.38.2",
+    date: "2026-08-21",
+    changes: [
+      "Модуль «ИНН»: убраны галочка «Применить» и корзина «Удалить» из строк — изменения сохраняются по Enter, потере фокуса поля или закрытии окна (включая Escape)",
+    ],
+  },
+  {
+    version: "1.38.1",
+    date: "2026-08-21",
+    changes: [
+      "Модуль «ИНН»: поля «Чел.», «Передано» и «Регион» сужены вдвое — больше места под название и остальные колонки",
+    ],
+  },
+  {
     version: "1.38.0",
     date: "2026-08-21",
     changes: [

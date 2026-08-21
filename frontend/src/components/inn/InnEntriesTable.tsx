@@ -1,6 +1,6 @@
 import { ClipboardEvent, KeyboardEvent, useState } from "react";
 import { InnCheckResult, InnEntry } from "../../types";
-import { IconCheck, IconTrash } from "../icons";
+import { IconCheck } from "../icons";
 
 type UpdateData = {
   inn?: string;
@@ -78,14 +78,12 @@ function CategorySelect({
 function EntryRow({
   entry,
   onApply,
-  onDelete,
   checkWarning,
   highlightId,
   categories,
 }: {
   entry: InnEntry;
   onApply: (id: number, data: UpdateData) => void;
-  onDelete: (id: number) => void;
   checkWarning: (inn: string) => Promise<InnCheckResult>;
   highlightId: number | null;
   categories: string[];
@@ -177,20 +175,7 @@ function EntryRow({
       <td>
         <input value={note} onChange={(e) => setNote(e.target.value)} onKeyDown={handleKeyDown} onBlur={apply} />
       </td>
-      <td className="inn-col-center inn-row-actions">
-        <button
-          className="icon-btn"
-          disabled={!dirty || !inn.trim() || checking}
-          onClick={apply}
-          title="Применить"
-          aria-label="Применить"
-        >
-          <IconCheck />
-        </button>
-        <button className="icon-btn" onClick={() => onDelete(entry.id)} title="Удалить" aria-label="Удалить">
-          <IconTrash />
-        </button>
-      </td>
+      <td className="inn-col-center" />
       <td className="inn-col-center">
         <input
           type="checkbox"
@@ -389,7 +374,6 @@ export function InnEntriesTable({
             key={entry.id}
             entry={entry}
             onApply={onUpdate}
-            onDelete={onDelete}
             checkWarning={checkWarning}
             highlightId={highlightId}
             categories={categories}

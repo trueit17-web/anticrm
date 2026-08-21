@@ -72,12 +72,24 @@ export function InnModule() {
 
   useEffect(() => {
     if (!open) return;
+    // Any row's edit/create fields save on blur (see InnEntriesTable), so
+    // closing the drawer while one is still focused just needs that blur to
+    // actually fire first — a plain click outside already does this
+    // natively, but Escape doesn't blur anything on its own, so it's forced
+    // here to make sure nothing typed gets silently dropped.
+    function closeAndSaveFocused() {
+      const active = document.activeElement;
+      if (active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement || active instanceof HTMLSelectElement) {
+        active.blur();
+      }
+      setOpen(false);
+    }
     function handlePointerDown(e: MouseEvent) {
-      if (drawerRef.current && !drawerRef.current.contains(e.target as Node)) setOpen(false);
+      if (drawerRef.current && !drawerRef.current.contains(e.target as Node)) closeAndSaveFocused();
     }
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") {
-        setOpen(false);
+        closeAndSaveFocused();
         return;
       }
       if (e.key === "Enter") {
