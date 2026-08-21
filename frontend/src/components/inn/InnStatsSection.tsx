@@ -1,8 +1,9 @@
-import { Fragment, useEffect, useState } from "react";
+import { ClipboardEvent, Fragment, useEffect, useState } from "react";
 import { api } from "../../api/client";
-import { InnEntry, InnStatsMine, InnStatsSummary } from "../../types";
+import { InnEntry, InnEntryWithOperator, InnStatsMine, InnStatsSummary } from "../../types";
+import { IconRestore } from "../icons";
 
-type InnPeriod = "day" | "week" | "month";
+export type InnPeriod = "date" | "week" | "month";
 
 function todayInputValue(): string {
   const now = new Date();
@@ -25,13 +26,13 @@ function mondayOfWeek(isoDate: string): string {
   return d.toISOString().slice(0, 10);
 }
 
-function periodRange(period: InnPeriod): { from: string; to: string } {
+// `date` is only meaningful for period === "date" — the specific day picked
+// next to the period selector. Week/month always anchor on today, same as
+// before.
+function periodRange(period: InnPeriod, date: string): { from: string; to: string } {
+  if (period === "date") return { from: date, to: addDays(date, 1) };
   const today = todayInputValue();
-  if (period === "day") return { from: today, to: addDays(today, 1) };
   if (period === "week") {
-    // Calendar week (Пн–Вс) containing today, not just "last 6 days" — so
-    // entries already logged for a later day this week (the drawer lets
-    // you navigate to any date, including future ones) are counted too.
     const monday = mondayOfWeek(today);
     return { from: monday, to: addDays(monday, 7) };
   }
@@ -40,6 +41,10 @@ function periodRange(period: InnPeriod): { from: string; to: string } {
 
 function formatDay(iso: string): string {
   return new Date(iso).toLocaleDateString("ru-RU");
+}
+
+function toDateInputValue(iso: string): string {
+  return iso.slice(0, 10);
 }
 
 function Kpi({ value, label }: { value: number; label: string }) {
@@ -51,13 +56,215 @@ function Kpi({ value, label }: { value: number; label: string }) {
   );
 }
 
-function OperatorEntriesList({ entries }: { entries: InnEntry[] }) {
+// Splits pasted text into a list of non-negative integers (one per line, or
+// comma/space/semicolon-separated — the usual shape when copying a column
+// out of a spreadsheet).
+function extractNumberList(text: string): number[] {
+  return text
+    .split(/[\s,;]+/)
+    .map((t) => t.trim())
+    .filter((t) => /^\d+$/.test(t))
+    .map(Number);
+}
+
+function rowWarningClass(entry: InnEntry): string {
+  const classes = [
+    entry.warningLevel === "red" ? "inn-row-warn-red" : entry.warningLevel === "yellow" ? "inn-row-warn-yellow" : "",
+    entry.called ? "inn-row-called" : "",
+  ];
+  return classes.filter(Boolean).join(" ");
+}
+
+type AdminUpdateData = Partial<{
+  companyName: string | null;
+  region: string | null;
+  date: string;
+  contactsCount: number;
+  transferredCount: number;
+  called: boolean;
+}>;
+
+// One row of the ИНН stats detail — read-only by default, or fully editable
+// (except the ИНН value itself) when `editable` is on, per the "массовое
+// редактирование" toggle. The refresh (⟳) button always re-pulls
+// название/регион from dadata for this row's ИНН, editable or not.
+function StatsEntryRow({
+  entry,
+  editable,
+  showOperator,
+  onSave,
+  onRefresh,
+  onDistribute,
+}: {
+  entry: InnEntryWithOperator | InnEntry;
+  editable: boolean;
+  showOperator: boolean;
+  onSave: (id: number, data: AdminUpdateData) => void;
+  onRefresh: (id: number) => void;
+  onDistribute: (fromId: number, field: "contactsCount" | "transferredCount", values: number[]) => void;
+}) {
+  const [companyName, setCompanyName] = useState(entry.companyName ?? "");
+  const [region, setRegion] = useState(entry.region ?? "");
+  const [date, setDate] = useState(toDateInputValue(entry.date));
+  const [contacts, setContacts] = useState(String(entry.contactsCount));
+  const [transferred, setTransferred] = useState(String(entry.transferredCount));
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Unlike the "seed only on interaction start" pattern used elsewhere for
+  // poll-safety, this row's entry only ever changes as the direct result of
+  // an action (this row's own save, a refresh, or a paste-distribute that
+  // landed on a *different* row) — never a background poll — so it's safe
+  // (and necessary) to mirror prop changes into local state here. Without
+  // this, a neighboring row's paste-distribute updates the entry on the
+  // server but this row's own input keeps showing its stale initial value.
+  useEffect(() => setCompanyName(entry.companyName ?? ""), [entry.companyName]);
+  useEffect(() => setRegion(entry.region ?? ""), [entry.region]);
+  useEffect(() => setDate(toDateInputValue(entry.date)), [entry.date]);
+  useEffect(() => setContacts(String(entry.contactsCount)), [entry.contactsCount]);
+  useEffect(() => setTransferred(String(entry.transferredCount)), [entry.transferredCount]);
+
+  function saveField(data: AdminUpdateData) {
+    onSave(entry.id, data);
+  }
+
+  function handlePasteNumbers(field: "contactsCount" | "transferredCount") {
+    return (e: ClipboardEvent<HTMLInputElement>) => {
+      const values = extractNumberList(e.clipboardData.getData("text"));
+      if (values.length > 1) {
+        e.preventDefault();
+        onDistribute(entry.id, field, values);
+      }
+    };
+  }
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    try {
+      await onRefresh(entry.id);
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
+  return (
+    <tr className={rowWarningClass(entry)}>
+      {showOperator && <td>{(entry as InnEntryWithOperator).operatorName}</td>}
+      <td>
+        {editable ? (
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => {
+              setDate(e.target.value);
+              saveField({ date: e.target.value });
+            }}
+          />
+        ) : (
+          formatDay(entry.date)
+        )}
+      </td>
+      <td>
+        {editable ? (
+          <input
+            value={companyName}
+            onChange={(e) => setCompanyName(e.target.value)}
+            onBlur={() => saveField({ companyName: companyName.trim() || null })}
+          />
+        ) : (
+          entry.companyName || "—"
+        )}
+      </td>
+      <td>
+        {editable ? (
+          <input
+            value={region}
+            onChange={(e) => setRegion(e.target.value)}
+            onBlur={() => saveField({ region: region.trim() || null })}
+          />
+        ) : (
+          entry.region || "—"
+        )}
+      </td>
+      <td>{entry.inn}</td>
+      <td className="col-num">
+        {editable ? (
+          <input
+            type="number"
+            min={0}
+            value={contacts}
+            onChange={(e) => setContacts(e.target.value)}
+            onPaste={handlePasteNumbers("contactsCount")}
+            onBlur={() => saveField({ contactsCount: Number(contacts) || 0 })}
+          />
+        ) : (
+          entry.contactsCount
+        )}
+      </td>
+      <td className="col-num">
+        {editable ? (
+          <input
+            type="number"
+            min={0}
+            value={transferred}
+            onChange={(e) => setTransferred(e.target.value)}
+            onPaste={handlePasteNumbers("transferredCount")}
+            onBlur={() => saveField({ transferredCount: Number(transferred) || 0 })}
+          />
+        ) : (
+          entry.transferredCount
+        )}
+      </td>
+      <td className="col-num">
+        {editable ? (
+          <input
+            type="checkbox"
+            checked={entry.called}
+            onChange={(e) => saveField({ called: e.target.checked })}
+            title="Прозвонена?"
+          />
+        ) : entry.called ? (
+          "да"
+        ) : (
+          "—"
+        )}
+      </td>
+      <td className="col-num">
+        <button
+          className="icon-btn"
+          onClick={handleRefresh}
+          disabled={refreshing}
+          title="Обновить из dadata"
+          aria-label="Обновить из dadata"
+        >
+          <IconRestore width={15} height={15} />
+        </button>
+      </td>
+    </tr>
+  );
+}
+
+function StatsEntriesTable({
+  entries,
+  editable,
+  showOperator,
+  onSave,
+  onRefresh,
+  onDistribute,
+}: {
+  entries: (InnEntryWithOperator | InnEntry)[];
+  editable: boolean;
+  showOperator: boolean;
+  onSave: (id: number, data: AdminUpdateData) => void;
+  onRefresh: (id: number) => void;
+  onDistribute: (fromId: number, field: "contactsCount" | "transferredCount", values: number[]) => void;
+}) {
   if (entries.length === 0) return <p className="empty-state">За период записей нет.</p>;
   return (
     <div className="table-scroll">
       <table className="appeals-table stats-manager-table">
         <thead>
           <tr>
+            {showOperator && <th>Оператор</th>}
             <th>Дата</th>
             <th>Название</th>
             <th>Регион</th>
@@ -65,27 +272,20 @@ function OperatorEntriesList({ entries }: { entries: InnEntry[] }) {
             <th className="col-num">Чел.</th>
             <th className="col-num">Передано</th>
             <th className="col-num">Прозвонена</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
           {entries.map((entry) => (
-            <tr
+            <StatsEntryRow
               key={entry.id}
-              className={[
-                entry.warningLevel === "red" ? "inn-row-warn-red" : entry.warningLevel === "yellow" ? "inn-row-warn-yellow" : "",
-                entry.called ? "inn-row-called" : "",
-              ]
-                .filter(Boolean)
-                .join(" ")}
-            >
-              <td>{formatDay(entry.date)}</td>
-              <td>{entry.companyName || "—"}</td>
-              <td>{entry.region || "—"}</td>
-              <td>{entry.inn}</td>
-              <td className="col-num">{entry.contactsCount}</td>
-              <td className="col-num">{entry.transferredCount}</td>
-              <td className="col-num">{entry.called ? "да" : "—"}</td>
-            </tr>
+              entry={entry}
+              editable={editable}
+              showOperator={showOperator}
+              onSave={onSave}
+              onRefresh={onRefresh}
+              onDistribute={onDistribute}
+            />
           ))}
         </tbody>
       </table>
@@ -93,11 +293,102 @@ function OperatorEntriesList({ entries }: { entries: InnEntry[] }) {
   );
 }
 
+// Every entry in the branch for the period, flat (not grouped by operator)
+// — the "массовое редактирование" view. Editing/refresh both hit the
+// ADMIN-only endpoints (/inn/admin/:id, /inn/:id/refresh) since rows here
+// belong to whichever operator logged them, not the viewing admin.
+function BulkEditList({ from, to }: { from: string; to: string }) {
+  const [entries, setEntries] = useState<InnEntryWithOperator[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    api
+      .get<{ entries: InnEntryWithOperator[] }>(`/inn/stats/entries?from=${from}&to=${to}`)
+      .then((res) => setEntries(res.entries))
+      .catch(() => setEntries([]))
+      .finally(() => setLoading(false));
+  }, [from, to]);
+
+  function handleSave(id: number, data: AdminUpdateData) {
+    api
+      .patch<{ entry: InnEntryWithOperator }>(`/inn/admin/${id}`, data)
+      .then((res) => setEntries((prev) => prev.map((e) => (e.id === id ? res.entry : e))))
+      .catch(() => {});
+  }
+
+  function handleRefresh(id: number) {
+    return api
+      .post<{ entry: InnEntryWithOperator }>(`/inn/${id}/refresh`, {})
+      .then((res) => setEntries((prev) => prev.map((e) => (e.id === id ? res.entry : e))))
+      .catch(() => {});
+  }
+
+  // Pasting a column of numbers into one row's Чел./Передано fills that
+  // field down through the following rows in list order, one value per row
+  // — mirrors how pasting a column into a spreadsheet fills down from the
+  // anchor cell.
+  async function handleDistribute(fromId: number, field: "contactsCount" | "transferredCount", values: number[]) {
+    const startIndex = entries.findIndex((e) => e.id === fromId);
+    if (startIndex === -1) return;
+    for (let i = 0; i < values.length && startIndex + i < entries.length; i++) {
+      const target = entries[startIndex + i];
+      await api
+        .patch<{ entry: InnEntryWithOperator }>(`/inn/admin/${target.id}`, { [field]: values[i] })
+        .then((res) => setEntries((prev) => prev.map((e) => (e.id === target.id ? res.entry : e))))
+        .catch(() => {});
+    }
+  }
+
+  if (loading) return <p className="muted">Загрузка...</p>;
+  return (
+    <StatsEntriesTable
+      entries={entries}
+      editable
+      showOperator
+      onSave={handleSave}
+      onRefresh={handleRefresh}
+      onDistribute={handleDistribute}
+    />
+  );
+}
+
+function OperatorEntriesList({ operatorId, from, to }: { operatorId: number; from: string; to: string }) {
+  const [entries, setEntries] = useState<InnEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    api
+      .get<{ entries: InnEntry[] }>(`/inn/stats/operator/${operatorId}?from=${from}&to=${to}`)
+      .then((res) => setEntries(res.entries))
+      .catch(() => setEntries([]))
+      .finally(() => setLoading(false));
+  }, [operatorId, from, to]);
+
+  function handleRefresh(id: number) {
+    return api
+      .post<{ entry: InnEntry }>(`/inn/${id}/refresh`, {})
+      .then((res) => setEntries((prev) => prev.map((e) => (e.id === id ? res.entry : e))))
+      .catch(() => {});
+  }
+
+  if (loading) return <p className="muted">Загрузка...</p>;
+  return (
+    <StatsEntriesTable
+      entries={entries}
+      editable={false}
+      showOperator={false}
+      onSave={() => {}}
+      onRefresh={handleRefresh}
+      onDistribute={() => {}}
+    />
+  );
+}
+
 function AdminSummary({ from, to }: { from: string; to: string }) {
   const [summary, setSummary] = useState<InnStatsSummary | null>(null);
   const [expanded, setExpanded] = useState<number | null>(null);
-  const [operatorEntries, setOperatorEntries] = useState<Record<number, InnEntry[]>>({});
-  const [loadingOperator, setLoadingOperator] = useState<number | null>(null);
 
   useEffect(() => {
     api
@@ -105,23 +396,10 @@ function AdminSummary({ from, to }: { from: string; to: string }) {
       .then(setSummary)
       .catch(() => setSummary(null));
     setExpanded(null);
-    setOperatorEntries({});
   }, [from, to]);
 
   function toggleOperator(operatorId: number) {
-    if (expanded === operatorId) {
-      setExpanded(null);
-      return;
-    }
-    setExpanded(operatorId);
-    if (!operatorEntries[operatorId]) {
-      setLoadingOperator(operatorId);
-      api
-        .get<{ entries: InnEntry[] }>(`/inn/stats/operator/${operatorId}?from=${from}&to=${to}`)
-        .then((res) => setOperatorEntries((prev) => ({ ...prev, [operatorId]: res.entries })))
-        .catch(() => setOperatorEntries((prev) => ({ ...prev, [operatorId]: [] })))
-        .finally(() => setLoadingOperator(null));
-    }
+    setExpanded((prev) => (prev === operatorId ? null : operatorId));
   }
 
   return (
@@ -160,11 +438,7 @@ function AdminSummary({ from, to }: { from: string; to: string }) {
                   {expanded === row.operatorId && (
                     <tr>
                       <td colSpan={6}>
-                        {loadingOperator === row.operatorId ? (
-                          <p className="muted">Загрузка...</p>
-                        ) : (
-                          <OperatorEntriesList entries={operatorEntries[row.operatorId] ?? []} />
-                        )}
+                        <OperatorEntriesList operatorId={row.operatorId} from={from} to={to} />
                       </td>
                     </tr>
                   )}
@@ -203,17 +477,33 @@ function MineSummary({ from, to }: { from: string; to: string }) {
 // USER sees only their own ИНН log totals; ADMIN/SUPERADMIN see the summary
 // for the branch currently picked in BranchSwitcher ("отдел" in this
 // project has no separate entity — it is the selected branch), broken down
-// by operator, with a per-operator expandable detail list. `period` is
-// owned by StatsPage (rendered next to the Обращения/ИНН tab switcher,
-// centered on the page) so it lives at the same level as the tabs rather
-// than duplicated inside this section.
-export function InnStatsSection({ isAdmin, period }: { isAdmin: boolean; period: InnPeriod }) {
-  const { from, to } = periodRange(period);
+// by operator, with a per-operator expandable detail list. `period`/`date`/
+// `bulkEdit` are owned by StatsPage (rendered next to the Обращения/ИНН tab
+// switcher, centered on the page) so they live at the same level as the
+// tabs rather than duplicated inside this section.
+export function InnStatsSection({
+  isAdmin,
+  period,
+  date,
+  bulkEdit,
+}: {
+  isAdmin: boolean;
+  period: InnPeriod;
+  date: string;
+  bulkEdit: boolean;
+}) {
+  const { from, to } = periodRange(period, date);
 
   return (
     <section className="stats-section">
       <p className="stats-eyebrow">{isAdmin ? "ИНН — сводка по филиалу" : "ИНН — моя статистика"}</p>
-      {isAdmin ? <AdminSummary from={from} to={to} /> : <MineSummary from={from} to={to} />}
+      {isAdmin && bulkEdit ? (
+        <BulkEditList from={from} to={to} />
+      ) : isAdmin ? (
+        <AdminSummary from={from} to={to} />
+      ) : (
+        <MineSummary from={from} to={to} />
+      )}
     </section>
   );
 }

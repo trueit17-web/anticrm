@@ -99,6 +99,10 @@ export interface InnStatsSummary extends InnStatsMine {
   }[];
 }
 
+export interface InnEntryWithOperator extends InnEntry {
+  operatorName: string;
+}
+
 export interface InnCheckResult {
   warningLevel: "red" | "yellow" | null;
   lastDate: string | null;

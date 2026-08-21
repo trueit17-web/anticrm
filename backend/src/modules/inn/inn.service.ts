@@ -142,6 +142,65 @@ export async function deleteInnEntry(id: number, branchId: number, operatorId: n
   return result.count > 0;
 }
 
+// ADMIN/SUPERADMIN editing another operator's entry from the Статистика
+// bulk-edit view — unlike updateInnEntry, not scoped to the caller's own
+// operatorId. ИНН itself is deliberately not editable here (see
+// adminUpdateSchema in the controller) — company/region/date/counts are,
+// since this exists to clean up bulk-imported historical data.
+export async function adminUpdateInnEntry(params: {
+  id: number;
+  branchId: number;
+  data: Partial<{
+    companyName: string | null;
+    region: string | null;
+    date: Date;
+    contactsCount: number;
+    transferredCount: number;
+    called: boolean;
+  }>;
+}) {
+  const result = await prisma.innEntry.updateMany({ where: { id: params.id, branchId: params.branchId }, data: params.data });
+  if (result.count === 0) return null;
+  const entry = await prisma.innEntry.findUnique({ where: { id: params.id } });
+  if (!entry) return null;
+  const warningLevel = await getInnWarningLevel(params.branchId, entry.inn, entry.date, entry.id, entry.createdAt);
+  return { ...entry, warningLevel };
+}
+
+// Re-runs the dadata lookup for an entry's current ИНН and overwrites
+// название/регион with whatever comes back — the "refresh" icon in
+// Статистика, for entries whose company data is missing or stale (e.g.
+// looked up before a dadata key was configured, or from the bulk historical
+// import which trusted the spreadsheet's own values as-is).
+export async function refreshInnEntryFromDadata(id: number, branchId: number) {
+  const entry = await prisma.innEntry.findUnique({ where: { id } });
+  if (!entry || entry.branchId !== branchId) return null;
+  const apiKey = await getDadataApiKey(branchId);
+  const { name, region } = await lookupOrganizationByInn(entry.inn, apiKey);
+  const updated = await prisma.innEntry.update({ where: { id }, data: { companyName: name, region } });
+  const warningLevel = await getInnWarningLevel(branchId, updated.inn, updated.date, updated.id, updated.createdAt);
+  return { ...updated, warningLevel };
+}
+
+// Flat (not grouped by operator) list of every entry in the branch for a
+// period — powers the Статистика "массовое редактирование" view, which
+// needs every row editable at once rather than drilled into one operator
+// at a time.
+export async function listBranchInnEntries(branchId: number, from: Date, to: Date) {
+  const entries = await prisma.innEntry.findMany({
+    where: { branchId, date: { gte: from, lt: to } },
+    include: { operator: { select: { fullName: true } } },
+    orderBy: [{ date: "asc" }, { id: "asc" }],
+  });
+  return Promise.all(
+    entries.map(async ({ operator, ...entry }) => ({
+      ...entry,
+      operatorName: operator.fullName,
+      warningLevel: await getInnWarningLevel(branchId, entry.inn, entry.date, entry.id, entry.createdAt),
+    }))
+  );
+}
+
 export async function getMyInnStats(branchId: number, operatorId: number, from: Date, to: Date) {
   const [agg, calledCount] = await Promise.all([
     prisma.innEntry.aggregate({

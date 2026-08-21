@@ -637,7 +637,9 @@ export function StatsPage() {
   const isAdmin = user?.role === "ADMIN" || user?.role === "SUPERADMIN";
 
   const [activeTab, setActiveTab] = useState<"appeals" | "inn">("appeals");
-  const [innPeriod, setInnPeriod] = useState<"day" | "week" | "month">("day");
+  const [innPeriod, setInnPeriod] = useState<"date" | "week" | "month">("date");
+  const [innStatsDate, setInnStatsDate] = useState(todayInputValue());
+  const [innBulkEdit, setInnBulkEdit] = useState(false);
   // Defaults to disabled — unlike other flags on this page there's no
   // "assume enabled while loading" concern, since the tab simply appears
   // once /branches/mine resolves (same load pattern as ContactsPage).
@@ -789,20 +791,39 @@ export function StatsPage() {
             </button>
           </div>
           {activeTab === "inn" && (
-            <label className="stats-tabs-period">
-              Период
-              <select value={innPeriod} onChange={(e) => setInnPeriod(e.target.value as "day" | "week" | "month")}>
-                <option value="day">День</option>
-                <option value="week">Неделя</option>
-                <option value="month">Месяц</option>
-              </select>
-            </label>
+            <div className="stats-tabs-period-row">
+              <label className="stats-tabs-period">
+                Период
+                <select value={innPeriod} onChange={(e) => setInnPeriod(e.target.value as "date" | "week" | "month")}>
+                  <option value="date">На дату</option>
+                  <option value="week">Неделя</option>
+                  <option value="month">Месяц</option>
+                </select>
+              </label>
+              {innPeriod === "date" && (
+                <input
+                  type="date"
+                  className="stats-tabs-date"
+                  value={innStatsDate}
+                  onChange={(e) => setInnStatsDate(e.target.value)}
+                />
+              )}
+              {isAdmin && (
+                <button
+                  type="button"
+                  className={`admin-tab${innBulkEdit ? " admin-tab-active" : ""}`}
+                  onClick={() => setInnBulkEdit((v) => !v)}
+                >
+                  Массовое редактирование
+                </button>
+              )}
+            </div>
           )}
         </div>
       )}
 
       {activeTab === "inn" ? (
-        <InnStatsSection isAdmin={isAdmin} period={innPeriod} />
+        <InnStatsSection isAdmin={isAdmin} period={innPeriod} date={innStatsDate} bulkEdit={innBulkEdit} />
       ) : (
         <>
       <div className="stats-toolbar">

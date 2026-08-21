@@ -4,13 +4,16 @@ import { resolveBranchId } from "../../utils/branchScope";
 import { getDadataApiKey } from "../branches/branches.service";
 import { lookupOrganizationByInn } from "../../utils/dadataLookup";
 import {
+  adminUpdateInnEntry,
   createInnEntry,
   deleteInnEntry,
   getInnStatsSummary,
   getMyInnStats,
   getOperatorInnEntries,
+  listBranchInnEntries,
   listMyInnEntries,
   previewInnWarning,
+  refreshInnEntryFromDadata,
   searchInnEntry,
   updateInnEntry,
 } from "./inn.service";
@@ -201,4 +204,59 @@ export async function getOperatorInnEntriesHandler(req: Request, res: Response) 
   const { from, to } = parseRangeParams(req);
   const entries = await getOperatorInnEntries(branchId, operatorId, from, to);
   res.json({ entries });
+}
+
+// Flat, ungrouped list for the "массовое редактирование" view — every entry
+// in the branch for the period, across every operator.
+export async function listBranchInnEntriesHandler(req: Request, res: Response) {
+  const branchId = await resolveBranchId(req);
+  if (branchId === null) {
+    return res.json({ entries: [] });
+  }
+  const { from, to } = parseRangeParams(req);
+  const entries = await listBranchInnEntries(branchId, from, to);
+  res.json({ entries });
+}
+
+// ИНН is deliberately excluded — editing it would need a fresh dadata
+// lookup and repeat-warning check, which doesn't fit this "fix up already
+// -imported data" surface. Everything else about the row is fair game,
+// including the date (unlike the personal drawer's own PATCH).
+const adminUpdateSchema = z.object({
+  companyName: z.string().nullable().optional(),
+  region: z.string().nullable().optional(),
+  date: z.coerce.date().optional(),
+  contactsCount: z.number().int().min(0).optional(),
+  transferredCount: z.number().int().min(0).optional(),
+  called: z.boolean().optional(),
+});
+
+export async function adminUpdateInnEntryHandler(req: Request, res: Response) {
+  const id = Number(req.params.id);
+  const parsed = adminUpdateSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: "Проверьте поля формы", details: parsed.error.flatten() });
+  }
+  const branchId = await resolveBranchId(req);
+  if (branchId === null) {
+    return res.status(400).json({ error: "Выберите филиал" });
+  }
+  const entry = await adminUpdateInnEntry({ id, branchId, data: parsed.data });
+  if (!entry) {
+    return res.status(404).json({ error: "Запись не найдена" });
+  }
+  res.json({ entry });
+}
+
+export async function refreshInnEntryHandler(req: Request, res: Response) {
+  const id = Number(req.params.id);
+  const branchId = await resolveBranchId(req);
+  if (branchId === null) {
+    return res.status(400).json({ error: "Выберите филиал" });
+  }
+  const entry = await refreshInnEntryFromDadata(id, branchId);
+  if (!entry) {
+    return res.status(404).json({ error: "Запись не найдена" });
+  }
+  res.json({ entry });
 }
