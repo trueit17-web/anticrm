@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { z } from "zod";
+import { prisma } from "../../lib/prisma";
 import { resolveBranchId } from "../../utils/branchScope";
 import { getDadataApiKey } from "../branches/branches.service";
 import { lookupOrganizationByInn } from "../../utils/dadataLookup";
@@ -57,6 +58,8 @@ const createSchema = z.object({
   contactsCount: z.number().int().min(0).default(0),
   transferredCount: z.number().int().min(0).default(0),
   called: z.boolean().default(false),
+  category: z.string().trim().max(100).nullable().optional(),
+  note: z.string().trim().max(500).nullable().optional(),
 });
 
 export async function createInnEntryHandler(req: Request, res: Response) {
@@ -68,6 +71,7 @@ export async function createInnEntryHandler(req: Request, res: Response) {
   if (branchId === null) {
     return res.status(400).json({ error: "Выберите филиал" });
   }
+
   const entry = await createInnEntry({
     branchId,
     operatorId: req.user!.id,
@@ -76,6 +80,8 @@ export async function createInnEntryHandler(req: Request, res: Response) {
     contactsCount: parsed.data.contactsCount,
     transferredCount: parsed.data.transferredCount,
     called: parsed.data.called,
+    category: parsed.data.category,
+    note: parsed.data.note,
   });
   res.status(201).json({ entry });
 }
@@ -85,6 +91,8 @@ const updateSchema = z.object({
   contactsCount: z.number().int().min(0).optional(),
   transferredCount: z.number().int().min(0).optional(),
   called: z.boolean().optional(),
+  category: z.string().trim().max(100).nullable().optional(),
+  note: z.string().trim().max(500).nullable().optional(),
 });
 
 export async function updateInnEntryHandler(req: Request, res: Response) {
@@ -229,6 +237,12 @@ const adminUpdateSchema = z.object({
   contactsCount: z.number().int().min(0).optional(),
   transferredCount: z.number().int().min(0).optional(),
   called: z.boolean().optional(),
+  category: z.string().trim().max(100).nullable().optional(),
+  note: z.string().trim().max(500).nullable().optional(),
+  // Reassigns which operator this row belongs to — the ADMIN/SUPERADMIN way
+  // to attribute an ИНН to someone else, from the Статистика bulk-edit view
+  // (rather than at creation time in the personal drawer).
+  operatorId: z.number().int().positive().optional(),
 });
 
 export async function adminUpdateInnEntryHandler(req: Request, res: Response) {
@@ -240,6 +254,12 @@ export async function adminUpdateInnEntryHandler(req: Request, res: Response) {
   const branchId = await resolveBranchId(req);
   if (branchId === null) {
     return res.status(400).json({ error: "Выберите филиал" });
+  }
+  if (parsed.data.operatorId !== undefined) {
+    const target = await prisma.user.findUnique({ where: { id: parsed.data.operatorId }, select: { branchId: true } });
+    if (!target || target.branchId !== branchId) {
+      return res.status(400).json({ error: "Оператор не найден в этом филиале" });
+    }
   }
   const entry = await adminUpdateInnEntry({ id, branchId, data: parsed.data });
   if (!entry) {

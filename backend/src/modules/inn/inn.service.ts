@@ -89,6 +89,8 @@ export async function createInnEntry(params: {
   contactsCount: number;
   transferredCount: number;
   called: boolean;
+  category?: string | null;
+  note?: string | null;
 }) {
   const apiKey = await getDadataApiKey(params.branchId);
   const { name, region } = await lookupOrganizationByInn(params.inn, apiKey);
@@ -103,6 +105,8 @@ export async function createInnEntry(params: {
       contactsCount: params.contactsCount,
       transferredCount: params.transferredCount,
       called: params.called,
+      category: params.category ?? null,
+      note: params.note ?? null,
     },
   });
   const warningLevel = await getInnWarningLevel(params.branchId, entry.inn, entry.date, entry.id, entry.createdAt);
@@ -113,7 +117,14 @@ export async function updateInnEntry(params: {
   id: number;
   branchId: number;
   operatorId: number;
-  data: Partial<{ inn: string; contactsCount: number; transferredCount: number; called: boolean }>;
+  data: Partial<{
+    inn: string;
+    contactsCount: number;
+    transferredCount: number;
+    called: boolean;
+    category: string | null;
+    note: string | null;
+  }>;
 }) {
   const existing = await prisma.innEntry.findUnique({ where: { id: params.id } });
   if (!existing || existing.branchId !== params.branchId || existing.operatorId !== params.operatorId) {
@@ -145,8 +156,9 @@ export async function deleteInnEntry(id: number, branchId: number, operatorId: n
 // ADMIN/SUPERADMIN editing another operator's entry from the Статистика
 // bulk-edit view — unlike updateInnEntry, not scoped to the caller's own
 // operatorId. ИНН itself is deliberately not editable here (see
-// adminUpdateSchema in the controller) — company/region/date/counts are,
-// since this exists to clean up bulk-imported historical data.
+// adminUpdateSchema in the controller) — company/region/date/counts/
+// operator are, since this exists to clean up bulk-imported historical data
+// and (via operatorId) to reassign a row to a different operator.
 export async function adminUpdateInnEntry(params: {
   id: number;
   branchId: number;
@@ -157,6 +169,9 @@ export async function adminUpdateInnEntry(params: {
     contactsCount: number;
     transferredCount: number;
     called: boolean;
+    category: string | null;
+    note: string | null;
+    operatorId: number;
   }>;
 }) {
   const result = await prisma.innEntry.updateMany({ where: { id: params.id, branchId: params.branchId }, data: params.data });

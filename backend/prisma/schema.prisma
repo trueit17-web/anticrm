@@ -24,6 +24,10 @@ enum OptionField {
   CLOSER
   STATUS
   TF
+  // "Категория" dropdown on the ИНН module's entries — managed on the
+  // /admin page's ИНН tab, same reused SelectOption CRUD as every other
+  // field here.
+  INN_CATEGORY
 }
 
 // Workflow state of one Contact through the cold-call queue.
@@ -107,6 +111,12 @@ model InnEntry {
   inn         String
   companyName String?
   region      String?
+  // Plain text snapshot of a SelectOption(field=INN_CATEGORY) value, not an
+  // FK — same convention as GOV/CB/FSB/CLOSER on Appeal: the admin-managed
+  // list is only the source of dropdown choices at write time, a row keeps
+  // whatever text was picked even if that option is later renamed/removed.
+  category    String?
+  note        String?
 
   contactsCount    Int @default(0)
   transferredCount Int @default(0)

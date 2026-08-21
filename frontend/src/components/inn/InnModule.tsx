@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { api, ApiError } from "../../api/client";
-import { InnCheckResult, InnEntry } from "../../types";
+import { InnCheckResult, InnEntry, SelectOption } from "../../types";
 import { IconNotepadPencil } from "../icons";
 import { InnEntriesTable } from "./InnEntriesTable";
 
@@ -36,6 +36,8 @@ export function InnModule() {
   const [searchError, setSearchError] = useState<string | null>(null);
   const [highlightId, setHighlightId] = useState<number | null>(null);
 
+  const [categories, setCategories] = useState<string[]>([]);
+
   function load() {
     setLoading(true);
     setError(null);
@@ -50,6 +52,23 @@ export function InnModule() {
     if (open) load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, date]);
+
+  // Категория list (admin-managed, branch-scoped) — anyone logging an ИНН
+  // can tag it, regardless of role.
+  useEffect(() => {
+    if (!open) return;
+    api
+      .get<{ options: SelectOption[] }>("/select-options")
+      .then((res) =>
+        setCategories(
+          res.options
+            .filter((o) => o.field === "INN_CATEGORY")
+            .sort((a, b) => a.order - b.order)
+            .map((o) => o.value)
+        )
+      )
+      .catch(() => setCategories([]));
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -115,7 +134,14 @@ export function InnModule() {
       .finally(() => setSearching(false));
   }
 
-  function handleCreate(data: { inn: string; contactsCount: number; transferredCount: number; called: boolean }) {
+  function handleCreate(data: {
+    inn: string;
+    contactsCount: number;
+    transferredCount: number;
+    called: boolean;
+    category: string | null;
+    note: string | null;
+  }) {
     api
       .post<{ entry: InnEntry }>("/inn", { ...data, date })
       .then((res) => setEntries((prev) => [...prev, res.entry]))
@@ -137,6 +163,8 @@ export function InnModule() {
           contactsCount: 0,
           transferredCount: 0,
           called: false,
+          category: null,
+          note: null,
           date,
         });
         setEntries((prev) => [...prev, res.entry]);
@@ -149,7 +177,14 @@ export function InnModule() {
 
   function handleUpdate(
     id: number,
-    data: { inn?: string; contactsCount?: number; transferredCount?: number; called?: boolean }
+    data: {
+      inn?: string;
+      contactsCount?: number;
+      transferredCount?: number;
+      called?: boolean;
+      category?: string | null;
+      note?: string | null;
+    }
   ) {
     api
       .patch<{ entry: InnEntry }>(`/inn/${id}`, data)
@@ -228,6 +263,7 @@ export function InnModule() {
                 onDelete={handleDelete}
                 checkWarning={checkWarning}
                 highlightId={highlightId}
+                categories={categories}
               />
             )}
           </div>

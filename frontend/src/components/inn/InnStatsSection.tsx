@@ -1,6 +1,6 @@
 import { ClipboardEvent, Fragment, useEffect, useState } from "react";
 import { api } from "../../api/client";
-import { InnEntry, InnEntryWithOperator, InnStatsMine, InnStatsSummary } from "../../types";
+import { InnEntry, InnEntryWithOperator, InnStatsMine, InnStatsSummary, SelectOption, UserSummary } from "../../types";
 import { IconRestore } from "../icons";
 
 export type InnPeriod = "date" | "week" | "month";
@@ -82,6 +82,9 @@ type AdminUpdateData = Partial<{
   contactsCount: number;
   transferredCount: number;
   called: boolean;
+  category: string | null;
+  note: string | null;
+  operatorId: number;
 }>;
 
 // One row of the ИНН stats detail — read-only by default, or fully editable
@@ -92,6 +95,8 @@ function StatsEntryRow({
   entry,
   editable,
   showOperator,
+  categories,
+  operators,
   onSave,
   onRefresh,
   onDistribute,
@@ -99,6 +104,8 @@ function StatsEntryRow({
   entry: InnEntryWithOperator | InnEntry;
   editable: boolean;
   showOperator: boolean;
+  categories: string[];
+  operators: UserSummary[];
   onSave: (id: number, data: AdminUpdateData) => void;
   onRefresh: (id: number) => void;
   onDistribute: (fromId: number, field: "contactsCount" | "transferredCount", values: number[]) => void;
@@ -108,6 +115,7 @@ function StatsEntryRow({
   const [date, setDate] = useState(toDateInputValue(entry.date));
   const [contacts, setContacts] = useState(String(entry.contactsCount));
   const [transferred, setTransferred] = useState(String(entry.transferredCount));
+  const [note, setNote] = useState(entry.note ?? "");
   const [refreshing, setRefreshing] = useState(false);
 
   // Unlike the "seed only on interaction start" pattern used elsewhere for
@@ -122,6 +130,7 @@ function StatsEntryRow({
   useEffect(() => setDate(toDateInputValue(entry.date)), [entry.date]);
   useEffect(() => setContacts(String(entry.contactsCount)), [entry.contactsCount]);
   useEffect(() => setTransferred(String(entry.transferredCount)), [entry.transferredCount]);
+  useEffect(() => setNote(entry.note ?? ""), [entry.note]);
 
   function saveField(data: AdminUpdateData) {
     onSave(entry.id, data);
@@ -148,7 +157,32 @@ function StatsEntryRow({
 
   return (
     <tr className={rowWarningClass(entry)}>
-      {showOperator && <td>{(entry as InnEntryWithOperator).operatorName}</td>}
+      {showOperator && (
+        <td>
+          {editable ? (
+            <select
+              value={entry.operatorId}
+              onChange={(e) => saveField({ operatorId: Number(e.target.value) })}
+              title="Сменить оператора"
+            >
+              {/* The row's current operator may be outside the branch-scoped
+                  /users list (e.g. a SUPERADMIN, who has no branchId) — add
+                  them as a fallback option so the select doesn't silently
+                  fall back to showing someone else. */}
+              {!operators.some((o) => o.id === entry.operatorId) && (
+                <option value={entry.operatorId}>{(entry as InnEntryWithOperator).operatorName}</option>
+              )}
+              {operators.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.fullName}
+                </option>
+              ))}
+            </select>
+          ) : (
+            (entry as InnEntryWithOperator).operatorName
+          )}
+        </td>
+      )}
       <td>
         {editable ? (
           <input
@@ -228,6 +262,34 @@ function StatsEntryRow({
           "—"
         )}
       </td>
+      <td>
+        {editable ? (
+          <select
+            value={entry.category ?? ""}
+            onChange={(e) => saveField({ category: e.target.value || null })}
+          >
+            <option value="">—</option>
+            {categories.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+        ) : (
+          entry.category || "—"
+        )}
+      </td>
+      <td>
+        {editable ? (
+          <input
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            onBlur={() => saveField({ note: note.trim() || null })}
+          />
+        ) : (
+          entry.note || "—"
+        )}
+      </td>
       <td className="col-num">
         <button
           className="icon-btn"
@@ -247,6 +309,8 @@ function StatsEntriesTable({
   entries,
   editable,
   showOperator,
+  categories,
+  operators,
   onSave,
   onRefresh,
   onDistribute,
@@ -254,6 +318,8 @@ function StatsEntriesTable({
   entries: (InnEntryWithOperator | InnEntry)[];
   editable: boolean;
   showOperator: boolean;
+  categories: string[];
+  operators: UserSummary[];
   onSave: (id: number, data: AdminUpdateData) => void;
   onRefresh: (id: number) => void;
   onDistribute: (fromId: number, field: "contactsCount" | "transferredCount", values: number[]) => void;
@@ -272,6 +338,8 @@ function StatsEntriesTable({
             <th className="col-num">Чел.</th>
             <th className="col-num">Передано</th>
             <th className="col-num">Прозвонена</th>
+            <th>Кат.</th>
+            <th>Примеч.</th>
             <th></th>
           </tr>
         </thead>
@@ -282,6 +350,8 @@ function StatsEntriesTable({
               entry={entry}
               editable={editable}
               showOperator={showOperator}
+              categories={categories}
+              operators={operators}
               onSave={onSave}
               onRefresh={onRefresh}
               onDistribute={onDistribute}
@@ -297,7 +367,17 @@ function StatsEntriesTable({
 // — the "массовое редактирование" view. Editing/refresh both hit the
 // ADMIN-only endpoints (/inn/admin/:id, /inn/:id/refresh) since rows here
 // belong to whichever operator logged them, not the viewing admin.
-function BulkEditList({ from, to }: { from: string; to: string }) {
+function BulkEditList({
+  from,
+  to,
+  categories,
+  operators,
+}: {
+  from: string;
+  to: string;
+  categories: string[];
+  operators: UserSummary[];
+}) {
   const [entries, setEntries] = useState<InnEntryWithOperator[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -346,6 +426,8 @@ function BulkEditList({ from, to }: { from: string; to: string }) {
       entries={entries}
       editable
       showOperator
+      categories={categories}
+      operators={operators}
       onSave={handleSave}
       onRefresh={handleRefresh}
       onDistribute={handleDistribute}
@@ -353,7 +435,17 @@ function BulkEditList({ from, to }: { from: string; to: string }) {
   );
 }
 
-function OperatorEntriesList({ operatorId, from, to }: { operatorId: number; from: string; to: string }) {
+function OperatorEntriesList({
+  operatorId,
+  from,
+  to,
+  categories,
+}: {
+  operatorId: number;
+  from: string;
+  to: string;
+  categories: string[];
+}) {
   const [entries, setEntries] = useState<InnEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -379,6 +471,8 @@ function OperatorEntriesList({ operatorId, from, to }: { operatorId: number; fro
       entries={entries}
       editable={false}
       showOperator={false}
+      categories={categories}
+      operators={[]}
       onSave={() => {}}
       onRefresh={handleRefresh}
       onDistribute={() => {}}
@@ -386,7 +480,7 @@ function OperatorEntriesList({ operatorId, from, to }: { operatorId: number; fro
   );
 }
 
-function AdminSummary({ from, to }: { from: string; to: string }) {
+function AdminSummary({ from, to, categories }: { from: string; to: string; categories: string[] }) {
   const [summary, setSummary] = useState<InnStatsSummary | null>(null);
   const [expanded, setExpanded] = useState<number | null>(null);
 
@@ -438,7 +532,7 @@ function AdminSummary({ from, to }: { from: string; to: string }) {
                   {expanded === row.operatorId && (
                     <tr>
                       <td colSpan={6}>
-                        <OperatorEntriesList operatorId={row.operatorId} from={from} to={to} />
+                        <OperatorEntriesList operatorId={row.operatorId} from={from} to={to} categories={categories} />
                       </td>
                     </tr>
                   )}
@@ -493,14 +587,35 @@ export function InnStatsSection({
   bulkEdit: boolean;
 }) {
   const { from, to } = periodRange(period, date);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [operators, setOperators] = useState<UserSummary[]>([]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    api
+      .get<{ options: SelectOption[] }>("/select-options")
+      .then((res) =>
+        setCategories(
+          res.options
+            .filter((o) => o.field === "INN_CATEGORY")
+            .sort((a, b) => a.order - b.order)
+            .map((o) => o.value)
+        )
+      )
+      .catch(() => setCategories([]));
+    api
+      .get<{ users: UserSummary[] }>("/users")
+      .then((res) => setOperators(res.users.filter((u) => u.active)))
+      .catch(() => setOperators([]));
+  }, [isAdmin]);
 
   return (
     <section className="stats-section">
       <p className="stats-eyebrow">{isAdmin ? "ИНН — сводка по филиалу" : "ИНН — моя статистика"}</p>
       {isAdmin && bulkEdit ? (
-        <BulkEditList from={from} to={to} />
+        <BulkEditList from={from} to={to} categories={categories} operators={operators} />
       ) : isAdmin ? (
-        <AdminSummary from={from} to={to} />
+        <AdminSummary from={from} to={to} categories={categories} />
       ) : (
         <MineSummary from={from} to={to} />
       )}

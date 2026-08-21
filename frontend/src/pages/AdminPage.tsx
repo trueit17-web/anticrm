@@ -12,7 +12,7 @@ import { PetManager } from "../components/PetManager";
 import { IconBack, IconTrash } from "../components/icons";
 import { formatRuDate, todayInputValue } from "../lib/dateUtils";
 
-const FIELDS: OptionField[] = ["TF", "GOV", "CB", "FSB", "CLOSER", "STATUS"];
+const FIELDS: OptionField[] = ["TF", "GOV", "CB", "FSB", "CLOSER", "STATUS", "INN_CATEGORY"];
 
 // Saturated row-highlight colors that still keep dark table text readable.
 const COLOR_PALETTE = [

@@ -2,6 +2,24 @@ import { ClipboardEvent, KeyboardEvent, useState } from "react";
 import { InnCheckResult, InnEntry } from "../../types";
 import { IconCheck, IconTrash } from "../icons";
 
+type UpdateData = {
+  inn?: string;
+  contactsCount?: number;
+  transferredCount?: number;
+  called?: boolean;
+  category?: string | null;
+  note?: string | null;
+};
+
+type CreateData = {
+  inn: string;
+  contactsCount: number;
+  transferredCount: number;
+  called: boolean;
+  category: string | null;
+  note: string | null;
+};
+
 function rowWarningClass(level: InnEntry["warningLevel"]): string {
   if (level === "red") return "inn-row-warn-red";
   if (level === "yellow") return "inn-row-warn-yellow";
@@ -31,38 +49,66 @@ async function confirmIfRepeated(
   return window.confirm(`Этот ИНН уже встречался ${when} (${daysAgo(result.lastDate)} дн. назад). Сохранить всё равно?`);
 }
 
-// A row's editable buffer (ИНН/Контактов/Передано) is local and only
-// applied — via Enter in any field or the checkmark button — never on every
-// keystroke, per the module's "apply explicitly" requirement. "Прозвонена?"
-// is the exception: it's a status flag, not text entry, so toggling it
-// applies immediately rather than waiting for Enter/checkmark.
+function CategorySelect({
+  value,
+  categories,
+  onChange,
+}: {
+  value: string;
+  categories: string[];
+  onChange: (value: string) => void;
+}) {
+  return (
+    <select value={value} onChange={(e) => onChange(e.target.value)}>
+      <option value="">—</option>
+      {categories.map((c) => (
+        <option key={c} value={c}>
+          {c}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+// A row's editable buffer (ИНН/Контактов/Передано/Примеч.) is local and
+// only applied — via Enter in any field, blur, or the checkmark button —
+// never on every keystroke, per the module's "apply explicitly" requirement.
+// "Прозвонена?" and "Категория" are the exception: both are discrete
+// choices, not free typing, so they apply immediately on change.
 function EntryRow({
   entry,
   onApply,
   onDelete,
   checkWarning,
   highlightId,
+  categories,
 }: {
   entry: InnEntry;
-  onApply: (id: number, data: { inn?: string; contactsCount?: number; transferredCount?: number; called?: boolean }) => void;
+  onApply: (id: number, data: UpdateData) => void;
   onDelete: (id: number) => void;
   checkWarning: (inn: string) => Promise<InnCheckResult>;
   highlightId: number | null;
+  categories: string[];
 }) {
   const [inn, setInn] = useState(entry.inn);
   const [contacts, setContacts] = useState(String(entry.contactsCount));
   const [transferred, setTransferred] = useState(String(entry.transferredCount));
+  const [note, setNote] = useState(entry.note ?? "");
   const [checking, setChecking] = useState(false);
 
   const dirty =
-    inn !== entry.inn || Number(contacts) !== entry.contactsCount || Number(transferred) !== entry.transferredCount;
+    inn !== entry.inn ||
+    Number(contacts) !== entry.contactsCount ||
+    Number(transferred) !== entry.transferredCount ||
+    note !== (entry.note ?? "");
 
   async function apply() {
     if (!dirty || !inn.trim() || checking) return;
-    const data: { inn?: string; contactsCount?: number; transferredCount?: number } = {};
+    const data: UpdateData = {};
     if (inn !== entry.inn) data.inn = inn.trim();
     if (Number(contacts) !== entry.contactsCount) data.contactsCount = Number(contacts) || 0;
     if (Number(transferred) !== entry.transferredCount) data.transferredCount = Number(transferred) || 0;
+    if (note !== (entry.note ?? "")) data.note = note.trim() || null;
 
     if (data.inn) {
       setChecking(true);
@@ -121,6 +167,16 @@ function EntryRow({
           onBlur={apply}
         />
       </td>
+      <td>
+        <CategorySelect
+          value={entry.category ?? ""}
+          categories={categories}
+          onChange={(value) => onApply(entry.id, { category: value || null })}
+        />
+      </td>
+      <td>
+        <input value={note} onChange={(e) => setNote(e.target.value)} onKeyDown={handleKeyDown} onBlur={apply} />
+      </td>
       <td className="inn-col-center inn-row-actions">
         <button
           className="icon-btn"
@@ -162,15 +218,19 @@ function NewEntryRow({
   onCreate,
   onCreateMany,
   checkWarning,
+  categories,
 }: {
-  onCreate: (data: { inn: string; contactsCount: number; transferredCount: number; called: boolean }) => void;
+  onCreate: (data: CreateData) => void;
   onCreateMany: (inns: string[]) => void;
   checkWarning: (inn: string) => Promise<InnCheckResult>;
+  categories: string[];
 }) {
   const [inn, setInn] = useState("");
   const [contacts, setContacts] = useState("0");
   const [transferred, setTransferred] = useState("0");
   const [called, setCalled] = useState(false);
+  const [category, setCategory] = useState("");
+  const [note, setNote] = useState("");
   const [checking, setChecking] = useState(false);
 
   async function apply() {
@@ -179,11 +239,20 @@ function NewEntryRow({
     const ok = await confirmIfRepeated(checkWarning, inn.trim());
     setChecking(false);
     if (!ok) return;
-    onCreate({ inn: inn.trim(), contactsCount: Number(contacts) || 0, transferredCount: Number(transferred) || 0, called });
+    onCreate({
+      inn: inn.trim(),
+      contactsCount: Number(contacts) || 0,
+      transferredCount: Number(transferred) || 0,
+      called,
+      category: category || null,
+      note: note.trim() || null,
+    });
     setInn("");
     setContacts("0");
     setTransferred("0");
     setCalled(false);
+    setCategory("");
+    setNote("");
   }
 
   function handleKeyDown(e: KeyboardEvent) {
@@ -239,6 +308,12 @@ function NewEntryRow({
           onKeyDown={handleKeyDown}
         />
       </td>
+      <td>
+        <CategorySelect value={category} categories={categories} onChange={setCategory} />
+      </td>
+      <td>
+        <input value={note} onChange={(e) => setNote(e.target.value)} onKeyDown={handleKeyDown} placeholder="Примечание" />
+      </td>
       <td className="inn-col-center">
         <button
           className="icon-btn"
@@ -271,14 +346,16 @@ export function InnEntriesTable({
   onDelete,
   checkWarning,
   highlightId,
+  categories,
 }: {
   entries: InnEntry[];
-  onCreate: (data: { inn: string; contactsCount: number; transferredCount: number; called: boolean }) => void;
+  onCreate: (data: CreateData) => void;
   onCreateMany: (inns: string[]) => void;
-  onUpdate: (id: number, data: { inn?: string; contactsCount?: number; transferredCount?: number; called?: boolean }) => void;
+  onUpdate: (id: number, data: UpdateData) => void;
   onDelete: (id: number) => void;
   checkWarning: (inn: string) => Promise<InnCheckResult>;
   highlightId: number | null;
+  categories: string[];
 }) {
   return (
     <table className="inn-entries-table">
@@ -290,6 +367,8 @@ export function InnEntriesTable({
         <col className="inn-col-num" />
         <col />
         <col />
+        <col />
+        <col />
       </colgroup>
       <thead>
         <tr>
@@ -298,6 +377,8 @@ export function InnEntriesTable({
           <th>ИНН</th>
           <th>Чел.</th>
           <th>Передано</th>
+          <th>Кат.</th>
+          <th>Примеч.</th>
           <th></th>
           <th></th>
         </tr>
@@ -311,9 +392,10 @@ export function InnEntriesTable({
             onDelete={onDelete}
             checkWarning={checkWarning}
             highlightId={highlightId}
+            categories={categories}
           />
         ))}
-        <NewEntryRow onCreate={onCreate} onCreateMany={onCreateMany} checkWarning={checkWarning} />
+        <NewEntryRow onCreate={onCreate} onCreateMany={onCreateMany} checkWarning={checkWarning} categories={categories} />
       </tbody>
     </table>
   );

@@ -1,6 +1,6 @@
 export type Role = "USER" | "MANAGER" | "ADMIN" | "SUPERADMIN";
 
-export type OptionField = "GOV" | "CB" | "FSB" | "CLOSER" | "STATUS" | "TF";
+export type OptionField = "GOV" | "CB" | "FSB" | "CLOSER" | "STATUS" | "TF" | "INN_CATEGORY";
 
 export const ROLE_LABELS: Record<Role, string> = {
   USER: "Пользователь",
@@ -16,6 +16,7 @@ export const OPTION_FIELD_LABELS: Record<OptionField, string> = {
   CLOSER: "Закрыв",
   STATUS: "Статус",
   TF: "ТФ",
+  INN_CATEGORY: "Категория ИНН",
 };
 
 export interface AuthUser {
@@ -73,6 +74,8 @@ export interface InnEntry {
   contactsCount: number;
   transferredCount: number;
   called: boolean;
+  category: string | null;
+  note: string | null;
   operatorId: number;
   warningLevel: "red" | "yellow" | null;
   createdAt: string;
