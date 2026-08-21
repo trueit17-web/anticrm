@@ -70,7 +70,7 @@ export async function previewInnWarning(
 // Entries created before this date are historical (bulk-imported) data and
 // must never be auto-moved — only entries logged from this date onward
 // participate in the "not called → rolls to the next day" carry-over below.
-const INN_ROLLOVER_CUTOFF = new Date("2026-08-24T00:00:00.000Z");
+const INN_ROLLOVER_CUTOFF = new Date("2026-08-21T00:00:00.000Z");
 
 // Lazily carries forward any of the operator's own entries that are still
 // sitting on a past day without "прозвонена" set — an operator who didn't

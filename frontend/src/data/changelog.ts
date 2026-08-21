@@ -10,6 +10,13 @@ export interface ChangelogEntry {
 // separately, so there's only one place to update.
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.39.2",
+    date: "2026-08-21",
+    changes: [
+      "Модуль «ИНН»: дата активации автопереноса непрозвоненных записей сдвинута с 24.08.2026 на 21.08.2026",
+    ],
+  },
+  {
     version: "1.39.1",
     date: "2026-08-21",
     changes: [
