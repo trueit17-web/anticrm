@@ -1,6 +1,6 @@
 import { ClipboardEvent, KeyboardEvent, useState } from "react";
 import { InnCheckResult, InnEntry } from "../../types";
-import { IconCheck } from "../icons";
+import { IconCheck, IconTrash } from "../icons";
 
 type UpdateData = {
   inn?: string;
@@ -78,12 +78,14 @@ function CategorySelect({
 function EntryRow({
   entry,
   onApply,
+  onDelete,
   checkWarning,
   highlightId,
   categories,
 }: {
   entry: InnEntry;
   onApply: (id: number, data: UpdateData) => void;
+  onDelete: (id: number) => void;
   checkWarning: (inn: string) => Promise<InnCheckResult>;
   highlightId: number | null;
   categories: string[];
@@ -122,6 +124,10 @@ function EntryRow({
       e.preventDefault();
       apply();
     }
+  }
+
+  function handleDelete() {
+    if (window.confirm(`Удалить запись по ИНН ${entry.inn}?`)) onDelete(entry.id);
   }
 
   const classes = [rowWarningClass(entry.warningLevel)];
@@ -184,7 +190,11 @@ function EntryRow({
           aria-label="Прозвонена?"
         />
       </td>
-      <td className="inn-col-center" />
+      <td className="inn-col-center">
+        <button className="icon-btn" onClick={handleDelete} title="Удалить" aria-label="Удалить">
+          <IconTrash />
+        </button>
+      </td>
     </tr>
   );
 }
@@ -374,6 +384,7 @@ export function InnEntriesTable({
             key={entry.id}
             entry={entry}
             onApply={onUpdate}
+            onDelete={onDelete}
             checkWarning={checkWarning}
             highlightId={highlightId}
             categories={categories}

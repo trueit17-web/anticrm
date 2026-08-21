@@ -10,6 +10,13 @@ export interface ChangelogEntry {
 // separately, so there's only one place to update.
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.38.8",
+    date: "2026-08-21",
+    changes: [
+      "Модуль «ИНН»: вернули удаление записи (корзина) в окно ИНН — менеджер снова может удалять свои записи прямо там, не только через статистику",
+    ],
+  },
+  {
     version: "1.38.7",
     date: "2026-08-21",
     changes: [
