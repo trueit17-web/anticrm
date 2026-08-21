@@ -67,7 +67,32 @@ export async function previewInnWarning(
   return { warningLevel, lastDate: prior.date };
 }
 
+// Entries created before this date are historical (bulk-imported) data and
+// must never be auto-moved — only entries logged from this date onward
+// participate in the "not called → rolls to the next day" carry-over below.
+const INN_ROLLOVER_CUTOFF = new Date("2026-08-24T00:00:00.000Z");
+
+// Lazily carries forward any of the operator's own entries that are still
+// sitting on a past day without "прозвонена" set — an operator who didn't
+// finish calling an organization sees it again today instead of it quietly
+// aging out of view. Runs on every fetch of the operator's own log (cheap
+// no-op update when nothing is stale) rather than on a schedule, per the
+// "перенос при заходе оператора" requirement — no cron/background job.
+async function rolloverStaleInnEntries(branchId: number, operatorId: number): Promise<void> {
+  const { start: todayStart } = dayRange(new Date());
+  await prisma.innEntry.updateMany({
+    where: {
+      branchId,
+      operatorId,
+      called: false,
+      date: { gte: INN_ROLLOVER_CUTOFF, lt: todayStart },
+    },
+    data: { date: todayStart },
+  });
+}
+
 export async function listMyInnEntries(branchId: number, operatorId: number, date: Date) {
+  await rolloverStaleInnEntries(branchId, operatorId);
   const { start, end } = dayRange(date);
   const entries = await prisma.innEntry.findMany({
     where: { branchId, operatorId, date: { gte: start, lt: end } },
