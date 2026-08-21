@@ -161,10 +161,14 @@ export async function adminUpdateInnEntry(params: {
 }) {
   const result = await prisma.innEntry.updateMany({ where: { id: params.id, branchId: params.branchId }, data: params.data });
   if (result.count === 0) return null;
-  const entry = await prisma.innEntry.findUnique({ where: { id: params.id } });
+  const entry = await prisma.innEntry.findUnique({
+    where: { id: params.id },
+    include: { operator: { select: { fullName: true } } },
+  });
   if (!entry) return null;
-  const warningLevel = await getInnWarningLevel(params.branchId, entry.inn, entry.date, entry.id, entry.createdAt);
-  return { ...entry, warningLevel };
+  const { operator, ...rest } = entry;
+  const warningLevel = await getInnWarningLevel(params.branchId, rest.inn, rest.date, rest.id, rest.createdAt);
+  return { ...rest, operatorName: operator.fullName, warningLevel };
 }
 
 // Re-runs the dadata lookup for an entry's current ИНН and overwrites
@@ -177,9 +181,14 @@ export async function refreshInnEntryFromDadata(id: number, branchId: number) {
   if (!entry || entry.branchId !== branchId) return null;
   const apiKey = await getDadataApiKey(branchId);
   const { name, region } = await lookupOrganizationByInn(entry.inn, apiKey);
-  const updated = await prisma.innEntry.update({ where: { id }, data: { companyName: name, region } });
-  const warningLevel = await getInnWarningLevel(branchId, updated.inn, updated.date, updated.id, updated.createdAt);
-  return { ...updated, warningLevel };
+  const updated = await prisma.innEntry.update({
+    where: { id },
+    data: { companyName: name, region },
+    include: { operator: { select: { fullName: true } } },
+  });
+  const { operator, ...rest } = updated;
+  const warningLevel = await getInnWarningLevel(branchId, rest.inn, rest.date, rest.id, rest.createdAt);
+  return { ...rest, operatorName: operator.fullName, warningLevel };
 }
 
 // Flat (not grouped by operator) list of every entry in the branch for a

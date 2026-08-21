@@ -10,6 +10,13 @@ export interface ChangelogEntry {
 // separately, so there's only one place to update.
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.37.1",
+    date: "2026-08-21",
+    changes: [
+      "«Статистика» → ИНН: исправлено — после обновления строки из dadata или редактирования пропадало имя оператора в колонке «Оператор»",
+    ],
+  },
+  {
     version: "1.37.0",
     date: "2026-08-21",
     changes: [
