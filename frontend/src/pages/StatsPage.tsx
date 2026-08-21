@@ -776,6 +776,26 @@ export function StatsPage() {
 
       {innModuleEnabled && (
         <div className="stats-tabs-row">
+          <div className="stats-tabs-side">
+            {activeTab === "inn" && (
+              <label className="stats-tabs-period">
+                Период
+                <select value={innPeriod} onChange={(e) => setInnPeriod(e.target.value as "date" | "week" | "month")}>
+                  <option value="date">На дату</option>
+                  <option value="week">Неделя</option>
+                  <option value="month">Месяц</option>
+                </select>
+              </label>
+            )}
+            {activeTab === "inn" && innPeriod === "date" && (
+              <input
+                type="date"
+                className="stats-tabs-date"
+                value={innStatsDate}
+                onChange={(e) => setInnStatsDate(e.target.value)}
+              />
+            )}
+          </div>
           <div className="admin-tabs">
             <button
               className={`admin-tab${activeTab === "appeals" ? " admin-tab-active" : ""}`}
@@ -790,35 +810,17 @@ export function StatsPage() {
               ИНН
             </button>
           </div>
-          {activeTab === "inn" && (
-            <div className="stats-tabs-period-row">
-              <label className="stats-tabs-period">
-                Период
-                <select value={innPeriod} onChange={(e) => setInnPeriod(e.target.value as "date" | "week" | "month")}>
-                  <option value="date">На дату</option>
-                  <option value="week">Неделя</option>
-                  <option value="month">Месяц</option>
-                </select>
-              </label>
-              {innPeriod === "date" && (
-                <input
-                  type="date"
-                  className="stats-tabs-date"
-                  value={innStatsDate}
-                  onChange={(e) => setInnStatsDate(e.target.value)}
-                />
-              )}
-              {isAdmin && (
-                <button
-                  type="button"
-                  className={`admin-tab${innBulkEdit ? " admin-tab-active" : ""}`}
-                  onClick={() => setInnBulkEdit((v) => !v)}
-                >
-                  Массовое редактирование
-                </button>
-              )}
-            </div>
-          )}
+          <div className="stats-tabs-side stats-tabs-side-end">
+            {activeTab === "inn" && isAdmin && (
+              <button
+                type="button"
+                className={`admin-tab${innBulkEdit ? " admin-tab-active" : ""}`}
+                onClick={() => setInnBulkEdit((v) => !v)}
+              >
+                Массовое редактирование
+              </button>
+            )}
+          </div>
         </div>
       )}
 

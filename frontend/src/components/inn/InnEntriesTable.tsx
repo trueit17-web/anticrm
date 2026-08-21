@@ -172,10 +172,9 @@ function EntryRow({
           onChange={(value) => onApply(entry.id, { category: value || null })}
         />
       </td>
-      <td>
+      <td className="inn-col-note">
         <input value={note} onChange={(e) => setNote(e.target.value)} onKeyDown={handleKeyDown} onBlur={apply} />
       </td>
-      <td className="inn-col-center" />
       <td className="inn-col-center">
         <input
           type="checkbox"
@@ -185,6 +184,7 @@ function EntryRow({
           aria-label="Прозвонена?"
         />
       </td>
+      <td className="inn-col-center" />
     </tr>
   );
 }
@@ -296,8 +296,17 @@ function NewEntryRow({
       <td>
         <CategorySelect value={category} categories={categories} onChange={setCategory} />
       </td>
-      <td>
+      <td className="inn-col-note">
         <input value={note} onChange={(e) => setNote(e.target.value)} onKeyDown={handleKeyDown} placeholder="Примечание" />
+      </td>
+      <td className="inn-col-center">
+        <input
+          type="checkbox"
+          checked={called}
+          onChange={(e) => setCalled(e.target.checked)}
+          title="Прозвонена?"
+          aria-label="Прозвонена?"
+        />
       </td>
       <td className="inn-col-center">
         <button
@@ -309,15 +318,6 @@ function NewEntryRow({
         >
           <IconCheck />
         </button>
-      </td>
-      <td className="inn-col-center">
-        <input
-          type="checkbox"
-          checked={called}
-          onChange={(e) => setCalled(e.target.checked)}
-          title="Прозвонена?"
-          aria-label="Прозвонена?"
-        />
       </td>
     </tr>
   );
@@ -351,7 +351,7 @@ export function InnEntriesTable({
         <col className="inn-col-num" />
         <col className="inn-col-num" />
         <col />
-        <col />
+        <col className="inn-col-note" />
         <col />
         <col />
       </colgroup>

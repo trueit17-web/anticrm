@@ -10,6 +10,14 @@ export interface ChangelogEntry {
 // separately, so there's only one place to update.
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.38.4",
+    date: "2026-08-21",
+    changes: [
+      "Модуль «ИНН»: поле «Примеч.» расширено, галочка «Добавить» перенесена после чекбокса «Прозвонена?»",
+      "«Статистика» → ИНН: переключатель вкладок «Обращения»/«ИНН» перенесён в шапку и отцентрован, выбор периода — слева, «Массовое редактирование» — справа",
+    ],
+  },
+  {
     version: "1.38.3",
     date: "2026-08-21",
     changes: [
