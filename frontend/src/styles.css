@@ -939,7 +939,8 @@ body.col-resizing .col-resizer {
   text-align: left;
 }
 
-.inn-entries-table input {
+.inn-entries-table input,
+.inn-entries-table select {
   width: 100%;
   box-sizing: border-box;
   padding: 4px 6px;
@@ -962,23 +963,31 @@ body.col-resizing .col-resizer {
 }
 
 .inn-col-name {
-  width: 24%;
+  width: 22%;
 }
 
 .inn-col-region {
-  width: 9.5%;
+  width: 8%;
 }
 
 .inn-col-inn {
-  width: 16%;
+  width: 14%;
 }
 
 .inn-col-num {
-  width: 6.5%;
+  width: 6%;
+}
+
+.inn-col-cat {
+  width: 10%;
 }
 
 .inn-col-note {
   width: 22%;
+}
+
+.inn-col-check {
+  width: 6%;
 }
 
 .inn-col-center {

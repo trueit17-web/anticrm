@@ -10,6 +10,13 @@ export interface ChangelogEntry {
 // separately, so there's only one place to update.
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.38.5",
+    date: "2026-08-21",
+    changes: [
+      "Модуль «ИНН»: колонки «Кат.» и «Примеч.» больше не налезают друг на друга — выровнены ширины колонок таблицы",
+    ],
+  },
+  {
     version: "1.38.4",
     date: "2026-08-21",
     changes: [

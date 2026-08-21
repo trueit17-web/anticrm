@@ -165,7 +165,7 @@ function EntryRow({
           onBlur={apply}
         />
       </td>
-      <td>
+      <td className="inn-col-cat">
         <CategorySelect
           value={entry.category ?? ""}
           categories={categories}
@@ -293,7 +293,7 @@ function NewEntryRow({
           onKeyDown={handleKeyDown}
         />
       </td>
-      <td>
+      <td className="inn-col-cat">
         <CategorySelect value={category} categories={categories} onChange={setCategory} />
       </td>
       <td className="inn-col-note">
@@ -350,10 +350,10 @@ export function InnEntriesTable({
         <col className="inn-col-inn" />
         <col className="inn-col-num" />
         <col className="inn-col-num" />
-        <col />
+        <col className="inn-col-cat" />
         <col className="inn-col-note" />
-        <col />
-        <col />
+        <col className="inn-col-check" />
+        <col className="inn-col-check" />
       </colgroup>
       <thead>
         <tr>
