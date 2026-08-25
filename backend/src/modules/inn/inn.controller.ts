@@ -17,7 +17,9 @@ import {
   listMyInnEntries,
   previewInnWarning,
   refreshInnEntryFromDadata,
+  searchBranchInnEntries,
   searchInnEntry,
+  searchOperatorInnEntries,
   updateInnEntry,
 } from "./inn.service";
 
@@ -255,6 +257,38 @@ export async function listBranchInnEntriesHandler(req: Request, res: Response) {
   }
   const { from, to } = parseRangeParams(req);
   const entries = await listBranchInnEntries(branchId, from, to);
+  res.json({ entries });
+}
+
+const innSearchQuerySchema = z.object({ inn: z.string().min(1) });
+
+// Поиск по ИНН in "массовое редактирование" deliberately ignores the period
+// picker — finds every matching row in the branch regardless of date.
+export async function searchBranchInnEntriesHandler(req: Request, res: Response) {
+  const parsed = innSearchQuerySchema.safeParse(req.query);
+  if (!parsed.success) {
+    return res.status(400).json({ error: "Укажите ИНН" });
+  }
+  const branchId = await resolveBranchId(req);
+  if (branchId === null) {
+    return res.json({ entries: [] });
+  }
+  const entries = await searchBranchInnEntries(branchId, parsed.data.inn.trim());
+  res.json({ entries });
+}
+
+// Personal counterpart for a manager's own entries — same date-agnostic
+// search, scoped to their own rows.
+export async function searchMyInnEntriesHandler(req: Request, res: Response) {
+  const parsed = innSearchQuerySchema.safeParse(req.query);
+  if (!parsed.success) {
+    return res.status(400).json({ error: "Укажите ИНН" });
+  }
+  const branchId = await resolveBranchId(req);
+  if (branchId === null) {
+    return res.json({ entries: [] });
+  }
+  const entries = await searchOperatorInnEntries(branchId, req.user!.id, parsed.data.inn.trim());
   res.json({ entries });
 }
 

@@ -10,6 +10,13 @@ export interface ChangelogEntry {
 // separately, so there's only one place to update.
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.39.4",
+    date: "2026-08-25",
+    changes: [
+      "«Статистика» → ИНН: поиск по ИНН теперь ищет по всем датам, а не только в пределах выбранного периода",
+    ],
+  },
+  {
     version: "1.39.3",
     date: "2026-08-25",
     changes: [

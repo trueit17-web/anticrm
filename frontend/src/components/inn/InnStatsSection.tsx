@@ -442,14 +442,21 @@ function BulkEditList({
   const [entries, setEntries] = useState<InnEntryWithOperator[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Поиск по ИНН ignores the period picker entirely — it finds every
+  // matching row in the branch regardless of date, so it switches to a
+  // separate date-agnostic endpoint rather than filtering the period-scoped
+  // list client-side.
   useEffect(() => {
     setLoading(true);
-    api
-      .get<{ entries: InnEntryWithOperator[] }>(`/inn/stats/entries?from=${from}&to=${to}`)
+    const query = search.trim();
+    const request = query
+      ? api.get<{ entries: InnEntryWithOperator[] }>(`/inn/stats/entries/search?inn=${encodeURIComponent(query)}`)
+      : api.get<{ entries: InnEntryWithOperator[] }>(`/inn/stats/entries?from=${from}&to=${to}`);
+    request
       .then((res) => setEntries(res.entries))
       .catch(() => setEntries([]))
       .finally(() => setLoading(false));
-  }, [from, to]);
+  }, [from, to, search]);
 
   function handleSave(id: number, data: AdminUpdateData) {
     api
@@ -489,10 +496,9 @@ function BulkEditList({
   }
 
   if (loading) return <p className="muted">Загрузка...</p>;
-  const filtered = search.trim() ? entries.filter((e) => e.inn.includes(search.trim())) : entries;
   return (
     <StatsEntriesTable
-      entries={filtered}
+      entries={entries}
       editable
       showOperator
       categories={categories}
@@ -526,14 +532,19 @@ function MyEntriesList({
   const [entries, setEntries] = useState<InnEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Same date-agnostic search endpoint as BulkEditList — see the comment
+  // there for why this bypasses the period picker.
   useEffect(() => {
     setLoading(true);
-    api
-      .get<{ entries: InnEntry[] }>(`/inn/stats/mine/entries?from=${from}&to=${to}`)
+    const query = search.trim();
+    const request = query
+      ? api.get<{ entries: InnEntry[] }>(`/inn/stats/mine/entries/search?inn=${encodeURIComponent(query)}`)
+      : api.get<{ entries: InnEntry[] }>(`/inn/stats/mine/entries?from=${from}&to=${to}`);
+    request
       .then((res) => setEntries(res.entries))
       .catch(() => setEntries([]))
       .finally(() => setLoading(false));
-  }, [from, to]);
+  }, [from, to, search]);
 
   function handleSave(id: number, data: AdminUpdateData) {
     api
@@ -569,10 +580,9 @@ function MyEntriesList({
   }
 
   if (loading) return <p className="muted">Загрузка...</p>;
-  const filtered = search.trim() ? entries.filter((e) => e.inn.includes(search.trim())) : entries;
   return (
     <StatsEntriesTable
-      entries={filtered}
+      entries={entries}
       editable
       adminFields={false}
       showOperator={false}

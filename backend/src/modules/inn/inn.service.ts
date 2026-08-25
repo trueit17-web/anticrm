@@ -259,6 +259,41 @@ export async function listBranchInnEntries(branchId: number, from: Date, to: Dat
   );
 }
 
+// Search by ИНН substring across every date in the branch — unlike
+// listBranchInnEntries, deliberately ignores the period picker: the whole
+// point of the search box is to find a match regardless of when it was
+// logged, per the "поиск должен показать все такие ИНН за любую дату"
+// requirement.
+export async function searchBranchInnEntries(branchId: number, query: string) {
+  const entries = await prisma.innEntry.findMany({
+    where: { branchId, inn: { contains: query } },
+    include: { operator: { select: { fullName: true } } },
+    orderBy: [{ date: "desc" }, { id: "desc" }],
+  });
+  return Promise.all(
+    entries.map(async ({ operator, ...entry }) => ({
+      ...entry,
+      operatorName: operator.fullName,
+      warningLevel: await getInnWarningLevel(branchId, entry.inn, entry.date, entry.id, entry.createdAt),
+    }))
+  );
+}
+
+// Personal counterpart for a manager's own "массовое редактирование" search
+// — same date-agnostic search, scoped to their own rows.
+export async function searchOperatorInnEntries(branchId: number, operatorId: number, query: string) {
+  const entries = await prisma.innEntry.findMany({
+    where: { branchId, operatorId, inn: { contains: query } },
+    orderBy: [{ date: "desc" }, { id: "desc" }],
+  });
+  return Promise.all(
+    entries.map(async (entry) => ({
+      ...entry,
+      warningLevel: await getInnWarningLevel(branchId, entry.inn, entry.date, entry.id, entry.createdAt),
+    }))
+  );
+}
+
 export async function getMyInnStats(branchId: number, operatorId: number, from: Date, to: Date) {
   const [agg, calledCount] = await Promise.all([
     prisma.innEntry.aggregate({
