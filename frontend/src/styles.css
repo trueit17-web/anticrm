@@ -1831,7 +1831,8 @@ body.col-resizing .col-resizer {
   white-space: nowrap;
 }
 
-.inn-stats-table .inn-stats-col-name input {
+.inn-stats-table input,
+.inn-stats-table select {
   text-overflow: ellipsis;
 }
 

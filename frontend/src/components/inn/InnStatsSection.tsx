@@ -196,7 +196,9 @@ function StatsEntryRow({
               ))}
             </select>
           ) : (
-            (entry as InnEntryWithOperator).operatorName
+            <span className="inn-col-truncate" title={(entry as InnEntryWithOperator).operatorName}>
+              {(entry as InnEntryWithOperator).operatorName}
+            </span>
           )}
         </td>
       )}
@@ -234,12 +236,19 @@ function StatsEntryRow({
             value={region}
             onChange={(e) => setRegion(e.target.value)}
             onBlur={() => saveField({ region: region.trim() || null })}
+            title={region || undefined}
           />
         ) : (
-          entry.region || "—"
+          <span className="inn-col-truncate" title={entry.region || undefined}>
+            {entry.region || "—"}
+          </span>
         )}
       </td>
-      <td>{entry.inn}</td>
+      <td>
+        <span className="inn-col-truncate" title={entry.inn}>
+          {entry.inn}
+        </span>
+      </td>
       <td className="col-num">
         {editable ? (
           <input
@@ -287,6 +296,7 @@ function StatsEntryRow({
           <select
             value={entry.category ?? ""}
             onChange={(e) => saveField({ category: e.target.value || null })}
+            title={entry.category || undefined}
           >
             <option value="">—</option>
             {categories.map((c) => (
@@ -296,7 +306,9 @@ function StatsEntryRow({
             ))}
           </select>
         ) : (
-          entry.category || "—"
+          <span className="inn-col-truncate" title={entry.category || undefined}>
+            {entry.category || "—"}
+          </span>
         )}
       </td>
       <td>
@@ -305,9 +317,12 @@ function StatsEntryRow({
             value={note}
             onChange={(e) => setNote(e.target.value)}
             onBlur={() => saveField({ note: note.trim() || null })}
+            title={note || undefined}
           />
         ) : (
-          entry.note || "—"
+          <span className="inn-col-truncate" title={entry.note || undefined}>
+            {entry.note || "—"}
+          </span>
         )}
       </td>
       <td className="col-num">
@@ -771,7 +786,7 @@ export function InnStatsSection({
   return (
     <section className="stats-section">
       <p className="stats-eyebrow">{isAdmin ? "ИНН — сводка по филиалу" : "ИНН — моя статистика"}</p>
-      {isAdmin && bulkEdit ? (
+      {isAdmin && (bulkEdit || search.trim()) ? (
         <BulkEditList from={from} to={to} categories={categories} operators={operators} search={search} />
       ) : isAdmin ? (
         <AdminSummary from={from} to={to} categories={categories} />
