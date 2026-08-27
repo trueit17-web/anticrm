@@ -108,6 +108,8 @@ model InnEntry {
   operatorId Int
   operator   User @relation("OperatorInnEntries", fields: [operatorId], references: [id])
 
+  history InnEntryHistory[]
+
   inn         String
   companyName String?
   region      String?
@@ -294,6 +296,7 @@ model User {
   appealsAsSmsSender Appeal[]        @relation("SmsSender")
   historyEntries     AppealHistory[] @relation("HistoryChangedBy")
   innEntriesAsOperator InnEntry[]    @relation("OperatorInnEntries")
+  innHistoryEntries    InnEntryHistory[] @relation("InnHistoryChangedBy")
   branchAccess       UserBranchAccess[]
   loginEvents        LoginEvent[]
   uploadedContactBatches ContactBatch[] @relation("ContactBatchUploader")
@@ -396,6 +399,24 @@ model AppealHistory {
   changedAt DateTime @default(now())
 
   @@index([appealId])
+}
+
+model InnEntryHistory {
+  id      Int      @id @default(autoincrement())
+  entry   InnEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  entryId Int
+
+  changedBy   User @relation("InnHistoryChangedBy", fields: [changedById], references: [id])
+  changedById Int
+
+  field      String
+  fieldLabel String
+  oldValue   String?
+  newValue   String?
+
+  changedAt DateTime @default(now())
+
+  @@index([entryId])
 }
 
 // One uploaded client-base file — a batch of Contacts to cold-call through.

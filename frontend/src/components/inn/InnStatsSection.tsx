@@ -1,7 +1,60 @@
-import { ClipboardEvent, Fragment, useEffect, useState } from "react";
+import { ClipboardEvent, Fragment, MouseEvent, useEffect, useState } from "react";
 import { api } from "../../api/client";
-import { InnEntry, InnEntryWithOperator, InnStatsMine, InnStatsSummary, SelectOption, UserSummary } from "../../types";
+import {
+  HistoryEntry,
+  InnEntry,
+  InnEntryWithOperator,
+  InnStatsMine,
+  InnStatsSummary,
+  SelectOption,
+  UserSummary,
+} from "../../types";
 import { IconRestore, IconTrash } from "../icons";
+
+function formatChangedAt(iso: string): string {
+  return new Date(iso).toLocaleString("ru-RU", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+// Click-to-expand history sub-row for one ИНН entry — same source (/inn/:id
+// /history) and layout as a trubka's "История изменений" in
+// AppealFormModal, just rendered inline in the stats table instead of a
+// modal. ADMIN/SUPERADMIN only, wired via historyEnabled on StatsEntryRow.
+function InnEntryHistoryList({ entryId }: { entryId: number }) {
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLoading(true);
+    setError(null);
+    api
+      .get<{ history: HistoryEntry[] }>(`/inn/${entryId}/history`)
+      .then((res) => setHistory(res.history))
+      .catch(() => setError("Не удалось загрузить историю"))
+      .finally(() => setLoading(false));
+  }, [entryId]);
+
+  if (loading) return <p className="muted">Загрузка...</p>;
+  if (error) return <p className="error-text">{error}</p>;
+  if (history.length === 0) return <p className="muted">Изменений пока не было.</p>;
+  return (
+    <ul className="history-list">
+      {history.map((h) => (
+        <li key={h.id}>
+          <span className="muted">{formatChangedAt(h.changedAt)}</span> — <b>{h.changedBy.fullName}</b>
+          {": "}
+          {h.fieldLabel}: «{h.oldValue ?? "—"}» → «{h.newValue ?? "—"}»
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 export type InnPeriod = "date" | "week" | "month";
 
@@ -96,7 +149,9 @@ function StatsEntryRow({
   editable,
   adminFields,
   dateEditable = true,
+  historyEnabled = false,
   showOperator,
+  columnCount,
   categories,
   operators,
   onSave,
@@ -115,7 +170,11 @@ function StatsEntryRow({
   // date (the "перенос вручную" the drawer's date-nav doesn't offer) even
   // though they can't touch company/region.
   dateEditable?: boolean;
+  // ADMIN/SUPERADMIN only: clicking free row space expands a "История
+  // изменений" sub-row, same as a trubka's history.
+  historyEnabled?: boolean;
   showOperator: boolean;
+  columnCount: number;
   categories: string[];
   operators: UserSummary[];
   onSave: (id: number, data: AdminUpdateData) => void;
@@ -130,6 +189,7 @@ function StatsEntryRow({
   const [transferred, setTransferred] = useState(String(entry.transferredCount));
   const [note, setNote] = useState(entry.note ?? "");
   const [refreshing, setRefreshing] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   // Unlike the "seed only on interaction start" pattern used elsewhere for
   // poll-safety, this row's entry only ever changes as the direct result of
@@ -172,8 +232,27 @@ function StatsEntryRow({
     if (window.confirm(`Удалить запись по ИНН ${entry.inn}?`)) onDelete(entry.id);
   }
 
+  // Toggling on the row itself would also fire when the click landed on an
+  // input/select/button inside it (clicks bubble) — bail out for those so
+  // typing/editing/deleting doesn't also flip the history row open/closed.
+  // Only "свободное место" (free space in the row) toggles it.
+  function handleRowClick(e: MouseEvent<HTMLTableRowElement>) {
+    if (!historyEnabled) return;
+    if ((e.target as HTMLElement).closest("input, select, button, a")) return;
+    // This row can itself sit inside AdminSummary's expand-on-click operator
+    // row (OperatorEntriesList's nested table) — without stopping
+    // propagation, toggling history here would also bubble up and collapse
+    // that outer row.
+    e.stopPropagation();
+    setHistoryOpen((v) => !v);
+  }
+
+  const rowClasses = [rowWarningClass(entry)];
+  if (historyEnabled) rowClasses.push("inn-operator-row");
+
   return (
-    <tr className={rowWarningClass(entry)}>
+    <Fragment>
+    <tr className={rowClasses.filter(Boolean).join(" ")} onClick={handleRowClick}>
       {showOperator && (
         <td>
           {editable ? (
@@ -342,6 +421,15 @@ function StatsEntryRow({
         )}
       </td>
     </tr>
+    {historyEnabled && historyOpen && (
+      <tr>
+        <td colSpan={columnCount} className="history-section">
+          <h3>История изменений</h3>
+          <InnEntryHistoryList entryId={entry.id} />
+        </td>
+      </tr>
+    )}
+    </Fragment>
   );
 }
 
@@ -349,6 +437,7 @@ function StatsEntriesTable({
   entries,
   editable,
   adminFields = true,
+  historyEnabled = false,
   showOperator,
   categories,
   operators,
@@ -360,6 +449,7 @@ function StatsEntriesTable({
   entries: (InnEntryWithOperator | InnEntry)[];
   editable: boolean;
   adminFields?: boolean;
+  historyEnabled?: boolean;
   showOperator: boolean;
   categories: string[];
   operators: UserSummary[];
@@ -369,6 +459,7 @@ function StatsEntriesTable({
   onDelete: (id: number) => void;
 }) {
   if (entries.length === 0) return <p className="empty-state">За период записей нет.</p>;
+  const columnCount = showOperator ? 11 : 10;
   return (
     <div className="table-scroll">
       <table className="appeals-table stats-manager-table inn-stats-table">
@@ -407,7 +498,9 @@ function StatsEntriesTable({
               entry={entry}
               editable={editable}
               adminFields={adminFields}
+              historyEnabled={historyEnabled}
               showOperator={showOperator}
+              columnCount={columnCount}
               categories={categories}
               operators={operators}
               onSave={onSave}
@@ -500,6 +593,7 @@ function BulkEditList({
     <StatsEntriesTable
       entries={entries}
       editable
+      historyEnabled
       showOperator
       categories={categories}
       operators={operators}
@@ -631,6 +725,7 @@ function OperatorEntriesList({
     <StatsEntriesTable
       entries={entries}
       editable={false}
+      historyEnabled
       showOperator={false}
       categories={categories}
       operators={[]}

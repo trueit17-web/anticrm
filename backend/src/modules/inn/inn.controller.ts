@@ -10,6 +10,7 @@ import {
   adminUpdateInnEntry,
   createInnEntry,
   deleteInnEntry,
+  getInnEntryHistory,
   getInnStatsSummary,
   getMyInnStats,
   getOperatorInnEntries,
@@ -110,7 +111,7 @@ export async function updateInnEntryHandler(req: Request, res: Response) {
   if (branchId === null) {
     return res.status(400).json({ error: "Выберите филиал" });
   }
-  const entry = await updateInnEntry({ id, branchId, operatorId: req.user!.id, data: parsed.data });
+  const entry = await updateInnEntry({ id, branchId, operatorId: req.user!.id, changedById: req.user!.id, data: parsed.data });
   if (!entry) {
     return res.status(404).json({ error: "Запись не найдена" });
   }
@@ -327,7 +328,7 @@ export async function adminUpdateInnEntryHandler(req: Request, res: Response) {
       return res.status(400).json({ error: "Оператор не найден в этом филиале" });
     }
   }
-  const entry = await adminUpdateInnEntry({ id, branchId, data: parsed.data });
+  const entry = await adminUpdateInnEntry({ id, branchId, changedById: req.user!.id, data: parsed.data });
   if (!entry) {
     return res.status(404).json({ error: "Запись не найдена" });
   }
@@ -344,9 +345,24 @@ export async function refreshInnEntryHandler(req: Request, res: Response) {
     return res.status(400).json({ error: "Выберите филиал" });
   }
   const isAdmin = req.user!.role === Role.ADMIN || req.user!.role === Role.SUPERADMIN;
-  const entry = await refreshInnEntryFromDadata(id, branchId, isAdmin ? undefined : req.user!.id);
+  const entry = await refreshInnEntryFromDadata(id, branchId, req.user!.id, isAdmin ? undefined : req.user!.id);
   if (!entry) {
     return res.status(404).json({ error: "Запись не найдена" });
   }
   res.json({ entry });
+}
+
+// ADMIN/SUPERADMIN-only: click-to-expand history for one ИНН row in
+// Статистика, same UX as a trubka's "История изменений".
+export async function getInnEntryHistoryHandler(req: Request, res: Response) {
+  const id = Number(req.params.id);
+  const branchId = await resolveBranchId(req);
+  if (branchId === null) {
+    return res.status(400).json({ error: "Выберите филиал" });
+  }
+  const history = await getInnEntryHistory(id, branchId);
+  if (history === null) {
+    return res.status(404).json({ error: "Запись не найдена" });
+  }
+  res.json({ history });
 }

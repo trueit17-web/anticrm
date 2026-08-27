@@ -10,6 +10,7 @@ import {
   checkInnHandler,
   createInnEntryHandler,
   deleteInnEntryHandler,
+  getInnEntryHistoryHandler,
   getInnStatsHandler,
   getMyInnStatsHandler,
   getOperatorInnEntriesHandler,
@@ -71,3 +72,5 @@ innRouter.delete("/admin/:id", requireRole(Role.ADMIN, Role.SUPERADMIN), asyncHa
 // Any operator can refresh their own row from dadata (handler scopes
 // non-admins to their own operatorId); ADMIN/SUPERADMIN can refresh any row.
 innRouter.post("/:id/refresh", asyncHandler(refreshInnEntryHandler));
+// Click-to-expand row history in Статистика — ADMIN/SUPERADMIN only.
+innRouter.get("/:id/history", requireRole(Role.ADMIN, Role.SUPERADMIN), asyncHandler(getInnEntryHistoryHandler));

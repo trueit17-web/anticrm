@@ -1,8 +1,74 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { getDadataApiKey } from "../branches/branches.service";
 import { lookupOrganizationByInn } from "../../utils/dadataLookup";
 
 export type InnWarningLevel = "red" | "yellow" | null;
+
+const INN_FIELD_LABELS: Record<string, string> = {
+  inn: "ИНН",
+  companyName: "Название",
+  region: "Регион",
+  date: "Дата",
+  contactsCount: "Чел.",
+  transferredCount: "Передано",
+  called: "Прозвонена",
+  category: "Категория",
+  note: "Примечание",
+  operatorId: "Оператор",
+};
+
+function resolveInnDisplayValue(field: string, value: unknown): string | null {
+  if (field === "called") return value ? "Да" : "Нет";
+  if (value === null || value === undefined || value === "") return null;
+  if (field === "date") return (value as Date).toISOString().slice(0, 10);
+  return String(value);
+}
+
+// Diffs `before` against `changes` field-by-field and appends one
+// InnEntryHistory row per actually-changed field — same "diff at write time"
+// approach as updateAppealWithHistory, so a client-facing "история
+// изменений" list is available per row, same as trubka history.
+// `operatorNames` lets adminUpdateInnEntry show fullName instead of a raw id
+// when the operator itself was reassigned.
+async function recordInnEntryHistory(
+  tx: Prisma.TransactionClient,
+  entryId: number,
+  before: Record<string, unknown>,
+  changes: Record<string, unknown>,
+  changedById: number,
+  operatorNames?: Record<number, string>
+): Promise<void> {
+  const rows: Prisma.InnEntryHistoryCreateManyInput[] = [];
+  for (const field of Object.keys(changes)) {
+    const oldRaw = before[field];
+    const newRaw = changes[field];
+    const oldComparable = oldRaw instanceof Date ? oldRaw.toISOString() : oldRaw;
+    const newComparable = newRaw instanceof Date ? newRaw.toISOString() : newRaw;
+    if (oldComparable === newComparable) continue;
+
+    const oldValue =
+      field === "operatorId" && operatorNames
+        ? operatorNames[oldRaw as number] ?? resolveInnDisplayValue(field, oldRaw)
+        : resolveInnDisplayValue(field, oldRaw);
+    const newValue =
+      field === "operatorId" && operatorNames
+        ? operatorNames[newRaw as number] ?? resolveInnDisplayValue(field, newRaw)
+        : resolveInnDisplayValue(field, newRaw);
+
+    rows.push({
+      entryId,
+      changedById,
+      field,
+      fieldLabel: INN_FIELD_LABELS[field] ?? field,
+      oldValue,
+      newValue,
+    });
+  }
+  if (rows.length > 0) {
+    await tx.innEntryHistory.createMany({ data: rows });
+  }
+}
 
 function dayRange(date: Date) {
   const start = new Date(date);
@@ -142,6 +208,7 @@ export async function updateInnEntry(params: {
   id: number;
   branchId: number;
   operatorId: number;
+  changedById: number;
   data: Partial<{
     inn: string;
     date: Date;
@@ -166,9 +233,13 @@ export async function updateInnEntry(params: {
     region = lookup.region;
   }
 
-  const entry = await prisma.innEntry.update({
-    where: { id: params.id },
-    data: { ...params.data, companyName, region },
+  const entry = await prisma.$transaction(async (tx) => {
+    const updated = await tx.innEntry.update({
+      where: { id: params.id },
+      data: { ...params.data, companyName, region },
+    });
+    await recordInnEntryHistory(tx, params.id, existing, params.data, params.changedById);
+    return updated;
   });
   const warningLevel = await getInnWarningLevel(params.branchId, entry.inn, entry.date, entry.id, entry.createdAt);
   return { ...entry, warningLevel };
@@ -195,6 +266,7 @@ export async function adminDeleteInnEntry(id: number, branchId: number): Promise
 export async function adminUpdateInnEntry(params: {
   id: number;
   branchId: number;
+  changedById: number;
   data: Partial<{
     companyName: string | null;
     region: string | null;
@@ -207,11 +279,26 @@ export async function adminUpdateInnEntry(params: {
     operatorId: number;
   }>;
 }) {
-  const result = await prisma.innEntry.updateMany({ where: { id: params.id, branchId: params.branchId }, data: params.data });
-  if (result.count === 0) return null;
-  const entry = await prisma.innEntry.findUnique({
-    where: { id: params.id },
-    include: { operator: { select: { fullName: true } } },
+  const entry = await prisma.$transaction(async (tx) => {
+    const existing = await tx.innEntry.findFirst({ where: { id: params.id, branchId: params.branchId } });
+    if (!existing) return null;
+
+    // Reassigning operatorId is the one field whose history entry should
+    // read as a name, not a raw id — resolve old/new fullName up front.
+    let operatorNames: Record<number, string> | undefined;
+    if (params.data.operatorId !== undefined && params.data.operatorId !== existing.operatorId) {
+      const ids = [existing.operatorId, params.data.operatorId];
+      const users = await tx.user.findMany({ where: { id: { in: ids } }, select: { id: true, fullName: true } });
+      operatorNames = Object.fromEntries(users.map((u) => [u.id, u.fullName]));
+    }
+
+    const updated = await tx.innEntry.update({
+      where: { id: params.id },
+      data: params.data,
+      include: { operator: { select: { fullName: true } } },
+    });
+    await recordInnEntryHistory(tx, params.id, existing, params.data, params.changedById, operatorNames);
+    return updated;
   });
   if (!entry) return null;
   const { operator, ...rest } = entry;
@@ -224,16 +311,21 @@ export async function adminUpdateInnEntry(params: {
 // Статистика, for entries whose company data is missing or stale (e.g.
 // looked up before a dadata key was configured, or from the bulk historical
 // import which trusted the spreadsheet's own values as-is).
-export async function refreshInnEntryFromDadata(id: number, branchId: number, operatorId?: number) {
+export async function refreshInnEntryFromDadata(id: number, branchId: number, changedById: number, operatorId?: number) {
   const entry = await prisma.innEntry.findUnique({ where: { id } });
   if (!entry || entry.branchId !== branchId) return null;
   if (operatorId !== undefined && entry.operatorId !== operatorId) return null;
   const apiKey = await getDadataApiKey(branchId);
   const { name, region } = await lookupOrganizationByInn(entry.inn, apiKey);
-  const updated = await prisma.innEntry.update({
-    where: { id },
-    data: { companyName: name, region },
-    include: { operator: { select: { fullName: true } } },
+  const changes = { companyName: name, region };
+  const updated = await prisma.$transaction(async (tx) => {
+    const result = await tx.innEntry.update({
+      where: { id },
+      data: changes,
+      include: { operator: { select: { fullName: true } } },
+    });
+    await recordInnEntryHistory(tx, id, entry, changes, changedById);
+    return result;
   });
   const { operator, ...rest } = updated;
   const warningLevel = await getInnWarningLevel(branchId, rest.inn, rest.date, rest.id, rest.createdAt);
@@ -386,6 +478,20 @@ export async function getInnStatsSummary(branchId: number, from: Date, to: Date)
     totalCalled,
     byOperator: Array.from(byOperatorMap.values()).sort((a, b) => a.operatorName.localeCompare(b.operatorName)),
   };
+}
+
+// History of field changes for one ИНН entry — powers the click-to-expand
+// row in Статистика → ИНН for ADMIN/SUPERADMIN, same UX as a trubka's
+// "История изменений". Branch-scoped only (not operatorId-scoped): an
+// admin/superadmin can inspect any row's history in their view.
+export async function getInnEntryHistory(entryId: number, branchId: number) {
+  const entry = await prisma.innEntry.findFirst({ where: { id: entryId, branchId }, select: { id: true } });
+  if (!entry) return null;
+  return prisma.innEntryHistory.findMany({
+    where: { entryId },
+    include: { changedBy: { select: { id: true, fullName: true } } },
+    orderBy: { changedAt: "desc" },
+  });
 }
 
 // Detailed ИНН log for one operator in a period — powers the expand-on-click
