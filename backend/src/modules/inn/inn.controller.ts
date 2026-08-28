@@ -360,9 +360,9 @@ export async function getInnEntryHistoryHandler(req: Request, res: Response) {
   if (branchId === null) {
     return res.status(400).json({ error: "Выберите филиал" });
   }
-  const history = await getInnEntryHistory(id, branchId);
-  if (history === null) {
+  const result = await getInnEntryHistory(id, branchId);
+  if (result === null) {
     return res.status(404).json({ error: "Запись не найдена" });
   }
-  res.json({ history });
+  res.json(result);
 }

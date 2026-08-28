@@ -9,7 +9,7 @@ import {
   SelectOption,
   UserSummary,
 } from "../../types";
-import { IconRestore, IconTrash } from "../icons";
+import { IconCheck, IconRestore, IconTrash } from "../icons";
 
 function formatChangedAt(iso: string): string {
   return new Date(iso).toLocaleString("ru-RU", {
@@ -21,12 +21,24 @@ function formatChangedAt(iso: string): string {
   });
 }
 
+function formatRepeatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("ru-RU");
+}
+
+interface InnEntryRepeat {
+  date: string;
+  operatorName: string;
+}
+
 // Click-to-expand history sub-row for one ИНН entry — same source (/inn/:id
 // /history) and layout as a trubka's "История изменений" in
 // AppealFormModal, just rendered inline in the stats table instead of a
 // modal. ADMIN/SUPERADMIN only, wired via historyEnabled on StatsEntryRow.
+// When this ИНН also triggers the red/yellow repeat highlight, the right
+// half additionally shows a card with when and by whom it was last logged.
 function InnEntryHistoryList({ entryId }: { entryId: number }) {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [repeat, setRepeat] = useState<InnEntryRepeat | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,25 +46,49 @@ function InnEntryHistoryList({ entryId }: { entryId: number }) {
     setLoading(true);
     setError(null);
     api
-      .get<{ history: HistoryEntry[] }>(`/inn/${entryId}/history`)
-      .then((res) => setHistory(res.history))
+      .get<{ history: HistoryEntry[]; repeat: InnEntryRepeat | null }>(`/inn/${entryId}/history`)
+      .then((res) => {
+        setHistory(res.history);
+        setRepeat(res.repeat);
+      })
       .catch(() => setError("Не удалось загрузить историю"))
       .finally(() => setLoading(false));
   }, [entryId]);
 
   if (loading) return <p className="muted">Загрузка...</p>;
   if (error) return <p className="error-text">{error}</p>;
-  if (history.length === 0) return <p className="muted">Изменений пока не было.</p>;
+
   return (
-    <ul className="history-list">
-      {history.map((h) => (
-        <li key={h.id}>
-          <span className="muted">{formatChangedAt(h.changedAt)}</span> — <b>{h.changedBy.fullName}</b>
-          {": "}
-          {h.fieldLabel}: «{h.oldValue ?? "—"}» → «{h.newValue ?? "—"}»
-        </li>
-      ))}
-    </ul>
+    <div className="inn-history-columns">
+      <div className="inn-history-column">
+        {history.length === 0 ? (
+          <p className="muted">Изменений пока не было.</p>
+        ) : (
+          <ul className="history-list">
+            {history.map((h) => (
+              <li key={h.id}>
+                <span className="muted">{formatChangedAt(h.changedAt)}</span> — <b>{h.changedBy.fullName}</b>
+                {": "}
+                {h.fieldLabel}: «{h.oldValue ?? "—"}» → «{h.newValue ?? "—"}»
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+      {repeat && (
+        <div className="inn-history-column">
+          <div className="inn-repeat-card">
+            <div className="inn-repeat-card-title">Повтор ИНН</div>
+            <div>
+              Уже вносился <b>{formatRepeatDate(repeat.date)}</b>
+            </div>
+            <div>
+              Оператор: <b>{repeat.operatorName}</b>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -409,10 +445,14 @@ function StatsEntryRow({
           className="icon-btn"
           onClick={handleRefresh}
           disabled={refreshing}
-          title="Обновить из dadata"
-          aria-label="Обновить из dadata"
+          title={entry.companyName ? "Данные из dadata" : "Обновить из dadata"}
+          aria-label={entry.companyName ? "Данные из dadata" : "Обновить из dadata"}
         >
-          <IconRestore width={15} height={15} />
+          {entry.companyName ? (
+            <IconCheck width={15} height={15} className="inn-dadata-ok" />
+          ) : (
+            <IconRestore width={15} height={15} />
+          )}
         </button>
         {editable && (
           <button className="icon-btn" onClick={handleDelete} title="Удалить" aria-label="Удалить">

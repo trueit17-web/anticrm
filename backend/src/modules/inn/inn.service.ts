@@ -89,14 +89,8 @@ function dayRange(date: Date) {
 // neither would see the other. The day-gap itself is still measured on
 // `date` (the business day), so two rows logged the same day correctly
 // come out 0 days apart (red), not skipped entirely.
-async function getInnWarningLevel(
-  branchId: number,
-  inn: string,
-  entryDate: Date,
-  excludeId: number,
-  createdAt: Date
-): Promise<InnWarningLevel> {
-  const prior = await prisma.innEntry.findFirst({
+function findPriorInnEntry(branchId: number, inn: string, excludeId: number, createdAt: Date) {
+  return prisma.innEntry.findFirst({
     where: {
       branchId,
       inn,
@@ -104,8 +98,18 @@ async function getInnWarningLevel(
       createdAt: { lt: createdAt },
     },
     orderBy: { createdAt: "desc" },
-    select: { date: true },
+    select: { date: true, operator: { select: { fullName: true } } },
   });
+}
+
+async function getInnWarningLevel(
+  branchId: number,
+  inn: string,
+  entryDate: Date,
+  excludeId: number,
+  createdAt: Date
+): Promise<InnWarningLevel> {
+  const prior = await findPriorInnEntry(branchId, inn, excludeId, createdAt);
   if (!prior) return null;
   const days = (entryDate.getTime() - prior.date.getTime()) / (1000 * 60 * 60 * 24);
   if (days < 30) return "red";
@@ -146,14 +150,25 @@ const INN_ROLLOVER_CUTOFF = new Date("2026-08-21T00:00:00.000Z");
 // "перенос при заходе оператора" requirement — no cron/background job.
 async function rolloverStaleInnEntries(branchId: number, operatorId: number): Promise<void> {
   const { start: todayStart } = dayRange(new Date());
-  await prisma.innEntry.updateMany({
+  const stale = await prisma.innEntry.findMany({
     where: {
       branchId,
       operatorId,
       called: false,
       date: { gte: INN_ROLLOVER_CUTOFF, lt: todayStart },
     },
-    data: { date: todayStart },
+    select: { id: true, date: true },
+  });
+  if (stale.length === 0) return;
+
+  // One row per moved entry rather than a bulk updateMany, so each carry
+  // -forward still leaves a "Дата: старое → новое" trail in история
+  // изменений — otherwise this automatic move would be invisible there.
+  await prisma.$transaction(async (tx) => {
+    for (const entry of stale) {
+      await tx.innEntry.update({ where: { id: entry.id }, data: { date: todayStart } });
+      await recordInnEntryHistory(tx, entry.id, { date: entry.date }, { date: todayStart }, operatorId);
+    }
   });
 }
 
@@ -485,13 +500,30 @@ export async function getInnStatsSummary(branchId: number, from: Date, to: Date)
 // "История изменений". Branch-scoped only (not operatorId-scoped): an
 // admin/superadmin can inspect any row's history in their view.
 export async function getInnEntryHistory(entryId: number, branchId: number) {
-  const entry = await prisma.innEntry.findFirst({ where: { id: entryId, branchId }, select: { id: true } });
-  if (!entry) return null;
-  return prisma.innEntryHistory.findMany({
-    where: { entryId },
-    include: { changedBy: { select: { id: true, fullName: true } } },
-    orderBy: { changedAt: "desc" },
+  const entry = await prisma.innEntry.findFirst({
+    where: { id: entryId, branchId },
+    select: { id: true, inn: true, date: true, createdAt: true },
   });
+  if (!entry) return null;
+
+  const [history, prior] = await Promise.all([
+    prisma.innEntryHistory.findMany({
+      where: { entryId },
+      include: { changedBy: { select: { id: true, fullName: true } } },
+      orderBy: { changedAt: "desc" },
+    }),
+    findPriorInnEntry(branchId, entry.inn, entryId, entry.createdAt),
+  ]);
+
+  // Same red/yellow window as the row's own warningLevel highlight — the
+  // repeat card only makes sense while that highlight would still show.
+  let repeat: { date: string; operatorName: string } | null = null;
+  if (prior) {
+    const days = (entry.date.getTime() - prior.date.getTime()) / (1000 * 60 * 60 * 24);
+    if (days < 60) repeat = { date: prior.date.toISOString(), operatorName: prior.operator.fullName };
+  }
+
+  return { history, repeat };
 }
 
 // Detailed ИНН log for one operator in a period — powers the expand-on-click

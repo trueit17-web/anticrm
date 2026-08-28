@@ -19,7 +19,7 @@ import { useAuth } from "../auth/AuthContext";
 import { detectMobileOperator } from "../lib/mobileOperator";
 import { formatMoney } from "../lib/money";
 import { BranchSwitcher } from "../components/BranchSwitcher";
-import { IconBack } from "../components/icons";
+import { IconBack, IconX } from "../components/icons";
 import { EmployeeNameButton } from "../components/EmployeeCard";
 import { PetStatsAssistant } from "../components/pet/PetStatsAssistant";
 import { InnStatsSection } from "../components/inn/InnStatsSection";
@@ -813,13 +813,26 @@ export function StatsPage() {
           </div>
           <div className="stats-tabs-side stats-tabs-side-end">
             {activeTab === "inn" && (
-              <input
-                type="text"
-                className="stats-tabs-inn-search"
-                placeholder="Поиск по ИНН"
-                value={innSearch}
-                onChange={(e) => setInnSearch(e.target.value)}
-              />
+              <div className="stats-tabs-inn-search-wrap">
+                <input
+                  type="text"
+                  className="stats-tabs-inn-search"
+                  placeholder="Поиск по ИНН"
+                  value={innSearch}
+                  onChange={(e) => setInnSearch(e.target.value)}
+                />
+                {innSearch && (
+                  <button
+                    type="button"
+                    className="stats-tabs-inn-search-clear"
+                    onClick={() => setInnSearch("")}
+                    title="Очистить поиск"
+                    aria-label="Очистить поиск"
+                  >
+                    <IconX width={12} height={12} />
+                  </button>
+                )}
+              </div>
             )}
             {activeTab === "inn" && isAdmin && (
               <button

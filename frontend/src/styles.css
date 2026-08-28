@@ -1065,6 +1065,40 @@ body.col-resizing .col-resizer {
   border-bottom: 1px dashed var(--border);
 }
 
+/* ИНН stats: click-to-expand history sub-row, split into the change log
+   (left) and, when this ИНН is a repeat, a card naming the earlier
+   occurrence (right). */
+.inn-history-columns {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+.inn-history-column {
+  flex: 1;
+  min-width: 0;
+}
+
+.inn-repeat-card {
+  background: var(--red-bg, rgba(196, 78, 62, 0.08));
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.inn-repeat-card-title {
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+.inn-dadata-ok {
+  color: var(--success);
+}
+
 .form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1577,10 +1611,34 @@ body.col-resizing .col-resizer {
   padding: 4px 8px;
 }
 
+.stats-tabs-inn-search-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
 .stats-tabs-inn-search {
   min-height: 34px;
-  padding: 4px 10px;
+  padding: 4px 26px 4px 10px;
   width: 160px;
+}
+
+.stats-tabs-inn-search-clear {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--muted);
+  line-height: 1;
+  padding: 2px;
+  font-size: 15px;
+}
+
+.stats-tabs-inn-search-clear:hover {
+  color: var(--text);
 }
 
 .admin-tabs-divider {
