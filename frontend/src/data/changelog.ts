@@ -10,6 +10,14 @@ export interface ChangelogEntry {
 // separately, so there's only one place to update.
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.40.2",
+    date: "2026-08-28",
+    changes: [
+      "Модуль «ИНН»: повторы ИНН (подсветка строки и карточка в истории изменений) теперь учитывают записи из всех филиалов, не только текущего",
+      "«Статистика» → ИНН: если повтор пришёл из другого филиала, карточка «Повтор ИНН» показывает его название в скобках",
+    ],
+  },
+  {
     version: "1.40.1",
     date: "2026-08-28",
     changes: [

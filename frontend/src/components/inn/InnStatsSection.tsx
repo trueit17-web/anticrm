@@ -28,6 +28,8 @@ function formatRepeatDate(iso: string): string {
 interface InnEntryRepeat {
   date: string;
   operatorName: string;
+  // Set only when the repeat came from a different branch than this entry.
+  branchName: string | null;
 }
 
 // Click-to-expand history sub-row for one ИНН entry — same source (/inn/:id
@@ -78,7 +80,9 @@ function InnEntryHistoryList({ entryId }: { entryId: number }) {
       {repeat && (
         <div className="inn-history-column">
           <div className="inn-repeat-card">
-            <div className="inn-repeat-card-title">Повтор ИНН</div>
+            <div className="inn-repeat-card-title">
+              Повтор ИНН{repeat.branchName ? ` (${repeat.branchName})` : ""}
+            </div>
             <div>
               Уже вносился <b>{formatRepeatDate(repeat.date)}</b>
             </div>

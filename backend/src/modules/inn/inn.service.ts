@@ -78,10 +78,12 @@ function dayRange(date: Date) {
   return { start, end };
 }
 
-// Flags a repeated ИНН across the whole branch (any operator, not just the
-// current one) — a hint that a lead may already be "burned": red if it was
-// last logged under a month ago, yellow if 1–2 months ago, otherwise no
-// highlight. Only the most recent earlier row matters.
+// Flags a repeated ИНН across the whole system — not just the current
+// branch or operator — a hint that a lead may already be "burned" by anyone,
+// anywhere: red if it was last logged under a month ago, yellow if 1–2
+// months ago, otherwise no highlight. Only the most recent earlier row
+// matters. `branchId` is unused for the lookup itself (kept so call sites
+// don't need to change) but callers still pass their own branch for clarity.
 //
 // "Earlier" is determined by createdAt (always strictly ordered, even for
 // two rows logged the same business day), not by the `date` field — `date`
@@ -89,16 +91,15 @@ function dayRange(date: Date) {
 // neither would see the other. The day-gap itself is still measured on
 // `date` (the business day), so two rows logged the same day correctly
 // come out 0 days apart (red), not skipped entirely.
-function findPriorInnEntry(branchId: number, inn: string, excludeId: number, createdAt: Date) {
+function findPriorInnEntry(inn: string, excludeId: number, createdAt: Date) {
   return prisma.innEntry.findFirst({
     where: {
-      branchId,
       inn,
       id: { not: excludeId },
       createdAt: { lt: createdAt },
     },
     orderBy: { createdAt: "desc" },
-    select: { date: true, operator: { select: { fullName: true } } },
+    select: { date: true, branchId: true, branch: { select: { name: true } }, operator: { select: { fullName: true } } },
   });
 }
 
@@ -109,7 +110,7 @@ async function getInnWarningLevel(
   excludeId: number,
   createdAt: Date
 ): Promise<InnWarningLevel> {
-  const prior = await findPriorInnEntry(branchId, inn, excludeId, createdAt);
+  const prior = await findPriorInnEntry(inn, excludeId, createdAt);
   if (!prior) return null;
   const days = (entryDate.getTime() - prior.date.getTime()) / (1000 * 60 * 60 * 24);
   if (days < 30) return "red";
@@ -119,15 +120,16 @@ async function getInnWarningLevel(
 
 // Pre-save preview for the create/update form: "would this ИНН trigger a
 // warning if saved right now with this date?" — same red/yellow rule as
-// getInnWarningLevel, but there's no row (and so no id/createdAt) yet, so it
-// just looks at the latest existing row for this ИНН in the branch.
+// getInnWarningLevel (and, like it, cross-branch), but there's no row (and
+// so no id/createdAt) yet, so it just looks at the latest existing row for
+// this ИНН anywhere.
 export async function previewInnWarning(
   branchId: number,
   inn: string,
   entryDate: Date
 ): Promise<{ warningLevel: InnWarningLevel; lastDate: Date | null }> {
   const prior = await prisma.innEntry.findFirst({
-    where: { branchId, inn },
+    where: { inn },
     orderBy: { date: "desc" },
     select: { date: true },
   });
@@ -512,15 +514,23 @@ export async function getInnEntryHistory(entryId: number, branchId: number) {
       include: { changedBy: { select: { id: true, fullName: true } } },
       orderBy: { changedAt: "desc" },
     }),
-    findPriorInnEntry(branchId, entry.inn, entryId, entry.createdAt),
+    findPriorInnEntry(entry.inn, entryId, entry.createdAt),
   ]);
 
   // Same red/yellow window as the row's own warningLevel highlight — the
   // repeat card only makes sense while that highlight would still show.
-  let repeat: { date: string; operatorName: string } | null = null;
+  // `branchName` is only set when the repeat came from a different
+  // branch than this entry's own — same-branch repeats don't need it.
+  let repeat: { date: string; operatorName: string; branchName: string | null } | null = null;
   if (prior) {
     const days = (entry.date.getTime() - prior.date.getTime()) / (1000 * 60 * 60 * 24);
-    if (days < 60) repeat = { date: prior.date.toISOString(), operatorName: prior.operator.fullName };
+    if (days < 60) {
+      repeat = {
+        date: prior.date.toISOString(),
+        operatorName: prior.operator.fullName,
+        branchName: prior.branchId !== branchId ? prior.branch.name : null,
+      };
+    }
   }
 
   return { history, repeat };
