@@ -2,7 +2,7 @@ import { Fragment, FormEvent, useEffect, useState } from "react";
 import { api, ApiError, fileUrl } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import { Branch, LoginEvent, ROLE_LABELS, Role, UserSummary } from "../types";
-import { IconCheck, IconEdit, IconKey, IconX } from "./icons";
+import { IconCheck, IconEdit, IconKey, IconTorii, IconX } from "./icons";
 import { EmployeeNameButton } from "./EmployeeCard";
 
 function formatEventTime(iso: string): string {
@@ -269,6 +269,85 @@ function DemoteSuperadminRow({
   );
 }
 
+// Full cross-branch move — reassigns the account's home branch and cascades
+// their own трубки/ИНН with it, as if they'd always worked there. Available
+// to ADMIN too (not just SUPERADMIN), restricted server-side to branches
+// they can already access.
+function TransferBranchRow({
+  user,
+  branches,
+  colSpan,
+  onCancel,
+  onSaved,
+}: {
+  user: UserSummary;
+  branches: Branch[];
+  colSpan: number;
+  onCancel: () => void;
+  onSaved: () => void;
+}) {
+  const otherBranches = branches.filter((b) => b.id !== user.branch?.id);
+  const [branchId, setBranchId] = useState<number | "">(otherBranches[0]?.id ?? "");
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  async function handleConfirm() {
+    if (branchId === "") return;
+    const target = otherBranches.find((b) => b.id === branchId);
+    if (
+      !window.confirm(
+        `Полностью перенести ${user.fullName} в филиал «${target?.name}»? Вместе с ним переедут все его трубки и записи ИНН.`
+      )
+    ) {
+      return;
+    }
+    setError(null);
+    setSaving(true);
+    try {
+      await api.post(`/users/${user.id}/transfer-branch`, { branchId });
+      onSaved();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Не удалось перенести");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <tr>
+      <td>{user.username}</td>
+      <td colSpan={colSpan}>
+        <p className="muted">
+          Перенос {user.fullName} (сейчас — {user.branch?.name ?? "—"}) в другой филиал: вместе с ним
+          переедут все его трубки и записи ИНН, как будто он изначально был зарегистрирован там.
+        </p>
+        {otherBranches.length === 0 ? (
+          <p className="muted">Нет доступных филиалов для переноса.</p>
+        ) : (
+          <div className="inline-form">
+            <select value={branchId} onChange={(e) => setBranchId(Number(e.target.value))}>
+              {otherBranches.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
+            <button className="btn-save" onClick={handleConfirm} disabled={saving}>
+              <IconCheck width={15} height={15} />
+              {saving ? "Перенос..." : "Перенести"}
+            </button>
+            <button className="btn-cancel" onClick={onCancel}>
+              <IconX width={15} height={15} />
+              Отмена
+            </button>
+          </div>
+        )}
+        {error && <p className="error-text">{error}</p>}
+      </td>
+    </tr>
+  );
+}
+
 function LoginHistoryRow({
   userId,
   colSpan,
@@ -337,6 +416,10 @@ export function UsersManager() {
   const [accessEditingId, setAccessEditingId] = useState<number | null>(null);
   const [loginHistoryId, setLoginHistoryId] = useState<number | null>(null);
   const [demoteTarget, setDemoteTarget] = useState<{ id: number; role: Role } | null>(null);
+  const [transferTargetId, setTransferTargetId] = useState<number | null>(null);
+  // Branches this admin/superadmin may move a user into — home + granted for
+  // ADMIN, every branch for SUPERADMIN (same source as the branch switcher).
+  const [accessibleBranches, setAccessibleBranches] = useState<Branch[]>([]);
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -366,6 +449,10 @@ export function UsersManager() {
         .then((res) => setBranches(res.branches))
         .catch(() => {});
     }
+    api
+      .get<{ branches: Branch[] }>("/branches/mine")
+      .then((res) => setAccessibleBranches(res.branches))
+      .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -518,6 +605,21 @@ export function UsersManager() {
                     />
                   );
                 }
+                if (transferTargetId === u.id) {
+                  return (
+                    <TransferBranchRow
+                      key={u.id}
+                      user={u}
+                      branches={accessibleBranches}
+                      colSpan={editColSpan}
+                      onCancel={() => setTransferTargetId(null)}
+                      onSaved={() => {
+                        setTransferTargetId(null);
+                        loadUsers();
+                      }}
+                    />
+                  );
+                }
                 const historyOpen = loginHistoryId === u.id;
                 return (
                   <Fragment key={u.id}>
@@ -577,6 +679,16 @@ export function UsersManager() {
                             onClick={() => setAccessEditingId(u.id)}
                           >
                             <IconKey width={16} height={16} />
+                          </button>
+                        )}{" "}
+                        {u.role !== "SUPERADMIN" && (
+                          <button
+                            className="icon-btn"
+                            title="Перенести в другой филиал (со всеми трубками и ИНН)"
+                            aria-label="Перенести в другой филиал"
+                            onClick={() => setTransferTargetId(u.id)}
+                          >
+                            <IconTorii width={16} height={16} />
                           </button>
                         )}{" "}
                         <label

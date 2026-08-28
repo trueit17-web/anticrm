@@ -1,5 +1,15 @@
 import { Prisma, Role } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
+import { recordAdminChange } from "../adminLog/adminLog.service";
+
+const BRANCH_FIELD_LABELS: Record<string, string> = {
+  name: "Название",
+  contactsEnabled: "Модуль «Прозвон»",
+  walletCountEnabled: "Модуль «Считать кош»",
+  petEnabled: "Модуль «Питомец»",
+  innEnabled: "Модуль «ИНН»",
+  dadataApiKey: "Ключ dadata",
+};
 
 // dadataApiKey is a secret — never select it into anything returned to a
 // client. Endpoints that need to know only whether one is set use
@@ -33,8 +43,12 @@ export async function listBranches() {
   return branches.map(toPublicBranch);
 }
 
-export function createBranch(name: string) {
-  return prisma.branch.create({ data: { name }, select: branchPublicSelect });
+export async function createBranch(name: string, createdById: number) {
+  return prisma.$transaction(async (tx) => {
+    const branch = await tx.branch.create({ data: { name }, select: branchPublicSelect });
+    await recordAdminChange(tx, "branch", branch.id, branch.name, {}, { name }, createdById, BRANCH_FIELD_LABELS);
+    return branch;
+  });
 }
 
 export async function updateBranch(
@@ -46,15 +60,38 @@ export async function updateBranch(
     petEnabled?: boolean;
     innEnabled?: boolean;
     dadataApiKey?: string | null;
-  }
+  },
+  changedById: number
 ) {
-  const result = await prisma.branch.updateMany({ where: { id }, data });
-  if (result.count === 0) return null;
-  const branch = await prisma.branch.findUnique({
-    where: { id },
-    select: { ...branchPublicSelect, dadataApiKey: true },
+  return prisma.$transaction(async (tx) => {
+    const before = await tx.branch.findUnique({
+      where: { id },
+      select: { ...branchPublicSelect, dadataApiKey: true },
+    });
+    if (!before) return null;
+
+    const result = await tx.branch.updateMany({ where: { id }, data });
+    if (result.count === 0) return null;
+    const branch = await tx.branch.findUnique({
+      where: { id },
+      select: { ...branchPublicSelect, dadataApiKey: true },
+    });
+    if (!branch) return null;
+
+    await recordAdminChange(
+      tx,
+      "branch",
+      id,
+      branch.name,
+      before,
+      data,
+      changedById,
+      BRANCH_FIELD_LABELS,
+      new Set(["dadataApiKey"])
+    );
+
+    return toPublicBranch(branch);
   });
-  return branch ? toPublicBranch(branch) : null;
 }
 
 // Gate checked by every /contacts route — a branch with the module off

@@ -18,6 +18,7 @@ import {
   getUserTelegram,
   listUsers,
   setUserAvatar,
+  transferUserBranch,
   updateUser,
 } from "./users.service";
 
@@ -53,7 +54,7 @@ export async function createUserHandler(req: Request, res: Response) {
   }
 
   try {
-    const user = await createUser({ ...parsed.data, branchId });
+    const user = await createUser({ ...parsed.data, branchId }, req.user!.id);
     res.status(201).json({ user });
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
@@ -110,7 +111,12 @@ export async function updateUserHandler(req: Request, res: Response) {
   // the handle is actually being added/changed, not on every unrelated save.
   const previousTelegram = parsed.data.telegram !== undefined ? await getUserTelegram(id, branchId) : undefined;
 
-  const result = await updateUser({ role: req.user!.role, branchId: req.user!.branchId }, id, branchId, input);
+  const result = await updateUser(
+    { id: req.user!.id, role: req.user!.role, branchId: req.user!.branchId },
+    id,
+    branchId,
+    input
+  );
   if (!result.ok) {
     return res.status(UPDATE_USER_ERROR_STATUS[result.error]).json({ error: UPDATE_USER_ERROR_MESSAGE[result.error] });
   }
@@ -129,6 +135,41 @@ export async function updateUserHandler(req: Request, res: Response) {
   }
 
   res.json({ user });
+}
+
+const transferBranchSchema = z.object({ branchId: z.number().int().positive() });
+
+const TRANSFER_ERROR_STATUS: Record<string, number> = {
+  not_found: 404,
+  invalid_branch: 422,
+  same_branch: 422,
+  forbidden: 403,
+  superadmin_has_no_branch: 422,
+};
+
+const TRANSFER_ERROR_MESSAGE: Record<string, string> = {
+  not_found: "Пользователь не найден",
+  invalid_branch: "Филиал не найден",
+  same_branch: "Пользователь уже в этом филиале",
+  forbidden: "Недостаточно прав для переноса между этими филиалами",
+  superadmin_has_no_branch: "Супер-администратор не привязан к филиалу",
+};
+
+// Full cross-branch move — reassigns User.branchId and cascades their own
+// трубки/ИНН to the destination branch in one action, as if they'd always
+// worked there. ADMIN is restricted (in the service) to branches they can
+// already access; SUPERADMIN may move anyone anywhere.
+export async function transferUserBranchHandler(req: Request, res: Response) {
+  const id = Number(req.params.id);
+  const parsed = transferBranchSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: "Укажите филиал" });
+  }
+  const result = await transferUserBranch(req.user!, id, parsed.data.branchId);
+  if (!result.ok) {
+    return res.status(TRANSFER_ERROR_STATUS[result.error]).json({ error: TRANSFER_ERROR_MESSAGE[result.error] });
+  }
+  res.status(204).end();
 }
 
 export async function getUserBranchAccessHandler(req: Request, res: Response) {

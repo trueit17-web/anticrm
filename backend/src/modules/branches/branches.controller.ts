@@ -22,7 +22,7 @@ export async function createBranchHandler(req: Request, res: Response) {
   if (!parsed.success) {
     return res.status(400).json({ error: "Проверьте поля формы", details: parsed.error.flatten() });
   }
-  const branch = await createBranch(parsed.data.name);
+  const branch = await createBranch(parsed.data.name, req.user!.id);
   res.status(201).json({ branch });
 }
 
@@ -47,7 +47,7 @@ export async function updateBranchHandler(req: Request, res: Response) {
   if (typeof data.dadataApiKey === "string") {
     data.dadataApiKey = data.dadataApiKey.trim() || null;
   }
-  const branch = await updateBranch(id, data);
+  const branch = await updateBranch(id, data, req.user!.id);
   if (!branch) {
     return res.status(404).json({ error: "Филиал не найден" });
   }

@@ -8,6 +8,7 @@ import {
   getUserLoginEventsHandler,
   listUsersHandler,
   setUserBranchAccessHandler,
+  transferUserBranchHandler,
   updateUserHandler,
   uploadAvatarHandler,
 } from "./users.controller";
@@ -36,6 +37,14 @@ usersRouter.post(
   requireIntegerId,
   avatarUpload.single("avatar"),
   asyncHandler(uploadAvatarHandler)
+);
+
+// Full cross-branch move (trubki/ИНН cascade with it) — ADMIN is restricted
+// (in the service) to branches they can already access; SUPERADMIN unrestricted.
+usersRouter.post(
+  "/:id/transfer-branch",
+  requireRole(Role.ADMIN, Role.SUPERADMIN),
+  asyncHandler(transferUserBranchHandler)
 );
 
 // Only SUPERADMIN grants a user access to branches beyond their home one.

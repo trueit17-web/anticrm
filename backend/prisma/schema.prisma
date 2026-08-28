@@ -297,6 +297,7 @@ model User {
   historyEntries     AppealHistory[] @relation("HistoryChangedBy")
   innEntriesAsOperator InnEntry[]    @relation("OperatorInnEntries")
   innHistoryEntries    InnEntryHistory[] @relation("InnHistoryChangedBy")
+  adminChangeLogEntries AdminChangeLog[] @relation("AdminChangeLogChangedBy")
   branchAccess       UserBranchAccess[]
   loginEvents        LoginEvent[]
   uploadedContactBatches ContactBatch[] @relation("ContactBatchUploader")
@@ -399,6 +400,36 @@ model AppealHistory {
   changedAt DateTime @default(now())
 
   @@index([appealId])
+}
+
+// Generic field-level audit trail for admin-panel actions that don't
+// already have their own history table (AppealHistory for трубки,
+// InnEntryHistory for ИНН) — currently Users and Branches (creation,
+// edits, role/branch/toggle changes, the full cross-branch user transfer).
+// One row per changed field, same "diff at write time" shape as those two,
+// so "Журнал изменений" in Админка reads the same way.
+model AdminChangeLog {
+  id          Int    @id @default(autoincrement())
+  // "user" | "branch" — kept as a plain string rather than a relation since
+  // a single log spans multiple unrelated entity tables.
+  entityType  String
+  entityId    Int
+  // Snapshot of the entity's own display name at change time — survives a
+  // later rename/deactivation so old log rows stay readable.
+  entityLabel String
+
+  changedBy   User @relation("AdminChangeLogChangedBy", fields: [changedById], references: [id])
+  changedById Int
+
+  field      String
+  fieldLabel String
+  oldValue   String?
+  newValue   String?
+
+  changedAt DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([changedAt])
 }
 
 model InnEntryHistory {

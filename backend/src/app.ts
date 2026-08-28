@@ -14,6 +14,7 @@ import { systemRouter } from "./modules/system/system.routes";
 import { walletRouter } from "./modules/wallet/wallet.routes";
 import { petRouter } from "./modules/pet/pet.routes";
 import { innRouter } from "./modules/inn/inn.routes";
+import { adminLogRouter } from "./modules/adminLog/adminLog.routes";
 
 export const app = express();
 
@@ -51,6 +52,7 @@ app.use("/api/system", systemRouter);
 app.use("/api/wallet", walletRouter);
 app.use("/api/pet", petRouter);
 app.use("/api/inn", innRouter);
+app.use("/api/admin-log", adminLogRouter);
 
 app.use((req: Request, res: Response) => {
   res.status(404).json({ error: "Не найдено" });

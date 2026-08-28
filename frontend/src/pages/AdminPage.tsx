@@ -5,6 +5,7 @@ import { api, ApiError, getSelectedDate, setSelectedDate } from "../api/client";
 import { Appeal, OPTION_FIELD_LABELS, OptionField, SelectOption } from "../types";
 import { BranchSwitcher } from "../components/BranchSwitcher";
 import { UsersManager } from "../components/UsersManager";
+import { AdminChangeLogManager } from "../components/AdminChangeLogManager";
 import { BranchesManager } from "../components/BranchesManager";
 import { UpdatesManager } from "../components/UpdatesManager";
 import { WalletManager } from "../components/WalletManager";
@@ -208,7 +209,7 @@ function AppealsDeleteSection({ date }: { date: string }) {
   );
 }
 
-type AdminTab = "appeals" | OptionField | "users" | "branches" | "updates" | "wallet" | "pet";
+type AdminTab = "appeals" | OptionField | "users" | "branches" | "updates" | "wallet" | "pet" | "changelog";
 
 export function AdminPage() {
   const { user } = useAuth();
@@ -306,6 +307,13 @@ export function AdminPage() {
             >
               Питомец
             </button>
+            <button
+              type="button"
+              className={`admin-tab${activeTab === "changelog" ? " admin-tab-active" : ""}`}
+              onClick={() => setActiveTab("changelog")}
+            >
+              Журнал изменений
+            </button>
             {user?.role === "SUPERADMIN" && (
               <>
                 <button
@@ -341,6 +349,8 @@ export function AdminPage() {
           <WalletManager />
         ) : activeTab === "pet" ? (
           <PetManager />
+        ) : activeTab === "changelog" ? (
+          <AdminChangeLogManager />
         ) : (
           <>
             {loading && <p>Загрузка...</p>}

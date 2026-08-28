@@ -288,6 +288,21 @@ export interface HistoryEntry {
   changedBy: { id: number; fullName: string };
 }
 
+// "Журнал изменений" in Админка — Users/Branches admin actions that don't
+// already have their own history table (трубки/ИНН have their own).
+export interface AdminChangeLogEntry {
+  id: number;
+  entityType: "user" | "branch";
+  entityId: number;
+  entityLabel: string;
+  field: string;
+  fieldLabel: string;
+  oldValue: string | null;
+  newValue: string | null;
+  changedAt: string;
+  changedBy: { id: number; fullName: string };
+}
+
 export type ContactStatus =
   | "NEW"
   | "IN_PROGRESS"

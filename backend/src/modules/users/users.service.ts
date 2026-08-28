@@ -7,6 +7,19 @@ import { hashPassword } from "../../utils/password";
 import { AVATARS_DIR } from "../../config/uploads";
 import { FetchedAvatar } from "../../utils/telegramAvatar";
 import { reencodeToWebp } from "../../utils/reencodeImage";
+import { recordAdminChange } from "../adminLog/adminLog.service";
+import { listAccessibleBranches } from "../branches/branches.service";
+
+const USER_FIELD_LABELS: Record<string, string> = {
+  username: "Логин",
+  fullName: "ФИО",
+  role: "Роль",
+  active: "Статус",
+  excludedFromStats: "Скрыт из статистики",
+  password: "Пароль",
+  telegram: "Telegram",
+  bio: "Описание",
+};
 
 const publicUserSelect = {
   id: true,
@@ -51,25 +64,41 @@ export async function listUsers(branchId: number | null) {
   return users.map(toUserSummary);
 }
 
-export async function createUser(input: {
-  username: string;
-  password: string;
-  fullName: string;
-  role: Role;
-  branchId: number | null;
-}) {
+export async function createUser(
+  input: {
+    username: string;
+    password: string;
+    fullName: string;
+    role: Role;
+    branchId: number | null;
+  },
+  createdById: number
+) {
   const passwordHash = await hashPassword(input.password);
-  const user = await prisma.user.create({
-    data: {
-      username: input.username,
-      passwordHash,
-      fullName: input.fullName,
-      role: input.role,
-      branchId: input.branchId,
-    },
-    select: publicUserSelect,
+  return prisma.$transaction(async (tx) => {
+    const user = await tx.user.create({
+      data: {
+        username: input.username,
+        passwordHash,
+        fullName: input.fullName,
+        role: input.role,
+        branchId: input.branchId,
+      },
+      select: publicUserSelect,
+    });
+    const branchName = user.branch?.name ?? null;
+    await recordAdminChange(
+      tx,
+      "user",
+      user.id,
+      user.fullName,
+      {},
+      { username: input.username, fullName: input.fullName, role: input.role, branch: branchName },
+      createdById,
+      { ...USER_FIELD_LABELS, branch: "Филиал" }
+    );
+    return toUserSummary(user);
   });
-  return toUserSummary(user);
 }
 
 export interface UpdateUserInput {
@@ -100,8 +129,43 @@ const SUPERADMIN_LOCK_NAMESPACE = 0x53555052; // "SUPR"
 // this, promoting/demoting a user could leave role and branchId
 // inconsistent, and several other services derive "global access" from
 // branchId === null rather than the role itself.
+// Cascades a user's own branch-tied records (their трубки and ИНН log) to
+// their new branch — without this, changing User.branchId alone would leave
+// their whole history stuck attributed to the branch they left, breaking
+// that branch's Статистика for anyone who looks. Logs one summary
+// AdminChangeLog row (not per-record) so the move is visible in "Журнал
+// изменений" without flooding it.
+async function migrateUserBranchData(
+  tx: Prisma.TransactionClient,
+  userId: number,
+  fullName: string,
+  oldBranchId: number | null,
+  newBranchId: number,
+  actorId: number
+): Promise<void> {
+  if (oldBranchId === newBranchId) return;
+  const [oldBranch, newBranch, appealsMoved, innMoved] = await Promise.all([
+    oldBranchId ? tx.branch.findUnique({ where: { id: oldBranchId }, select: { name: true } }) : Promise.resolve(null),
+    tx.branch.findUnique({ where: { id: newBranchId }, select: { name: true } }),
+    tx.appeal.updateMany({ where: { operatorId: userId }, data: { branchId: newBranchId } }),
+    tx.innEntry.updateMany({ where: { operatorId: userId }, data: { branchId: newBranchId } }),
+  ]);
+  await tx.adminChangeLog.create({
+    data: {
+      entityType: "user",
+      entityId: userId,
+      entityLabel: fullName,
+      changedById: actorId,
+      field: "branchId",
+      fieldLabel: "Филиал",
+      oldValue: oldBranch?.name ?? null,
+      newValue: `${newBranch?.name ?? newBranchId} (перенесено трубок: ${appealsMoved.count}, ИНН: ${innMoved.count})`,
+    },
+  });
+}
+
 export async function updateUser(
-  actor: { role: Role; branchId: number | null },
+  actor: { id: number; role: Role; branchId: number | null },
   id: number,
   scopeBranchId: number | null,
   input: UpdateUserInput
@@ -161,7 +225,83 @@ export async function updateUser(
     }
 
     const user = await tx.user.update({ where: { id }, data, select: publicUserSelect });
+
+    // branchId is logged separately (with resolved branch names and the
+    // moved-record counts) by migrateUserBranchData, not the generic diff
+    // below — a raw id-to-id row would be unreadable in the log.
+    if (nextBranchId !== null && nextBranchId !== target.branchId) {
+      await migrateUserBranchData(tx, id, user.fullName, target.branchId, nextBranchId, actor.id);
+    }
+
+    const changesForLog: Record<string, unknown> = {};
+    if (input.fullName !== undefined) changesForLog.fullName = input.fullName;
+    if (input.role !== undefined) changesForLog.role = nextRole;
+    if (input.active !== undefined) changesForLog.active = nextActive;
+    if (input.excludedFromStats !== undefined) changesForLog.excludedFromStats = input.excludedFromStats;
+    if (input.telegram !== undefined) changesForLog.telegram = input.telegram || null;
+    if (input.bio !== undefined) changesForLog.bio = input.bio || null;
+    if (input.password) changesForLog.password = "•••";
+    await recordAdminChange(
+      tx,
+      "user",
+      id,
+      user.fullName,
+      {
+        fullName: target.fullName,
+        role: target.role,
+        active: target.active,
+        excludedFromStats: target.excludedFromStats,
+        telegram: target.telegram,
+        bio: target.bio,
+        password: null,
+      },
+      changesForLog,
+      actor.id,
+      USER_FIELD_LABELS,
+      new Set(["password"])
+    );
+
     return { ok: true, user: toUserSummary(user) };
+  });
+}
+
+export type TransferUserBranchResult =
+  | { ok: true }
+  | { ok: false; error: "not_found" | "invalid_branch" | "same_branch" | "forbidden" | "superadmin_has_no_branch" };
+
+// The dedicated "переместить в другой филиал" action — unlike updateUser's
+// branchId field (SUPERADMIN-only, one field among many in a general edit),
+// this is ADMIN+SUPERADMIN and always cascades the user's трубки/ИНН via
+// migrateUserBranchData, since that's the whole point of this action rather
+// than an incidental side effect.
+export async function transferUserBranch(
+  actor: { id: number; role: Role; branchId: number | null },
+  userId: number,
+  newBranchId: number
+): Promise<TransferUserBranchResult> {
+  return prisma.$transaction(async (tx) => {
+    const target = await tx.user.findUnique({
+      where: { id: userId },
+      select: { id: true, fullName: true, role: true, branchId: true },
+    });
+    if (!target) return { ok: false, error: "not_found" };
+    if (target.role === Role.SUPERADMIN) return { ok: false, error: "superadmin_has_no_branch" };
+
+    const newBranch = await tx.branch.findUnique({ where: { id: newBranchId }, select: { id: true } });
+    if (!newBranch) return { ok: false, error: "invalid_branch" };
+    if (target.branchId === newBranchId) return { ok: false, error: "same_branch" };
+
+    if (actor.role !== Role.SUPERADMIN) {
+      const accessible = await listAccessibleBranches(actor);
+      const accessibleIds = new Set(accessible.map((b) => b.id));
+      if (!target.branchId || !accessibleIds.has(target.branchId) || !accessibleIds.has(newBranchId)) {
+        return { ok: false, error: "forbidden" };
+      }
+    }
+
+    await tx.user.update({ where: { id: userId }, data: { branchId: newBranchId } });
+    await migrateUserBranchData(tx, target.id, target.fullName, target.branchId, newBranchId, actor.id);
+    return { ok: true };
   });
 }
 
