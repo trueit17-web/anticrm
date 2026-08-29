@@ -10,6 +10,14 @@ export interface ChangelogEntry {
 // separately, so there's only one place to update.
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.43.1",
+    date: "2026-08-29",
+    changes: [
+      "Шрифт таблиц трубок и статистики уменьшен до 13,5px, межстрочный интервал — до 1",
+      "Из поля «Дата» убрано отображение времени",
+    ],
+  },
+  {
     version: "1.43.0",
     date: "2026-08-29",
     changes: [

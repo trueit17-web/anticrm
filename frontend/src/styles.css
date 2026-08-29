@@ -468,7 +468,7 @@ a {
 .appeals-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 15px;
+  font-size: 13.5px;
   table-layout: fixed;
 }
 
@@ -2644,13 +2644,13 @@ textarea:hover {
 }
 
 .appeals-table {
-  font-size: 15px;
+  font-size: 13.5px;
 }
 
 .appeals-table th,
 .appeals-table td {
   padding: 5px 4px;
-  line-height: 1.25;
+  line-height: 1;
 }
 
 .appeals-table th {

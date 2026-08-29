@@ -60,15 +60,6 @@ function formatDay(day: string): string {
   return d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" });
 }
 
-function formatDateTime(dateIso: string, timeSourceIso: string): string {
-  const datePart = new Date(dateIso).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" });
-  const timePart = new Date(timeSourceIso).toLocaleTimeString("ru-RU", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-  return `${datePart}, ${timePart}`;
-}
-
 function DailyChart({ data, onPick }: { data: DailyStat[]; onPick: (day: string) => void }) {
   if (data.length === 0) {
     return <p className="empty-state">Нет данных за выбранный период.</p>;
@@ -196,7 +187,7 @@ function DayAppealsTable({ appeals }: { appeals: Appeal[] }) {
               <td className="col-center">
                 <EmployeeNameButton id={a.operator.id} fullName={a.operator.fullName} />
                 <br />
-                {formatDateTime(a.date, a.createdAt)}
+                {new Date(a.date).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" })}
               </td>
               <td>{a.phone}</td>
               <td className="col-center">{a.tf || "—"}</td>
