@@ -10,6 +10,14 @@ export interface ChangelogEntry {
 // separately, so there's only one place to update.
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.43.0",
+    date: "2026-08-29",
+    changes: [
+      "«Статистика» → «Обращения»: заданы ширины колонок в таблицах «По трубкам», «По Госам», «По ТФ» и лидерборде менеджеров «Прозвона» (раньше расставлялись браузером сама)",
+      "Увеличен размер шрифта во всех таблицах статистики и трубок (12px → 15px)",
+    ],
+  },
+  {
     version: "1.42.0",
     date: "2026-08-29",
     changes: [

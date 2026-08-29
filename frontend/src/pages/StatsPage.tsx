@@ -237,6 +237,10 @@ function SortableBreakdown({ title, rows }: { title: string; rows: LabeledCount[
         <p className="empty-state">Нет данных.</p>
       ) : (
         <table className="appeals-table">
+          <colgroup>
+            <col style={{ width: "70%" }} />
+            <col style={{ width: "30%" }} />
+          </colgroup>
           <tbody>
             {sorted.map((r) => (
               <tr key={r.label}>
@@ -278,6 +282,10 @@ function OperatorBreakdown({ rows }: { rows: OperatorStat[] }) {
         <p className="empty-state">Нет данных.</p>
       ) : (
         <table className="appeals-table">
+          <colgroup>
+            <col style={{ width: "90%" }} />
+            <col style={{ width: "30%" }} />
+          </colgroup>
           <tbody>
             {groups.map((g) => (
               <tr key={g.count}>
@@ -308,6 +316,14 @@ function TfTimeBreakdown({ rows }: { rows: TfTimeBucket[] }) {
         <p className="empty-state">Нет данных.</p>
       ) : (
         <table className="appeals-table">
+          <colgroup>
+            <col style={{ width: "35%" }} />
+            <col style={{ width: "13%" }} />
+            <col style={{ width: "13%" }} />
+            <col style={{ width: "13%" }} />
+            <col style={{ width: "13%" }} />
+            <col style={{ width: "16%" }} />
+          </colgroup>
           <thead>
             <tr>
               <th>ТФ</th>
@@ -419,6 +435,15 @@ function ManagerCallTable({ rows }: { rows: ContactManagerStat[] }) {
   return (
     <div className="table-scroll">
       <table className="appeals-table stats-manager-table">
+        <colgroup>
+          <col style={{ width: "28%" }} />
+          <col style={{ width: "12%" }} />
+          <col style={{ width: "12%" }} />
+          <col style={{ width: "12%" }} />
+          <col style={{ width: "12%" }} />
+          <col style={{ width: "12%" }} />
+          <col style={{ width: "12%" }} />
+        </colgroup>
         <thead>
           <tr>
             <th>Менеджер</th>
