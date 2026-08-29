@@ -259,7 +259,7 @@ function DescriptionCell({
 
   return (
     <td
-      className={`wrap-cell wrap-cell-2lines${editable ? " editable-cell" : ""}`}
+      className={`wrap-cell${editable ? " editable-cell" : ""}`}
       title={appeal.description ?? undefined}
       onDoubleClick={startEdit}
     >
@@ -420,6 +420,8 @@ export function AppealsTable({
                 <td className="muted col-num">{index + 1}</td>
                 <td className="col-center date-cell">
                   <EmployeeNameButton id={appeal.operator.id} fullName={appeal.operator.fullName} />
+                  {", "}
+                  {formatTime(appeal.createdAt)}
                   {appeal.reportedTime && (
                     <>
                       <br />
@@ -433,7 +435,7 @@ export function AppealsTable({
                   <span className="muted">{detectMobileOperator(appeal.phone)}</span>
                 </td>
                 <td className="col-center">{renderTagSelect(appeal, "tf", tfOptions)}</td>
-                <td className="wrap-cell wrap-cell-2lines" title={appeal.clientData ?? undefined}>
+                <td className="wrap-cell" title={appeal.clientData ?? undefined}>
                   {appeal.clientData || "—"}
                 </td>
                 <td className="wrap-cell" title={appeal.dep ?? undefined}>
