@@ -449,10 +449,10 @@ function StatsEntryRow({
           className="icon-btn"
           onClick={handleRefresh}
           disabled={refreshing}
-          title={entry.companyName ? "Данные из dadata" : "Обновить из dadata"}
-          aria-label={entry.companyName ? "Данные из dadata" : "Обновить из dadata"}
+          title={entry.fromDadata ? "Данные из dadata" : "Обновить из dadata"}
+          aria-label={entry.fromDadata ? "Данные из dadata" : "Обновить из dadata"}
         >
-          {entry.companyName ? (
+          {entry.fromDadata ? (
             <IconCheck width={15} height={15} className="inn-dadata-ok" />
           ) : (
             <IconRestore width={15} height={15} />

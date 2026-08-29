@@ -113,6 +113,12 @@ model InnEntry {
   inn         String
   companyName String?
   region      String?
+  // True only when companyName/region were actually populated by a
+  // successful dadata lookup (creation, an ИНН change, or "Обновить из
+  // dadata") — never for hand-typed/admin-edited/imported values. Drives
+  // the ✓/⟳ icon in Статистика's "массовое редактирование": ✓ means "this
+  // is dadata's own data", ⟳ means it isn't (yet) and can be fetched.
+  fromDadata  Boolean @default(false)
   // Plain text snapshot of a SelectOption(field=INN_CATEGORY) value, not an
   // FK — same convention as GOV/CB/FSB/CLOSER on Appeal: the admin-managed
   // list is only the source of dropdown choices at write time, a row keeps

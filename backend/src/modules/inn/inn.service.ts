@@ -210,6 +210,7 @@ export async function createInnEntry(params: {
       inn: params.inn,
       companyName: name,
       region,
+      fromDadata: name !== null,
       contactsCount: params.contactsCount,
       transferredCount: params.transferredCount,
       called: params.called,
@@ -243,17 +244,19 @@ export async function updateInnEntry(params: {
 
   let companyName = existing.companyName;
   let region = existing.region;
+  let fromDadata = existing.fromDadata;
   if (params.data.inn !== undefined && params.data.inn !== existing.inn) {
     const apiKey = await getDadataApiKey(params.branchId);
     const lookup = await lookupOrganizationByInn(params.data.inn, apiKey);
     companyName = lookup.name;
     region = lookup.region;
+    fromDadata = lookup.name !== null;
   }
 
   const entry = await prisma.$transaction(async (tx) => {
     const updated = await tx.innEntry.update({
       where: { id: params.id },
-      data: { ...params.data, companyName, region },
+      data: { ...params.data, companyName, region, fromDadata },
     });
     await recordInnEntryHistory(tx, params.id, existing, params.data, params.changedById);
     return updated;
@@ -309,9 +312,14 @@ export async function adminUpdateInnEntry(params: {
       operatorNames = Object.fromEntries(users.map((u) => [u.id, u.fullName]));
     }
 
+    // Hand-typing over название/регион in bulk-edit means this row no
+    // longer reflects a dadata lookup — even if the admin just retyped the
+    // exact same dadata value, we can't tell that from a manual edit, so
+    // it's treated as manual either way.
+    const manualNameEdit = params.data.companyName !== undefined || params.data.region !== undefined;
     const updated = await tx.innEntry.update({
       where: { id: params.id },
-      data: params.data,
+      data: manualNameEdit ? { ...params.data, fromDadata: false } : params.data,
       include: { operator: { select: { fullName: true } } },
     });
     await recordInnEntryHistory(tx, params.id, existing, params.data, params.changedById, operatorNames);
@@ -338,7 +346,7 @@ export async function refreshInnEntryFromDadata(id: number, branchId: number, ch
   const updated = await prisma.$transaction(async (tx) => {
     const result = await tx.innEntry.update({
       where: { id },
-      data: changes,
+      data: { ...changes, fromDadata: name !== null },
       include: { operator: { select: { fullName: true } } },
     });
     await recordInnEntryHistory(tx, id, entry, changes, changedById);

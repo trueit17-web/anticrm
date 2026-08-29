@@ -71,6 +71,10 @@ export interface InnEntry {
   inn: string;
   companyName: string | null;
   region: string | null;
+  // True only when название/регион came from an actual dadata lookup
+  // (creation, an ИНН change, or "Обновить из dadata") — never for hand
+  // -typed/imported values.
+  fromDadata: boolean;
   contactsCount: number;
   transferredCount: number;
   called: boolean;

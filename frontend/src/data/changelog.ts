@@ -10,6 +10,13 @@ export interface ChangelogEntry {
 // separately, so there's only one place to update.
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.42.0",
+    date: "2026-08-29",
+    changes: [
+      "«Статистика» → ИНН: галочка «Данные из dadata» теперь показывается, только если название/регион реально пришли из dadata (при создании, смене ИНН или через «Обновить из dadata») — ручной ввод или импорт всегда показывают кружок обновления",
+    ],
+  },
+  {
     version: "1.41.0",
     date: "2026-08-28",
     changes: [
