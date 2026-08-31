@@ -267,16 +267,18 @@ export function InnModule() {
             {searchError && <p className="error-text">{searchError}</p>}
             {error && <p className="error-text">{error}</p>}
             {loading ? <p className="muted">Загрузка...</p> : (
-              <InnEntriesTable
-                entries={entries}
-                onCreate={handleCreate}
-                onCreateMany={handleCreateMany}
-                onUpdate={handleUpdate}
-                onDelete={handleDelete}
-                checkWarning={checkWarning}
-                highlightId={highlightId}
-                categories={categories}
-              />
+              <div className="table-scroll">
+                <InnEntriesTable
+                  entries={entries}
+                  onCreate={handleCreate}
+                  onCreateMany={handleCreateMany}
+                  onUpdate={handleUpdate}
+                  onDelete={handleDelete}
+                  checkWarning={checkWarning}
+                  highlightId={highlightId}
+                  categories={categories}
+                />
+              </div>
             )}
           </div>
         </div>

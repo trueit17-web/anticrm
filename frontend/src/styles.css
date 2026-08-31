@@ -922,6 +922,10 @@ body.col-resizing .col-resizer {
 
 .inn-entries-table {
   width: 100%;
+  /* Floor so columns never get squeezed unreadable on a narrow window —
+     the wrapping .table-scroll (see InnModule.tsx) scrolls horizontally
+     below this width instead, same as every other table in the app. */
+  min-width: 760px;
   border-collapse: collapse;
   table-layout: fixed;
 }
