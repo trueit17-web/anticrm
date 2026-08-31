@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { api, ApiError } from "../../api/client";
 import { InnCheckResult, InnEntry, SelectOption } from "../../types";
+import { useEdgeAutoScroll } from "../../hooks/useEdgeAutoScroll";
 import { IconNotepadPencil } from "../icons";
 import { InnEntriesTable } from "./InnEntriesTable";
 
@@ -30,6 +31,8 @@ export function InnModule() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const drawerRef = useRef<HTMLDivElement>(null);
+  const tableScrollRef = useRef<HTMLDivElement>(null);
+  useEdgeAutoScroll(tableScrollRef);
 
   const [searchInn, setSearchInn] = useState("");
   const [searching, setSearching] = useState(false);
@@ -267,7 +270,7 @@ export function InnModule() {
             {searchError && <p className="error-text">{searchError}</p>}
             {error && <p className="error-text">{error}</p>}
             {loading ? <p className="muted">Загрузка...</p> : (
-              <div className="table-scroll">
+              <div className="table-scroll" ref={tableScrollRef}>
                 <InnEntriesTable
                   entries={entries}
                   onCreate={handleCreate}

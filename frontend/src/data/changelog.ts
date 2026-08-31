@@ -10,6 +10,13 @@ export interface ChangelogEntry {
 // separately, so there's only one place to update.
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.43.3",
+    date: "2026-08-31",
+    changes: [
+      "Окно ИНН: таблицу теперь можно прокручивать по горизонтали, просто подведя мышь к краю окна — как в таблице трубок",
+    ],
+  },
+  {
     version: "1.43.2",
     date: "2026-08-31",
     changes: [
