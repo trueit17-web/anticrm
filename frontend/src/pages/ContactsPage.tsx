@@ -10,6 +10,7 @@ import { IconBack, IconCheck, IconTrash, IconX } from "../components/icons";
 import { InnModule } from "../components/inn/InnModule";
 import { EmployeeNameButton } from "../components/EmployeeCard";
 import { PetContactsAssistant } from "../components/pet/PetContactsAssistant";
+import { AppShell } from "../components/shell/AppShell";
 
 function formatDateTime(iso: string): string {
   return new Date(iso).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
@@ -654,7 +655,9 @@ export function ContactsPage() {
 
   if (!user) return null;
 
-  return (
+  const isNewUi = user.uiVersion === "new";
+
+  const pageBody = (
     <div className="page">
       <header className="page-header">
         <div>
@@ -664,11 +667,13 @@ export function ContactsPage() {
           </div>
           <p className="muted">Загруженные базы клиентов и очередь на обзвон.</p>
         </div>
-        <div className="header-actions">
-          <Link to="/" className="icon-link" title="К трубкам" aria-label="К трубкам">
-            <IconBack />
-          </Link>
-        </div>
+        {!isNewUi && (
+          <div className="header-actions">
+            <Link to="/" className="icon-link" title="К трубкам" aria-label="К трубкам">
+              <IconBack />
+            </Link>
+          </div>
+        )}
       </header>
 
       {innModuleEnabled && <InnModule />}
@@ -715,4 +720,6 @@ export function ContactsPage() {
       )}
     </div>
   );
+
+  return isNewUi ? <AppShell active="contacts">{pageBody}</AppShell> : pageBody;
 }

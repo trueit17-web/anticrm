@@ -22,6 +22,8 @@ import {
 import { canDeleteAppeal } from "../lib/permissions";
 import { EmployeeAvatarButton } from "../components/EmployeeCard";
 import { Link } from "react-router-dom";
+import { AppShell } from "../components/shell/AppShell";
+import { DashboardHome } from "./DashboardHome";
 
 type TagField = "gov" | "cb" | "fsb" | "closer" | "tf";
 
@@ -216,6 +218,10 @@ export function AppealsPage() {
   const [showCallCard, setShowCallCard] = useState(false);
   const [petConfig, setPetConfig] = useState<PetConfig | null>(null);
   const tableAreaRef = useRef<HTMLDivElement>(null);
+  // Only meaningful for uiVersion === "new" — the classic layout always
+  // shows the table and never reads this.
+  const [view, setView] = useState<"dashboard" | "table">("dashboard");
+  const isNewUi = user?.uiVersion === "new";
 
   // `silent` is used for the background poll below: it refreshes the data
   // without flashing the loading state or an error banner over the table
@@ -348,7 +354,7 @@ export function AppealsPage() {
     }
   }
 
-  return (
+  const pageBody = (
     <div className="page">
       <header className="page-header page-header-center">
         <div>
@@ -383,23 +389,37 @@ export function AppealsPage() {
         <WeekLeaders />
         <div className="header-actions-col">
           <div className="header-actions">
-            <Link to="/stats" className="icon-link" title="Статистика" aria-label="Статистика">
-              <IconStats />
-            </Link>
-            {contactsModuleEnabled && user.role === "MANAGER" && (
-              <Link to="/contacts" className="icon-link" title="Прозвон" aria-label="Прозвон">
-                <IconPhone />
-              </Link>
+            {isNewUi && view === "table" && (
+              <button
+                className="icon-link"
+                title="К дашборду"
+                aria-label="К дашборду"
+                onClick={() => setView("dashboard")}
+              >
+                <IconBack />
+              </button>
             )}
-            {contactsModuleEnabled && (user.role === "ADMIN" || user.role === "SUPERADMIN") && (
-              <Link to="/contacts" className="icon-link" title="Базы" aria-label="Базы">
-                <IconDatabase />
-              </Link>
-            )}
-            {(user.role === "ADMIN" || user.role === "SUPERADMIN") && (
-              <Link to="/admin" className="icon-link" title="Админка" aria-label="Админка">
-                <IconAdmin />
-              </Link>
+            {!isNewUi && (
+              <>
+                <Link to="/stats" className="icon-link" title="Статистика" aria-label="Статистика">
+                  <IconStats />
+                </Link>
+                {contactsModuleEnabled && user.role === "MANAGER" && (
+                  <Link to="/contacts" className="icon-link" title="Прозвон" aria-label="Прозвон">
+                    <IconPhone />
+                  </Link>
+                )}
+                {contactsModuleEnabled && (user.role === "ADMIN" || user.role === "SUPERADMIN") && (
+                  <Link to="/contacts" className="icon-link" title="Базы" aria-label="Базы">
+                    <IconDatabase />
+                  </Link>
+                )}
+                {(user.role === "ADMIN" || user.role === "SUPERADMIN") && (
+                  <Link to="/admin" className="icon-link" title="Админка" aria-label="Админка">
+                    <IconAdmin />
+                  </Link>
+                )}
+              </>
             )}
             {canDeleteAppeal(user) && (
               <button
@@ -411,9 +431,11 @@ export function AppealsPage() {
                 {showTrash ? <IconBack /> : <IconTrash />}
               </button>
             )}
-            <button className="icon-link" title="Выйти" aria-label="Выйти" onClick={logout}>
-              <IconLogout />
-            </button>
+            {!isNewUi && (
+              <button className="icon-link" title="Выйти" aria-label="Выйти" onClick={logout}>
+                <IconLogout />
+              </button>
+            )}
           </div>
           {contactsModuleEnabled && (user.role === "MANAGER" || user.role === "ADMIN" || user.role === "SUPERADMIN") && (
             <button className="btn-call" onClick={() => setShowCallCard(true)}>
@@ -433,12 +455,22 @@ export function AppealsPage() {
 
       {!loading && !error && !branchRequired && showTrash && <DeletedAppealsPanel date={selectedDate} />}
 
-      {!loading && !error && !branchRequired && !showTrash && (
+      {!loading && !error && !branchRequired && !showTrash && innModuleEnabled && <InnModule />}
+
+      {!loading && !error && !branchRequired && !showTrash && isNewUi && view === "dashboard" && (
+        <DashboardHome
+          appeals={appeals}
+          onOpenTable={() => setView("table")}
+          innModuleEnabled={innModuleEnabled}
+          contactsModuleEnabled={contactsModuleEnabled}
+        />
+      )}
+
+      {!loading && !error && !branchRequired && !showTrash && (!isNewUi || view === "table") && (
         <div className="table-with-fab" ref={tableAreaRef}>
           {petConfig?.enabled && (
             <PetAssistant containerRef={tableAreaRef} appeals={appeals} config={petConfig} currentUserId={user.id} />
           )}
-          {innModuleEnabled && <InnModule />}
           <button className="fab" title="Новая трубка" onClick={() => setCreating(true)}>
             +
           </button>
@@ -477,4 +509,6 @@ export function AppealsPage() {
       )}
     </div>
   );
+
+  return isNewUi ? <AppShell active="appeals">{pageBody}</AppShell> : pageBody;
 }

@@ -12,6 +12,7 @@ import { WalletManager } from "../components/WalletManager";
 import { PetManager } from "../components/PetManager";
 import { IconBack, IconTrash } from "../components/icons";
 import { formatRuDate, todayInputValue } from "../lib/dateUtils";
+import { AppShell } from "../components/shell/AppShell";
 
 const FIELDS: OptionField[] = ["TF", "GOV", "CB", "FSB", "CLOSER", "STATUS", "INN_CATEGORY"];
 
@@ -240,7 +241,9 @@ export function AdminPage() {
     setSelectedDate(date);
   }
 
-  return (
+  const isNewUi = user?.uiVersion === "new";
+
+  const pageBody = (
     <div className="page">
       <header className="page-header">
         <div>
@@ -259,9 +262,11 @@ export function AdminPage() {
               title="Показать трубки за дату"
             />
           )}
-          <Link to="/" className="icon-link" title="К трубкам" aria-label="К трубкам">
-            <IconBack />
-          </Link>
+          {!isNewUi && (
+            <Link to="/" className="icon-link" title="К трубкам" aria-label="К трубкам">
+              <IconBack />
+            </Link>
+          )}
         </div>
       </header>
 
@@ -367,4 +372,6 @@ export function AdminPage() {
       </div>
     </div>
   );
+
+  return isNewUi ? <AppShell active="admin">{pageBody}</AppShell> : pageBody;
 }

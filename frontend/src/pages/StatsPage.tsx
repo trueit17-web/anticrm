@@ -23,6 +23,7 @@ import { IconBack, IconX } from "../components/icons";
 import { EmployeeNameButton } from "../components/EmployeeCard";
 import { PetStatsAssistant } from "../components/pet/PetStatsAssistant";
 import { InnStatsSection } from "../components/inn/InnStatsSection";
+import { AppShell } from "../components/shell/AppShell";
 import { APP_BUILD, APP_VERSION } from "../data/changelog";
 import { getActiveBranchId } from "../api/client";
 
@@ -775,7 +776,9 @@ export function StatsPage() {
     loadDay(day);
   }
 
-  return (
+  const isNewUi = user?.uiVersion === "new";
+
+  const pageBody = (
     <div className="page">
       <header className="page-header">
         <div>
@@ -784,11 +787,13 @@ export function StatsPage() {
             <BranchSwitcher />
           </div>
         </div>
-        <div className="header-actions">
-          <Link to="/" className="icon-link" title="К трубкам" aria-label="К трубкам">
-            <IconBack />
-          </Link>
-        </div>
+        {!isNewUi && (
+          <div className="header-actions">
+            <Link to="/" className="icon-link" title="К трубкам" aria-label="К трубкам">
+              <IconBack />
+            </Link>
+          </div>
+        )}
       </header>
 
       {innModuleEnabled && (
@@ -967,4 +972,6 @@ export function StatsPage() {
       {activeTab === "appeals" && petConfig?.enabled && <PetStatsAssistant byOperator={byOperator} config={petConfig} />}
     </div>
   );
+
+  return isNewUi ? <AppShell active="stats">{pageBody}</AppShell> : pageBody;
 }

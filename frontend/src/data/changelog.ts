@@ -10,6 +10,13 @@ export interface ChangelogEntry {
 // separately, so there's only one place to update.
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.44.0",
+    date: "2026-09-03",
+    changes: [
+      "Новый интерфейс (включается админом в Админка → Пользователи): постоянная боковая панель с быстрым переходом между Трубками, Статистикой, Прозвоном и Админкой, и стартовый экран-дашборд со сводкой дня вместо таблицы",
+    ],
+  },
+  {
     version: "1.43.3",
     date: "2026-08-31",
     changes: [
