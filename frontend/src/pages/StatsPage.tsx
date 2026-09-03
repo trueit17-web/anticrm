@@ -28,7 +28,7 @@ import { QuickStatsTiles } from "../components/shell/QuickStatsPanel";
 import { APP_BUILD, APP_VERSION } from "../data/changelog";
 import { getActiveBranchId } from "../api/client";
 
-type Period = "today" | "week" | "custom";
+type Period = "today" | "week" | "month" | "custom";
 
 interface LabeledCount {
   label: string;
@@ -55,6 +55,10 @@ function mondayOfWeek(isoDate: string): string {
   const diffToMonday = day === 0 ? -6 : 1 - day;
   d.setUTCDate(d.getUTCDate() + diffToMonday);
   return d.toISOString().slice(0, 10);
+}
+
+function firstDayOfMonth(isoDate: string): string {
+  return isoDate.slice(0, 7) + "-01";
 }
 
 function formatDay(day: string): string {
@@ -102,15 +106,9 @@ function DailyChart({
   const areaPath = `M${trendPoints} L${bars[bars.length - 1].cx},${plotBottom} L${bars[0].cx},${plotBottom} Z`;
 
   const gridLines = enhanced ? 4 : 0;
-  const total = data.reduce((sum, d) => sum + d.count, 0);
 
   return (
     <div>
-      {enhanced && (
-        <p className="stats-chart-total">
-          Итого за период: <strong>{total}</strong>
-        </p>
-      )}
       <svg
         viewBox={`0 0 ${width} ${height}`}
         className="stats-chart"
@@ -794,6 +792,12 @@ export function StatsPage() {
   const [dayAppeals, setDayAppeals] = useState<Appeal[]>([]);
   const [dayLoading, setDayLoading] = useState(false);
 
+  // Total for the equal-length window immediately before the current one —
+  // powers the new interface's "▲/▼ X% к прошлому периоду" badge on the
+  // chart. null while loading/unavailable, in which case the badge is
+  // simply not shown rather than guessing.
+  const [prevPeriodTotal, setPrevPeriodTotal] = useState<number | null>(null);
+
   const [petConfig, setPetConfig] = useState<PetConfig | null>(null);
 
   useEffect(() => {
@@ -801,9 +805,15 @@ export function StatsPage() {
       return;
     }
     const weekMonday = mondayOfWeek(todayInputValue());
-    const from = period === "today" ? todayInputValue() : period === "week" ? weekMonday : customFrom;
+    const monthStart = firstDayOfMonth(todayInputValue());
+    const from =
+      period === "today" ? todayInputValue() : period === "week" ? weekMonday : period === "month" ? monthStart : customFrom;
     const to =
-      period === "custom" ? addDays(customTo, 1) : period === "week" ? addDays(weekMonday, 6) : addDays(todayInputValue(), 1);
+      period === "custom"
+        ? addDays(customTo, 1)
+        : period === "week"
+          ? addDays(weekMonday, 6)
+          : addDays(todayInputValue(), 1);
 
     setLoading(true);
     setError(null);
@@ -818,6 +828,16 @@ export function StatsPage() {
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : "Не удалось загрузить статистику"))
       .finally(() => setLoading(false));
+
+    // Equal-length window immediately before [from, to) — real data, no
+    // fabricated trend.
+    const lengthMs = new Date(`${to}T00:00:00Z`).getTime() - new Date(`${from}T00:00:00Z`).getTime();
+    const prevTo = from;
+    const prevFrom = new Date(new Date(`${from}T00:00:00Z`).getTime() - lengthMs).toISOString().slice(0, 10);
+    api
+      .get<RangeStats>(`/appeals/stats?from=${prevFrom}&to=${prevTo}`)
+      .then((res) => setPrevPeriodTotal(res.byDate.reduce((sum, d) => sum + d.count, 0)))
+      .catch(() => setPrevPeriodTotal(null));
 
     // Same range as the appeals stats above. Hidden (null) when the Прозвон
     // module is off for this branch (403) or the request otherwise fails.
@@ -886,6 +906,12 @@ export function StatsPage() {
 
   const isNewUi = user?.uiVersion === "new";
 
+  const periodTotal = byDate.reduce((sum, d) => sum + d.count, 0);
+  const trendPct =
+    prevPeriodTotal !== null && prevPeriodTotal > 0
+      ? Math.round(((periodTotal - prevPeriodTotal) / prevPeriodTotal) * 100)
+      : null;
+
   // Shared between the classic toolbar (old interface) and the chart card's
   // header (new interface, where it moves alongside the chart it drives) —
   // same controls, same state, just rendered in a different place.
@@ -928,6 +954,7 @@ export function StatsPage() {
           [
             ["today", "Сегодня"],
             ["week", "Неделя"],
+            ["month", "Месяц"],
             ["custom", "Период"],
           ] as [Period, string][]
         ).map(([value, label]) => (
@@ -973,7 +1000,7 @@ export function StatsPage() {
         )}
       </header>
 
-      {innModuleEnabled && (
+      {innModuleEnabled && (!isNewUi || activeTab === "inn") && (
         <div className="stats-tabs-row">
           <div className="stats-tabs-side">
             {activeTab === "inn" && (
@@ -995,20 +1022,22 @@ export function StatsPage() {
               />
             )}
           </div>
-          <div className="admin-tabs">
-            <button
-              className={`admin-tab${activeTab === "appeals" ? " admin-tab-active" : ""}`}
-              onClick={() => setActiveTab("appeals")}
-            >
-              Обращения
-            </button>
-            <button
-              className={`admin-tab${activeTab === "inn" ? " admin-tab-active" : ""}`}
-              onClick={() => setActiveTab("inn")}
-            >
-              ИНН
-            </button>
-          </div>
+          {!isNewUi && (
+            <div className="admin-tabs">
+              <button
+                className={`admin-tab${activeTab === "appeals" ? " admin-tab-active" : ""}`}
+                onClick={() => setActiveTab("appeals")}
+              >
+                Обращения
+              </button>
+              <button
+                className={`admin-tab${activeTab === "inn" ? " admin-tab-active" : ""}`}
+                onClick={() => setActiveTab("inn")}
+              >
+                ИНН
+              </button>
+            </div>
+          )}
           <div className="stats-tabs-side stats-tabs-side-end">
             {activeTab === "inn" && (
               <div className="stats-tabs-inn-search-wrap">
@@ -1045,6 +1074,14 @@ export function StatsPage() {
         </div>
       )}
 
+      {isNewUi && (
+        <QuickStatsTiles
+          summary={summary}
+          innModuleEnabled={innModuleEnabled}
+          onOpenInnTab={() => setActiveTab("inn")}
+        />
+      )}
+
       {activeTab === "inn" ? (
         <InnStatsSection
           isAdmin={isAdmin}
@@ -1066,32 +1103,40 @@ export function StatsPage() {
         </div>
       )}
 
-      {isNewUi && <QuickStatsTiles summary={summary} innModuleEnabled={innModuleEnabled} />}
-
       {loading && <p>Загрузка...</p>}
       {error && <p className="error-text">{error}</p>}
 
       {!loading && !error && (
         <>
-          <section className={`stats-section${isNewUi ? " stats-section-chart-new" : ""}`}>
-            {isNewUi ? (
-              <div className="chart-head-new">
+          {isNewUi ? (
+            <div className="chart-card">
+              <div className="chart-head">
                 <div>
-                  <p className="stats-eyebrow">Трубки</p>
-                  <h2>Трубки по дням — нажмите на столбец, чтобы посмотреть список</h2>
+                  <h3>
+                    Трубки по дням
+                    {trendPct !== null && (
+                      <span className={`chart-badge${trendPct < 0 ? " chart-badge-down" : ""}`}>
+                        {trendPct >= 0 ? "▲" : "▼"} {Math.abs(trendPct)}% к прошлому периоду
+                      </span>
+                    )}
+                  </h3>
+                  <div className="chart-sub">
+                    Итого за период: {periodTotal} · нажмите на столбец, чтобы посмотреть список
+                  </div>
                 </div>
                 {periodControlsNew}
               </div>
-            ) : (
-              <>
-                <p className="stats-eyebrow">Трубки</p>
-                <h2>Трубки по дням — нажмите на столбец, чтобы посмотреть список</h2>
-              </>
-            )}
-            <div className="table-scroll stats-chart-wrap">
-              <DailyChart data={byDate} onPick={loadDay} enhanced={isNewUi} />
+              <DailyChart data={byDate} onPick={loadDay} enhanced />
             </div>
-          </section>
+          ) : (
+            <section className="stats-section">
+              <p className="stats-eyebrow">Трубки</p>
+              <h2>Трубки по дням — нажмите на столбец, чтобы посмотреть список</h2>
+              <div className="table-scroll stats-chart-wrap">
+                <DailyChart data={byDate} onPick={loadDay} />
+              </div>
+            </section>
+          )}
 
           {selectedDay && (
             <section className="stats-section">

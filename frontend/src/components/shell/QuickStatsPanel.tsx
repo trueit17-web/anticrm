@@ -20,7 +20,15 @@ function mondayOfWeek(isoDate: string): string {
 // Scenario-first tiles for the "new" interface's Статистика page — a quick
 // read of "how am I doing" before diving into the period-filtered chart and
 // breakdowns below. See AppShell.tsx for the surrounding rail nav.
-export function QuickStatsTiles({ summary, innModuleEnabled }: { summary: SummaryStats; innModuleEnabled: boolean }) {
+export function QuickStatsTiles({
+  summary,
+  innModuleEnabled,
+  onOpenInnTab,
+}: {
+  summary: SummaryStats;
+  innModuleEnabled: boolean;
+  onOpenInnTab: () => void;
+}) {
   const { user } = useAuth();
   const [rank, setRank] = useState<{ place: number | null; count: number } | null>(null);
 
@@ -56,17 +64,17 @@ export function QuickStatsTiles({ summary, innModuleEnabled }: { summary: Summar
         <div className="kpi-value">{summary.week}</div>
         <div className="kpi-sub">трубок на этой неделе</div>
       </div>
+      <div className="kpi kpi--muted">
+        <div className="kpi-label">Трубок за всё время</div>
+        <div className="kpi-value">{summary.total}</div>
+      </div>
       {innModuleEnabled && (
         <div className="kpi kpi--danger">
           <div className="kpi-label">ИНН</div>
           <div className="kpi-value" style={{ fontSize: 20 }}>
-            Журнал дня
+            Журнал ИНН
           </div>
-          <button
-            type="button"
-            className="kpi-link-btn"
-            onClick={() => document.querySelector<HTMLButtonElement>(".inn-dock-icon")?.click()}
-          >
+          <button type="button" className="kpi-link-btn" onClick={onOpenInnTab}>
             Открыть ИНН →
           </button>
         </div>
