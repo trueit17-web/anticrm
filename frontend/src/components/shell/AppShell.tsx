@@ -2,7 +2,8 @@ import { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { useBranchSwitcher } from "../../hooks/useBranchSwitcher";
-import { IconAdmin, IconDatabase, IconHeadset, IconLogout, IconPhone, IconStats } from "../icons";
+import { IconAdmin, IconDatabase, IconHeadset, IconLogout, IconNotepadPencil, IconPhone, IconStats } from "../icons";
+import { InnModule } from "../inn/InnModule";
 
 export type AppShellSection = "appeals" | "stats" | "contacts" | "admin";
 
@@ -16,6 +17,7 @@ export function AppShell({ active, children }: { active: AppShellSection; childr
   const { user, logout } = useAuth();
   const { current: currentBranch, loaded } = useBranchSwitcher();
   const contactsModuleEnabled = !loaded || currentBranch === null || currentBranch.contactsEnabled;
+  const innModuleEnabled = !loaded || currentBranch === null || currentBranch.innEnabled;
 
   if (!user) return <>{children}</>;
 
@@ -38,6 +40,17 @@ export function AppShell({ active, children }: { active: AppShellSection; childr
         >
           <IconStats width={22} height={22} />
         </Link>
+        {innModuleEnabled && (
+          <button
+            type="button"
+            className="app-rail-item"
+            title="ИНН"
+            aria-label="ИНН"
+            onClick={() => document.querySelector<HTMLButtonElement>(".inn-dock-icon")?.click()}
+          >
+            <IconNotepadPencil width={22} height={22} />
+          </button>
+        )}
         {contactsModuleEnabled && (user.role === "MANAGER" || user.role === "ADMIN" || user.role === "SUPERADMIN") && (
           <Link
             to="/contacts"
@@ -64,6 +77,7 @@ export function AppShell({ active, children }: { active: AppShellSection; childr
         </button>
       </nav>
       <div className="app-shell-content">{children}</div>
+      {innModuleEnabled && <InnModule />}
     </div>
   );
 }

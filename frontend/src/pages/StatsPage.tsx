@@ -24,6 +24,7 @@ import { EmployeeNameButton } from "../components/EmployeeCard";
 import { PetStatsAssistant } from "../components/pet/PetStatsAssistant";
 import { InnStatsSection } from "../components/inn/InnStatsSection";
 import { AppShell } from "../components/shell/AppShell";
+import { QuickLinksPanel, QuickStatsTiles } from "../components/shell/QuickStatsPanel";
 import { APP_BUILD, APP_VERSION } from "../data/changelog";
 import { getActiveBranchId } from "../api/client";
 
@@ -662,6 +663,7 @@ export function StatsPage() {
   // "assume enabled while loading" concern, since the tab simply appears
   // once /branches/mine resolves (same load pattern as ContactsPage).
   const [innModuleEnabled, setInnModuleEnabled] = useState(false);
+  const [contactsModuleEnabled, setContactsModuleEnabled] = useState(false);
 
   const [period, setPeriod] = useState<Period>("today");
   const [customFrom, setCustomFrom] = useState(todayInputValue());
@@ -750,7 +752,10 @@ export function StatsPage() {
           : res.branches.length === 1
             ? res.branches[0]
             : null;
-        if (active) setInnModuleEnabled(active.innEnabled);
+        if (active) {
+          setInnModuleEnabled(active.innEnabled);
+          setContactsModuleEnabled(active.contactsEnabled);
+        }
       })
       .catch(() => {});
   }, []);
@@ -795,6 +800,13 @@ export function StatsPage() {
           </div>
         )}
       </header>
+
+      {isNewUi && (
+        <>
+          <QuickStatsTiles summary={summary} innModuleEnabled={innModuleEnabled} />
+          <QuickLinksPanel innModuleEnabled={innModuleEnabled} contactsModuleEnabled={contactsModuleEnabled} />
+        </>
+      )}
 
       {innModuleEnabled && (
         <div className="stats-tabs-row">

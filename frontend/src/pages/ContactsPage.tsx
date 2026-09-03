@@ -676,7 +676,7 @@ export function ContactsPage() {
         )}
       </header>
 
-      {innModuleEnabled && <InnModule />}
+      {!isNewUi && innModuleEnabled && <InnModule />}
 
       {!moduleEnabled ? (
         <p className="empty-state">

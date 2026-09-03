@@ -275,6 +275,18 @@ a {
   margin-bottom: 2px;
 }
 
+.quick-links-card--row {
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.quick-links-card--row h3 {
+  margin: 0;
+  white-space: nowrap;
+}
+
 .quick-link-pill {
   display: flex;
   align-items: center;

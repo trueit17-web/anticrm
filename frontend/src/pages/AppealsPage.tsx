@@ -23,7 +23,6 @@ import { canDeleteAppeal } from "../lib/permissions";
 import { EmployeeAvatarButton } from "../components/EmployeeCard";
 import { Link } from "react-router-dom";
 import { AppShell } from "../components/shell/AppShell";
-import { DashboardHome } from "./DashboardHome";
 
 type TagField = "gov" | "cb" | "fsb" | "closer" | "tf";
 
@@ -218,9 +217,6 @@ export function AppealsPage() {
   const [showCallCard, setShowCallCard] = useState(false);
   const [petConfig, setPetConfig] = useState<PetConfig | null>(null);
   const tableAreaRef = useRef<HTMLDivElement>(null);
-  // Only meaningful for uiVersion === "new" — the classic layout always
-  // shows the table and never reads this.
-  const [view, setView] = useState<"dashboard" | "table">("dashboard");
   const isNewUi = user?.uiVersion === "new";
 
   // `silent` is used for the background poll below: it refreshes the data
@@ -389,16 +385,6 @@ export function AppealsPage() {
         <WeekLeaders />
         <div className="header-actions-col">
           <div className="header-actions">
-            {isNewUi && view === "table" && (
-              <button
-                className="icon-link"
-                title="К дашборду"
-                aria-label="К дашборду"
-                onClick={() => setView("dashboard")}
-              >
-                <IconBack />
-              </button>
-            )}
             {!isNewUi && (
               <>
                 <Link to="/stats" className="icon-link" title="Статистика" aria-label="Статистика">
@@ -455,18 +441,9 @@ export function AppealsPage() {
 
       {!loading && !error && !branchRequired && showTrash && <DeletedAppealsPanel date={selectedDate} />}
 
-      {!loading && !error && !branchRequired && !showTrash && innModuleEnabled && <InnModule />}
+      {!loading && !error && !branchRequired && !showTrash && !isNewUi && innModuleEnabled && <InnModule />}
 
-      {!loading && !error && !branchRequired && !showTrash && isNewUi && view === "dashboard" && (
-        <DashboardHome
-          appeals={appeals}
-          onOpenTable={() => setView("table")}
-          innModuleEnabled={innModuleEnabled}
-          contactsModuleEnabled={contactsModuleEnabled}
-        />
-      )}
-
-      {!loading && !error && !branchRequired && !showTrash && (!isNewUi || view === "table") && (
+      {!loading && !error && !branchRequired && !showTrash && (
         <div className="table-with-fab" ref={tableAreaRef}>
           {petConfig?.enabled && (
             <PetAssistant containerRef={tableAreaRef} appeals={appeals} config={petConfig} currentUserId={user.id} />
