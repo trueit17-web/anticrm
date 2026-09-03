@@ -24,7 +24,6 @@ import { EmployeeNameButton } from "../components/EmployeeCard";
 import { PetStatsAssistant } from "../components/pet/PetStatsAssistant";
 import { InnStatsSection } from "../components/inn/InnStatsSection";
 import { AppShell } from "../components/shell/AppShell";
-import { QuickLinksPanel, QuickStatsTiles } from "../components/shell/QuickStatsPanel";
 import { APP_BUILD, APP_VERSION } from "../data/changelog";
 import { getActiveBranchId } from "../api/client";
 
@@ -715,7 +714,6 @@ export function StatsPage() {
   // "assume enabled while loading" concern, since the tab simply appears
   // once /branches/mine resolves (same load pattern as ContactsPage).
   const [innModuleEnabled, setInnModuleEnabled] = useState(false);
-  const [contactsModuleEnabled, setContactsModuleEnabled] = useState(false);
 
   const [period, setPeriod] = useState<Period>("today");
   const [customFrom, setCustomFrom] = useState(todayInputValue());
@@ -804,10 +802,7 @@ export function StatsPage() {
           : res.branches.length === 1
             ? res.branches[0]
             : null;
-        if (active) {
-          setInnModuleEnabled(active.innEnabled);
-          setContactsModuleEnabled(active.contactsEnabled);
-        }
+        if (active) setInnModuleEnabled(active.innEnabled);
       })
       .catch(() => {});
   }, []);
@@ -835,6 +830,38 @@ export function StatsPage() {
 
   const isNewUi = user?.uiVersion === "new";
 
+  // Shared between the classic toolbar (old interface) and the chart card's
+  // header (new interface, where it moves alongside the chart it drives) —
+  // same controls, same state, just rendered in a different place.
+  const periodControls = (
+    <div className="inline-form">
+      <label>
+        Период
+        <select value={period} onChange={(e) => setPeriod(e.target.value as Period)}>
+          <option value="today">Сегодня</option>
+          <option value="week">Неделя</option>
+          <option value="custom">Период</option>
+        </select>
+      </label>
+      {period === "custom" && (
+        <>
+          <label>
+            С
+            <input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} />
+          </label>
+          <label>
+            По
+            <input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} />
+          </label>
+        </>
+      )}
+      <label>
+        За день
+        <input type="date" value={selectedDay} onChange={(e) => pickDay(e.target.value)} />
+      </label>
+    </div>
+  );
+
   const pageBody = (
     <div className="page">
       <header className="page-header">
@@ -852,13 +879,6 @@ export function StatsPage() {
           </div>
         )}
       </header>
-
-      {isNewUi && (
-        <>
-          <QuickStatsTiles summary={summary} innModuleEnabled={innModuleEnabled} />
-          <QuickLinksPanel innModuleEnabled={innModuleEnabled} contactsModuleEnabled={contactsModuleEnabled} />
-        </>
-      )}
 
       {innModuleEnabled && (
         <div className="stats-tabs-row">
@@ -942,40 +962,22 @@ export function StatsPage() {
         />
       ) : (
         <>
-      <div className="stats-toolbar">
-        <div className="inline-form">
-          <label>
-            Период
-            <select value={period} onChange={(e) => setPeriod(e.target.value as Period)}>
-              <option value="today">Сегодня</option>
-              <option value="week">Неделя</option>
-              <option value="custom">Период</option>
-            </select>
-          </label>
-          {period === "custom" && (
-            <>
-              <label>
-                С
-                <input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} />
-              </label>
-              <label>
-                По
-                <input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} />
-              </label>
-            </>
-          )}
-          <label>
-            За день
-            <input type="date" value={selectedDay} onChange={(e) => pickDay(e.target.value)} />
-          </label>
+      {!isNewUi && (
+        <div className="stats-toolbar">
+          {periodControls}
+          <div className="stats-summary kpi-grid">
+            <Kpi value={summary.today} label="трубок сегодня" accent="gold" />
+            <Kpi value={summary.week} label="трубок на этой неделе" accent="gold" />
+            <Kpi value={summary.total} label="трубок за всё время" accent="muted" />
+          </div>
         </div>
+      )}
 
-        <div className="stats-summary kpi-grid">
-          <Kpi value={summary.today} label="трубок сегодня" accent="gold" />
-          <Kpi value={summary.week} label="трубок на этой неделе" accent="gold" />
+      {isNewUi && (
+        <div className="stats-total-tile-row">
           <Kpi value={summary.total} label="трубок за всё время" accent="muted" />
         </div>
-      </div>
+      )}
 
       {loading && <p>Загрузка...</p>}
       {error && <p className="error-text">{error}</p>}
@@ -983,8 +985,20 @@ export function StatsPage() {
       {!loading && !error && (
         <>
           <section className={`stats-section${isNewUi ? " stats-section-chart-new" : ""}`}>
-            <p className="stats-eyebrow">Трубки</p>
-            <h2>Трубки по дням — нажмите на столбец, чтобы посмотреть список</h2>
+            {isNewUi ? (
+              <div className="chart-head-new">
+                <div>
+                  <p className="stats-eyebrow">Трубки</p>
+                  <h2>Трубки по дням — нажмите на столбец, чтобы посмотреть список</h2>
+                </div>
+                {periodControls}
+              </div>
+            ) : (
+              <>
+                <p className="stats-eyebrow">Трубки</p>
+                <h2>Трубки по дням — нажмите на столбец, чтобы посмотреть список</h2>
+              </>
+            )}
             <div className="table-scroll stats-chart-wrap">
               <DailyChart data={byDate} onPick={loadDay} enhanced={isNewUi} />
             </div>

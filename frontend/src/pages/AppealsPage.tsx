@@ -487,5 +487,11 @@ export function AppealsPage() {
     </div>
   );
 
-  return isNewUi ? <AppShell active="appeals">{pageBody}</AppShell> : pageBody;
+  return isNewUi ? (
+    <AppShell active="appeals" onCreateAppeal={() => setCreating(true)}>
+      {pageBody}
+    </AppShell>
+  ) : (
+    pageBody
+  );
 }

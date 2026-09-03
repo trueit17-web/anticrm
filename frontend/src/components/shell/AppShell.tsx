@@ -2,7 +2,7 @@ import { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { useBranchSwitcher } from "../../hooks/useBranchSwitcher";
-import { IconAdmin, IconDatabase, IconHeadset, IconLogout, IconNotepadPencil, IconPhone, IconStats } from "../icons";
+import { IconAdmin, IconDatabase, IconHeadset, IconLogout, IconNotepadPencil, IconPhone, IconPlus, IconStats } from "../icons";
 import { InnModule } from "../inn/InnModule";
 
 export type AppShellSection = "appeals" | "stats" | "contacts" | "admin";
@@ -13,7 +13,18 @@ export type AppShellSection = "appeals" | "stats" | "contacts" | "admin";
 // between the app's main areas doesn't require hunting in a corner. Only
 // rendered for accounts with User.uiVersion === "new" (see the toggle in
 // Админка → Пользователи); everyone else keeps the classic per-page header.
-export function AppShell({ active, children }: { active: AppShellSection; children: ReactNode }) {
+export function AppShell({
+  active,
+  children,
+  onCreateAppeal,
+}: {
+  active: AppShellSection;
+  children: ReactNode;
+  // Only meaningful when active === "appeals" — lets the Трубки rail slot
+  // double as a "new trubka" action while already on that page, instead of
+  // linking to the page you're already looking at.
+  onCreateAppeal?: () => void;
+}) {
   const { user, logout } = useAuth();
   const { current: currentBranch, loaded } = useBranchSwitcher();
   const contactsModuleEnabled = !loaded || currentBranch === null || currentBranch.contactsEnabled;
@@ -24,14 +35,26 @@ export function AppShell({ active, children }: { active: AppShellSection; childr
   return (
     <div className="app-shell">
       <nav className="app-rail">
-        <Link
-          to="/"
-          className={`app-rail-item${active === "appeals" ? " app-rail-item-active" : ""}`}
-          title="Трубки"
-          aria-label="Трубки"
-        >
-          <IconHeadset width={22} height={22} />
-        </Link>
+        {active === "appeals" && onCreateAppeal ? (
+          <button
+            type="button"
+            className="app-rail-item app-rail-item-active"
+            title="Новая трубка"
+            aria-label="Новая трубка"
+            onClick={onCreateAppeal}
+          >
+            <IconPlus width={22} height={22} />
+          </button>
+        ) : (
+          <Link
+            to="/"
+            className={`app-rail-item${active === "appeals" ? " app-rail-item-active" : ""}`}
+            title="Трубки"
+            aria-label="Трубки"
+          >
+            <IconHeadset width={22} height={22} />
+          </Link>
+        )}
         <Link
           to="/stats"
           className={`app-rail-item${active === "stats" ? " app-rail-item-active" : ""}`}

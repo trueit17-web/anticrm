@@ -232,6 +232,14 @@ a {
   min-width: 0;
 }
 
+/* The rail's own ИНН icon is the entry point in the new interface — the
+   classic floating dock icon would just be a redundant second one. Hiding
+   it is purely visual: AppShell's rail button still opens the drawer by
+   calling .click() on this (now invisible) element. */
+.app-shell .inn-dock-icon {
+  display: none;
+}
+
 /* Dashboard landing view (new interface) — see pages/DashboardHome.tsx. */
 .kpi-link-btn {
   display: inline-flex;
@@ -1838,6 +1846,27 @@ body.col-resizing .col-resizer {
 .stats-section-chart-new .stats-chart-wrap {
   padding: 22px 24px 14px;
   border-radius: 16px;
+}
+
+.stats-total-tile-row {
+  display: flex;
+  margin-bottom: 16px;
+}
+
+.stats-total-tile-row .kpi {
+  min-width: 220px;
+}
+
+.chart-head-new {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.chart-head-new .inline-form {
+  margin: 0;
 }
 
 .stats-chart-total {

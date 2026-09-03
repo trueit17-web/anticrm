@@ -13,6 +13,14 @@ const base: IconProps = {
   strokeLinejoin: "round",
 };
 
+export function IconPlus(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M12 5v14M5 12h14" />
+    </svg>
+  );
+}
+
 export function IconHeadset(props: IconProps) {
   return (
     <svg {...base} {...props}>
