@@ -227,6 +227,48 @@ a {
   flex: 1;
 }
 
+/* The "new trubka" action — a circular FAB rather than a square nav tile,
+   so it reads as an action button, not another destination in the list. */
+.app-rail-fab {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+  background: var(--primary);
+  color: #201705;
+  border: none;
+  box-shadow: 0 8px 20px rgba(207, 154, 68, 0.5);
+}
+
+.app-rail-fab:hover {
+  background: var(--primary-dark);
+  color: #f2efe6;
+}
+
+/* The most-used action on the rail — bigger and always accented so it never
+   blends in with the plain nav icons around it. */
+.app-rail-item-inn {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--primary);
+  color: #201705;
+  border: 3px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 10px 26px rgba(207, 154, 68, 0.55);
+}
+
+.app-rail-item-inn:hover {
+  background: var(--primary-dark);
+  color: #f2efe6;
+  box-shadow: 0 12px 30px rgba(207, 154, 68, 0.65);
+}
+
 .app-shell-content {
   flex: 1;
   min-width: 0;
@@ -269,8 +311,14 @@ a {
     z-index: 60;
   }
 
-  .app-rail-item {
+  .app-rail-item,
+  .app-rail-fab {
     margin-bottom: 0;
+  }
+
+  .app-rail-item-inn {
+    width: 48px;
+    height: 48px;
   }
 
   .app-rail-spacer {
@@ -282,7 +330,8 @@ a {
   }
 }
 
-/* Dashboard landing view (new interface) — see pages/DashboardHome.tsx. */
+/* Dashboard-style tiles/panels for the new interface — see
+   components/shell/QuickStatsPanel.tsx and pages/StatsPage.tsx. */
 .kpi-link-btn {
   display: inline-flex;
   margin-top: 10px;
@@ -1890,15 +1939,6 @@ body.col-resizing .col-resizer {
   border-radius: 16px;
 }
 
-.stats-total-tile-row {
-  display: flex;
-  margin-bottom: 16px;
-}
-
-.stats-total-tile-row .kpi {
-  min-width: 220px;
-}
-
 .chart-head-new {
   display: flex;
   justify-content: space-between;
@@ -1907,8 +1947,146 @@ body.col-resizing .col-resizer {
   gap: 16px;
 }
 
-.chart-head-new .inline-form {
-  margin: 0;
+.period-controls-new {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.period-pills {
+  display: flex;
+  gap: 6px;
+}
+
+.period-pill {
+  padding: 7px 14px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 700;
+  background: var(--surface-soft);
+  color: var(--muted);
+  border: none;
+}
+
+.period-pill:hover {
+  background: rgba(207, 154, 68, 0.18);
+  color: var(--text);
+}
+
+.period-pill-active,
+.period-pill-active:hover {
+  background: var(--primary);
+  color: #211e17;
+}
+
+.period-controls-new-dates {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.period-controls-new-dates input {
+  padding: 6px 8px;
+  font-size: 12.5px;
+}
+
+.period-controls-new-day {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.period-controls-new-day input {
+  padding: 6px 8px;
+  font-size: 12.5px;
+}
+
+.breakdown-bars {
+  display: flex;
+  flex-direction: column;
+}
+
+.leader-row,
+.gov-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(216, 213, 201, 0.5);
+}
+
+.leader-row:last-child,
+.gov-row:last-child {
+  border-bottom: none;
+}
+
+.leader-av {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  background: var(--surface-soft);
+  color: var(--primary-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.leader-name {
+  font-size: 13px;
+  font-weight: 600;
+  flex: 0 0 auto;
+  max-width: 40%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gov-label {
+  font-size: 13px;
+  flex: 0 0 auto;
+  max-width: 40%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.leader-bar-track,
+.gov-bar-track {
+  flex: 1;
+  height: 8px;
+  background: var(--surface-soft);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.leader-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary), #e8c26a);
+  border-radius: 999px;
+}
+
+.gov-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+}
+
+.leader-count,
+.gov-count {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--primary-dark);
+  width: 30px;
+  text-align: right;
+  flex: 0 0 auto;
 }
 
 .stats-chart-total {

@@ -24,6 +24,7 @@ import { EmployeeNameButton } from "../components/EmployeeCard";
 import { PetStatsAssistant } from "../components/pet/PetStatsAssistant";
 import { InnStatsSection } from "../components/inn/InnStatsSection";
 import { AppShell } from "../components/shell/AppShell";
+import { QuickStatsTiles } from "../components/shell/QuickStatsPanel";
 import { APP_BUILD, APP_VERSION } from "../data/changelog";
 import { getActiveBranchId } from "../api/client";
 
@@ -271,14 +272,48 @@ function DayAppealsTable({ appeals }: { appeals: Appeal[] }) {
   );
 }
 
-function SortableBreakdown({ title, rows }: { title: string; rows: LabeledCount[] }) {
+// Cycled per row for the new interface's colored progress bars — reuses the
+// same accent hues as the KPI tiles elsewhere on this page.
+const ROW_BAR_COLORS = ["var(--primary)", "#3d6ea5", "#3f8f68", "#a8a494", "#c8493c"];
+
+function SortableBreakdown({
+  title,
+  rows,
+  enhanced,
+}: {
+  title: string;
+  rows: LabeledCount[];
+  enhanced?: boolean;
+}) {
   const sorted = [...rows].sort((a, b) => b.count - a.count);
+  const max = Math.max(...sorted.map((r) => r.count), 1);
 
   return (
     <div className="stats-subtable">
       <h3>{title}</h3>
       {rows.length === 0 ? (
         <p className="empty-state">Нет данных.</p>
+      ) : enhanced ? (
+        <div className="breakdown-bars">
+          {sorted.map((r, i) => (
+            <div className="gov-row" key={r.label}>
+              <div className="gov-label">
+                {r.operatorId !== undefined ? (
+                  <EmployeeNameButton id={r.operatorId} fullName={r.label} />
+                ) : (
+                  r.label
+                )}
+              </div>
+              <div className="gov-bar-track">
+                <div
+                  className="gov-bar-fill"
+                  style={{ width: `${(r.count / max) * 100}%`, background: ROW_BAR_COLORS[i % ROW_BAR_COLORS.length] }}
+                />
+              </div>
+              <div className="gov-count">{r.count}</div>
+            </div>
+          ))}
+        </div>
       ) : (
         <table className="appeals-table">
           <colgroup>
@@ -307,7 +342,7 @@ function SortableBreakdown({ title, rows }: { title: string; rows: LabeledCount[
 
 // Operators with the same trubki count share one row, names comma-separated
 // — otherwise a tied leaderboard turns into a long wall of near-duplicate rows.
-function OperatorBreakdown({ rows }: { rows: OperatorStat[] }) {
+function OperatorBreakdown({ rows, enhanced }: { rows: OperatorStat[]; enhanced?: boolean }) {
   const sorted = [...rows].sort((a, b) => b.count - a.count);
   const groups: { count: number; operators: OperatorStat[] }[] = [];
   for (const r of sorted) {
@@ -318,12 +353,33 @@ function OperatorBreakdown({ rows }: { rows: OperatorStat[] }) {
       groups.push({ count: r.count, operators: [r] });
     }
   }
+  const max = Math.max(...groups.map((g) => g.count), 1);
 
   return (
     <div className="stats-subtable">
       <h3>По трубкам</h3>
       {rows.length === 0 ? (
         <p className="empty-state">Нет данных.</p>
+      ) : enhanced ? (
+        <div className="breakdown-bars">
+          {groups.map((g) => (
+            <div className="leader-row" key={g.count}>
+              <div className="leader-av">{g.operators[0].fullName.charAt(0).toUpperCase()}</div>
+              <div className="leader-name">
+                {g.operators.map((o, i) => (
+                  <span key={o.operatorId}>
+                    {i > 0 && ", "}
+                    <EmployeeNameButton id={o.operatorId} fullName={o.fullName} />
+                  </span>
+                ))}
+              </div>
+              <div className="leader-bar-track">
+                <div className="leader-bar-fill" style={{ width: `${(g.count / max) * 100}%` }} />
+              </div>
+              <div className="leader-count">{g.count}</div>
+            </div>
+          ))}
+        </div>
       ) : (
         <table className="appeals-table">
           <colgroup>
@@ -862,6 +918,43 @@ export function StatsPage() {
     </div>
   );
 
+  // New interface's variant of the same controls — pill buttons instead of
+  // a <select>, styled to sit in the chart card's header (see the design
+  // canvas this was modeled on). Same state, same period/day semantics.
+  const periodControlsNew = (
+    <div className="period-controls-new">
+      <div className="period-pills">
+        {(
+          [
+            ["today", "Сегодня"],
+            ["week", "Неделя"],
+            ["custom", "Период"],
+          ] as [Period, string][]
+        ).map(([value, label]) => (
+          <button
+            key={value}
+            type="button"
+            className={`period-pill${period === value ? " period-pill-active" : ""}`}
+            onClick={() => setPeriod(value)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {period === "custom" && (
+        <div className="period-controls-new-dates">
+          <input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} />
+          <span>—</span>
+          <input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} />
+        </div>
+      )}
+      <label className="period-controls-new-day">
+        За день
+        <input type="date" value={selectedDay} onChange={(e) => pickDay(e.target.value)} />
+      </label>
+    </div>
+  );
+
   const pageBody = (
     <div className="page">
       <header className="page-header">
@@ -973,11 +1066,7 @@ export function StatsPage() {
         </div>
       )}
 
-      {isNewUi && (
-        <div className="stats-total-tile-row">
-          <Kpi value={summary.total} label="трубок за всё время" accent="muted" />
-        </div>
-      )}
+      {isNewUi && <QuickStatsTiles summary={summary} innModuleEnabled={innModuleEnabled} />}
 
       {loading && <p>Загрузка...</p>}
       {error && <p className="error-text">{error}</p>}
@@ -991,7 +1080,7 @@ export function StatsPage() {
                   <p className="stats-eyebrow">Трубки</p>
                   <h2>Трубки по дням — нажмите на столбец, чтобы посмотреть список</h2>
                 </div>
-                {periodControls}
+                {periodControlsNew}
               </div>
             ) : (
               <>
@@ -1014,13 +1103,14 @@ export function StatsPage() {
           <section className="stats-section">
             <div className="stats-panels">
               <div className="stats-panel">
-                <OperatorBreakdown rows={byOperator} />
+                <OperatorBreakdown rows={byOperator} enhanced={isNewUi} />
               </div>
               <div className="stats-panel-column">
                 <div className="stats-panel">
                   <SortableBreakdown
                     title="По Госам"
                     rows={byGov.map((g) => ({ label: g.value, count: g.count }))}
+                    enhanced={isNewUi}
                   />
                 </div>
                 <div className="stats-panel">
@@ -1031,6 +1121,7 @@ export function StatsPage() {
                 <SortableBreakdown
                   title="По Статусам"
                   rows={byStatus.map((s) => ({ label: s.value, count: s.count }))}
+                  enhanced={isNewUi}
                 />
               </div>
             </div>

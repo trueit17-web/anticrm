@@ -38,7 +38,7 @@ export function AppShell({
         {active === "appeals" && onCreateAppeal ? (
           <button
             type="button"
-            className="app-rail-item app-rail-item-active"
+            className="app-rail-fab"
             title="Новая трубка"
             aria-label="Новая трубка"
             onClick={onCreateAppeal}
@@ -63,17 +63,6 @@ export function AppShell({
         >
           <IconStats width={22} height={22} />
         </Link>
-        {innModuleEnabled && (
-          <button
-            type="button"
-            className="app-rail-item"
-            title="ИНН"
-            aria-label="ИНН"
-            onClick={() => document.querySelector<HTMLButtonElement>(".inn-dock-icon")?.click()}
-          >
-            <IconNotepadPencil width={22} height={22} />
-          </button>
-        )}
         {contactsModuleEnabled && (user.role === "MANAGER" || user.role === "ADMIN" || user.role === "SUPERADMIN") && (
           <Link
             to="/contacts"
@@ -84,7 +73,25 @@ export function AppShell({
             {user.role === "MANAGER" ? <IconPhone width={22} height={22} /> : <IconDatabase width={22} height={22} />}
           </Link>
         )}
+
+        {/* Two flex spacers around the ИНН button center it vertically in the
+            rail regardless of how many items sit above/below — it's the one
+            action every operator reaches for constantly through the day, so
+            it gets the middle of the rail and a bigger, unmissable button. */}
         <div className="app-rail-spacer" />
+        {innModuleEnabled && (
+          <button
+            type="button"
+            className="app-rail-item-inn"
+            title="ИНН"
+            aria-label="ИНН"
+            onClick={() => document.querySelector<HTMLButtonElement>(".inn-dock-icon")?.click()}
+          >
+            <IconNotepadPencil width={26} height={26} />
+          </button>
+        )}
+        <div className="app-rail-spacer" />
+
         {(user.role === "ADMIN" || user.role === "SUPERADMIN") && (
           <Link
             to="/admin"
