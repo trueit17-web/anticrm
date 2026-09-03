@@ -62,7 +62,15 @@ function formatDay(day: string): string {
   return d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" });
 }
 
-function DailyChart({ data, onPick }: { data: DailyStat[]; onPick: (day: string) => void }) {
+function DailyChart({
+  data,
+  onPick,
+  enhanced,
+}: {
+  data: DailyStat[];
+  onPick: (day: string) => void;
+  enhanced?: boolean;
+}) {
   if (data.length === 0) {
     return <p className="empty-state">Нет данных за выбранный период.</p>;
   }
@@ -71,74 +79,118 @@ function DailyChart({ data, onPick }: { data: DailyStat[]; onPick: (day: string)
   const width = 700;
   const height = 220;
   const padding = 28;
+  // The new interface's chart adds y-axis value labels, which need a bit
+  // more breathing room on the left than the classic chart's bars alone.
+  const leftPadding = enhanced ? 40 : padding;
   const barGap = 4;
-  const barWidth = (width - padding * 2) / data.length - barGap;
+  const barWidth = (width - leftPadding - padding) / data.length - barGap;
+  const plotTop = padding;
+  const plotBottom = height - padding;
+  const plotHeight = plotBottom - plotTop;
+
+  const bars = data.map((d, i) => {
+    const barHeight = (d.count / max) * plotHeight;
+    const x = leftPadding + i * (barWidth + barGap);
+    const y = plotBottom - barHeight;
+    return { day: d.day, count: d.count, x, y, barHeight, cx: x + barWidth / 2 };
+  });
+
+  // Purely decorative trend overlay (line + soft fill under it) tracing the
+  // same bar tops — only drawn for the new interface, and only once there's
+  // more than one point to actually trace a trend across.
+  const trendPoints = bars.map((b) => `${b.cx},${b.y}`).join(" L");
+  const areaPath = `M${trendPoints} L${bars[bars.length - 1].cx},${plotBottom} L${bars[0].cx},${plotBottom} Z`;
+
+  const gridLines = enhanced ? 4 : 0;
+  const total = data.reduce((sum, d) => sum + d.count, 0);
 
   return (
-    <svg
-      viewBox={`0 0 ${width} ${height}`}
-      className="stats-chart"
-      role="img"
-      aria-label="Трубки по дням"
-    >
-      {data.map((d, i) => {
-        const barHeight = (d.count / max) * (height - padding * 2);
-        const x = padding + i * (barWidth + barGap);
-        const y = height - padding - barHeight;
-        // Count label sits centered in the bar when there's room for it;
-        // for short bars it moves just above so it's never squeezed.
-        const fitsInsideBar = barHeight >= 18;
-        const labelY = fitsInsideBar ? y + barHeight / 2 : y - 6;
-        return (
-          <g key={d.day} onClick={() => onPick(d.day)} style={{ cursor: "pointer" }}>
-            <rect
-              x={x}
-              y={y}
-              width={Math.max(barWidth, 1)}
-              height={Math.max(barHeight, 0)}
-              fill="var(--primary)"
-              rx={2}
-            >
-              <title>
-                {formatDay(d.day)}: {d.count} (нажмите, чтобы посмотреть список)
-              </title>
-            </rect>
-            {barWidth >= 14 && (
-              <text
-                x={x + barWidth / 2}
-                y={labelY}
-                fontSize="11"
-                fontWeight="700"
-                textAnchor="middle"
-                dominantBaseline={fitsInsideBar ? "central" : "auto"}
-                fill={fitsInsideBar ? "#ffffff" : "var(--primary-dark)"}
-                style={{ pointerEvents: "none" }}
+    <div>
+      {enhanced && (
+        <p className="stats-chart-total">
+          Итого за период: <strong>{total}</strong>
+        </p>
+      )}
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        className="stats-chart"
+        role="img"
+        aria-label="Трубки по дням"
+      >
+        {enhanced &&
+          Array.from({ length: gridLines + 1 }, (_, i) => {
+            const y = plotTop + (plotHeight / gridLines) * i;
+            const value = Math.round(max - (max / gridLines) * i);
+            return (
+              <g key={i}>
+                <line x1={leftPadding} y1={y} x2={width - padding} y2={y} stroke="var(--border)" strokeOpacity={0.6} />
+                <text x={leftPadding - 6} y={y + 3} fontSize="9" textAnchor="end" fill="var(--muted)">
+                  {value}
+                </text>
+              </g>
+            );
+          })}
+
+        {enhanced && bars.length > 1 && (
+          <>
+            <path d={areaPath} fill="var(--primary)" fillOpacity={0.14} stroke="none" />
+            <path d={`M${trendPoints}`} fill="none" stroke="var(--primary-dark)" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+          </>
+        )}
+
+        {bars.map((b, i) => {
+          const isLast = i === bars.length - 1;
+          // Count label sits centered in the bar when there's room for it;
+          // for short bars it moves just above so it's never squeezed.
+          const fitsInsideBar = b.barHeight >= 18;
+          const labelY = fitsInsideBar ? b.y + b.barHeight / 2 : b.y - 6;
+          return (
+            <g key={b.day} onClick={() => onPick(b.day)} style={{ cursor: "pointer" }}>
+              <rect
+                x={b.x}
+                y={b.y}
+                width={Math.max(barWidth, 1)}
+                height={Math.max(b.barHeight, 0)}
+                fill="var(--primary)"
+                fillOpacity={enhanced && !isLast ? 0.55 : 1}
+                rx={enhanced ? 4 : 2}
               >
-                {d.count}
-              </text>
-            )}
-            {(i % Math.ceil(data.length / 10 || 1) === 0 || i === data.length - 1) && (
-              <text
-                x={x + barWidth / 2}
-                y={height - padding + 14}
-                fontSize="10"
-                textAnchor="middle"
-                fill="var(--muted)"
-              >
-                {formatDay(d.day)}
-              </text>
-            )}
-          </g>
-        );
-      })}
-      <line
-        x1={padding}
-        y1={height - padding}
-        x2={width - padding}
-        y2={height - padding}
-        stroke="var(--border)"
-      />
-    </svg>
+                <title>
+                  {formatDay(b.day)}: {b.count} (нажмите, чтобы посмотреть список)
+                </title>
+              </rect>
+              {barWidth >= 14 && (
+                <text
+                  x={b.cx}
+                  y={labelY}
+                  fontSize="11"
+                  fontWeight="700"
+                  textAnchor="middle"
+                  dominantBaseline={fitsInsideBar ? "central" : "auto"}
+                  fill={fitsInsideBar ? "#ffffff" : "var(--primary-dark)"}
+                  style={{ pointerEvents: "none" }}
+                >
+                  {b.count}
+                </text>
+              )}
+              {(i % Math.ceil(data.length / 10 || 1) === 0 || isLast) && (
+                <text
+                  x={b.cx}
+                  y={height - padding + 14}
+                  fontSize="10"
+                  fontWeight={enhanced && isLast ? 700 : undefined}
+                  textAnchor="middle"
+                  fill={enhanced && isLast ? "var(--text)" : "var(--muted)"}
+                >
+                  {formatDay(b.day)}
+                </text>
+              )}
+            </g>
+          );
+        })}
+        <line x1={leftPadding} y1={plotBottom} x2={width - padding} y2={plotBottom} stroke="var(--border)" />
+      </svg>
+    </div>
   );
 }
 
@@ -930,11 +982,11 @@ export function StatsPage() {
 
       {!loading && !error && (
         <>
-          <section className="stats-section">
+          <section className={`stats-section${isNewUi ? " stats-section-chart-new" : ""}`}>
             <p className="stats-eyebrow">Трубки</p>
             <h2>Трубки по дням — нажмите на столбец, чтобы посмотреть список</h2>
             <div className="table-scroll stats-chart-wrap">
-              <DailyChart data={byDate} onPick={loadDay} />
+              <DailyChart data={byDate} onPick={loadDay} enhanced={isNewUi} />
             </div>
           </section>
 
