@@ -277,6 +277,10 @@ model User {
   // When true, this user is hidden from the operator ranking on the
   // Statistics page (e.g. test/inactive accounts sitting at zero trubki).
   excludedFromStats Boolean @default(false)
+  // Personal choice between the classic and the new (rail-nav + dashboard)
+  // interface — set from the toggle on the Statistics page header. Affects
+  // only this account; defaults to the classic UI for everyone.
+  uiVersion    String   @default("old")
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

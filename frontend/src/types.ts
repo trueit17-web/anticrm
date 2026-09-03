@@ -26,6 +26,7 @@ export interface AuthUser {
   role: Role;
   branchId: number | null;
   branchName: string | null;
+  uiVersion: "old" | "new";
 }
 
 export interface UserSummary {

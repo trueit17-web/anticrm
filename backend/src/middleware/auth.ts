@@ -45,6 +45,7 @@ export const requireAuth = asyncHandler(async (req: Request, res: Response, next
     role: user.role,
     branchId: user.branchId,
     branchName: user.branch?.name ?? null,
+    uiVersion: user.uiVersion,
   };
   next();
 });

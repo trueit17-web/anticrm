@@ -649,7 +649,7 @@ function CallStatsSection({ stats }: { stats: ContactRangeStats }) {
 }
 
 export function StatsPage() {
-  const { user } = useAuth();
+  const { user, setUiVersion } = useAuth();
   const isAdmin = user?.role === "ADMIN" || user?.role === "SUPERADMIN";
 
   const [activeTab, setActiveTab] = useState<"appeals" | "inn">("appeals");
@@ -785,6 +785,22 @@ export function StatsPage() {
           </div>
         </div>
         <div className="header-actions">
+          <div className="ui-version-switch" title="Оформление интерфейса — применяется только к вашему аккаунту">
+            <button
+              type="button"
+              className={`admin-tab${user?.uiVersion !== "new" ? " admin-tab-active" : ""}`}
+              onClick={() => setUiVersion("old")}
+            >
+              Старый
+            </button>
+            <button
+              type="button"
+              className={`admin-tab${user?.uiVersion === "new" ? " admin-tab-active" : ""}`}
+              onClick={() => setUiVersion("new")}
+            >
+              Новый
+            </button>
+          </div>
           <Link to="/" className="icon-link" title="К трубкам" aria-label="К трубкам">
             <IconBack />
           </Link>

@@ -1652,6 +1652,17 @@ body.col-resizing .col-resizer {
   background: rgba(238, 240, 243, 0.25);
 }
 
+.ui-version-switch {
+  display: flex;
+  gap: 6px;
+  margin-right: 4px;
+}
+
+.ui-version-switch .admin-tab {
+  padding: 6px 14px;
+  font-size: 12.5px;
+}
+
 .admin-tab {
   background: var(--card);
   color: var(--text);

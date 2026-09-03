@@ -45,6 +45,7 @@ export async function login(
     role: updated.role,
     branchId: updated.branchId,
     branchName: updated.branch?.name ?? null,
+    uiVersion: updated.uiVersion,
   };
 
   const token = jwt.sign({ id: updated.id, sessionVersion: updated.sessionVersion }, env.jwtSecret, {
