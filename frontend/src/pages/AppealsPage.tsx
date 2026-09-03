@@ -448,9 +448,11 @@ export function AppealsPage() {
           {petConfig?.enabled && (
             <PetAssistant containerRef={tableAreaRef} appeals={appeals} config={petConfig} currentUserId={user.id} />
           )}
-          <button className="fab" title="Новая трубка" onClick={() => setCreating(true)}>
-            +
-          </button>
+          {!isNewUi && (
+            <button className="fab" title="Новая трубка" onClick={() => setCreating(true)}>
+              +
+            </button>
+          )}
           <AppealsTable
             appeals={appeals}
             currentUser={user}
