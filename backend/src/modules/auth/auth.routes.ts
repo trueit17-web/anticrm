@@ -1,6 +1,6 @@
 import { Router } from "express";
 import rateLimit from "express-rate-limit";
-import { loginHandler, meHandler, updateUiVersionHandler } from "./auth.controller";
+import { loginHandler, meHandler } from "./auth.controller";
 import { requireAuth } from "../../middleware/auth";
 import { asyncHandler } from "../../utils/asyncHandler";
 
@@ -24,4 +24,3 @@ const loginLimiter = rateLimit({
 
 authRouter.post("/login", loginLimiter, asyncHandler(loginHandler));
 authRouter.get("/me", requireAuth, meHandler);
-authRouter.patch("/me/ui-version", requireAuth, asyncHandler(updateUiVersionHandler));

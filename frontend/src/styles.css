@@ -569,6 +569,19 @@ body.col-resizing .col-resizer {
   transform: translateX(20px);
 }
 
+/* Compact variant for inline use next to text (e.g. row actions column). */
+.switch-sm {
+  width: 32px;
+  height: 18px;
+}
+.switch-sm .slider::before {
+  height: 12px;
+  width: 12px;
+}
+.switch-sm input:checked + .slider::before {
+  transform: translateX(14px);
+}
+
 /* "Скрыт из стат." inline checkbox in the user actions column. */
 .stat-check {
   display: inline-flex;
@@ -1650,17 +1663,6 @@ body.col-resizing .col-resizer {
   align-self: stretch;
   margin: 0 8px;
   background: rgba(238, 240, 243, 0.25);
-}
-
-.ui-version-switch {
-  display: flex;
-  gap: 6px;
-  margin-right: 4px;
-}
-
-.ui-version-switch .admin-tab {
-  padding: 6px 14px;
-  font-size: 12.5px;
 }
 
 .admin-tab {

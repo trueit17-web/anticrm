@@ -37,6 +37,7 @@ export interface UserSummary {
   active: boolean;
   // Hidden from the operator ranking on the Statistics page when true.
   excludedFromStats: boolean;
+  uiVersion: "old" | "new";
   createdAt: string;
   avatarUrl: string | null;
   telegram: string | null;

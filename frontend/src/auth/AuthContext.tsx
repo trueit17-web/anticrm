@@ -7,7 +7,6 @@ interface AuthContextValue {
   loading: boolean;
   login: (username: string, password: string) => Promise<void>;
   logout: () => void;
-  setUiVersion: (version: "old" | "new") => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -88,13 +87,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }
 
-  async function setUiVersion(version: "old" | "new") {
-    await api.patch("/auth/me/ui-version", { uiVersion: version });
-    setUser((prev) => (prev ? { ...prev, uiVersion: version } : prev));
-  }
-
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, setUiVersion }}>
+    <AuthContext.Provider value={{ user, loading, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

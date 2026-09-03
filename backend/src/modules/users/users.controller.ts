@@ -70,6 +70,7 @@ const updateUserSchema = z.object({
   branchId: z.number().int().positive().nullable().optional(),
   active: z.boolean().optional(),
   excludedFromStats: z.boolean().optional(),
+  uiVersion: z.enum(["old", "new"]).optional(),
   password: z.string().min(6).optional(),
   telegram: z.string().nullable().optional(),
   bio: z.string().nullable().optional(),

@@ -1,6 +1,5 @@
 import { Request, Response } from "express";
 import { z } from "zod";
-import { prisma } from "../../lib/prisma";
 import { AccountDisabledError, InvalidCredentialsError, login } from "./auth.service";
 
 const loginSchema = z.object({
@@ -33,22 +32,4 @@ export async function loginHandler(req: Request, res: Response) {
 
 export function meHandler(req: Request, res: Response) {
   res.json({ user: req.user });
-}
-
-const uiVersionSchema = z.object({
-  uiVersion: z.enum(["old", "new"]),
-});
-
-// Self-service only — this is a personal display preference, not a
-// permission, so any authenticated user may set it for their own account.
-export async function updateUiVersionHandler(req: Request, res: Response) {
-  const parsed = uiVersionSchema.safeParse(req.body);
-  if (!parsed.success) {
-    return res.status(400).json({ error: "Некорректное значение" });
-  }
-  await prisma.user.update({
-    where: { id: req.user!.id },
-    data: { uiVersion: parsed.data.uiVersion },
-  });
-  res.json({ uiVersion: parsed.data.uiVersion });
 }

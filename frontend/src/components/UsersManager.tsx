@@ -484,6 +484,11 @@ export function UsersManager() {
     await loadUsers();
   }
 
+  async function toggleUiVersion(u: UserSummary) {
+    await api.patch(`/users/${u.id}`, { uiVersion: u.uiVersion === "new" ? "old" : "new" });
+    await loadUsers();
+  }
+
   async function changeRole(u: UserSummary, newRole: Role) {
     if (u.role === "SUPERADMIN" && newRole !== "SUPERADMIN") {
       setDemoteTarget({ id: u.id, role: newRole });
@@ -701,6 +706,17 @@ export function UsersManager() {
                             onChange={() => toggleExcludedFromStats(u)}
                           />
                           Скрыт из стат.
+                        </label>{" "}
+                        <label
+                          className="switch switch-sm"
+                          title={u.uiVersion === "new" ? "Новый интерфейс — нажмите, чтобы вернуть старый" : "Старый интерфейс — нажмите, чтобы включить новый"}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={u.uiVersion === "new"}
+                            onChange={() => toggleUiVersion(u)}
+                          />
+                          <span className="slider" />
                         </label>
                       </td>
                     </tr>

@@ -16,6 +16,7 @@ const USER_FIELD_LABELS: Record<string, string> = {
   role: "Роль",
   active: "Статус",
   excludedFromStats: "Скрыт из статистики",
+  uiVersion: "Оформление интерфейса",
   password: "Пароль",
   telegram: "Telegram",
   bio: "Описание",
@@ -28,6 +29,7 @@ const publicUserSelect = {
   role: true,
   active: true,
   excludedFromStats: true,
+  uiVersion: true,
   createdAt: true,
   avatarUrl: true,
   telegram: true,
@@ -109,6 +111,7 @@ export interface UpdateUserInput {
   branchId?: number | null;
   active?: boolean;
   excludedFromStats?: boolean;
+  uiVersion?: "old" | "new";
   password?: string;
   telegram?: string | null;
   bio?: string | null;
@@ -214,6 +217,7 @@ export async function updateUser(
     const data: Record<string, unknown> = { role: nextRole, branchId: nextBranchId, active: nextActive };
     if (input.fullName !== undefined) data.fullName = input.fullName;
     if (input.excludedFromStats !== undefined) data.excludedFromStats = input.excludedFromStats;
+    if (input.uiVersion !== undefined) data.uiVersion = input.uiVersion;
     if (input.telegram !== undefined) data.telegram = input.telegram || null;
     if (input.bio !== undefined) data.bio = input.bio || null;
     if (input.password) data.passwordHash = await hashPassword(input.password);
@@ -238,6 +242,7 @@ export async function updateUser(
     if (input.role !== undefined) changesForLog.role = nextRole;
     if (input.active !== undefined) changesForLog.active = nextActive;
     if (input.excludedFromStats !== undefined) changesForLog.excludedFromStats = input.excludedFromStats;
+    if (input.uiVersion !== undefined) changesForLog.uiVersion = input.uiVersion;
     if (input.telegram !== undefined) changesForLog.telegram = input.telegram || null;
     if (input.bio !== undefined) changesForLog.bio = input.bio || null;
     if (input.password) changesForLog.password = "•••";
