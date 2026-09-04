@@ -3572,7 +3572,12 @@ body.col-resizing .appeals-table-new .col-resizer {
    it, flush against the rail, instead of holding onto empty width/height. */
 .page-header-bar.page-header-compact {
   flex: 0 1 auto;
-  grid-template-columns: 0fr auto 0fr;
+  /* minmax(0, 0fr), not bare 0fr — a plain 0fr track still sizes to its
+     content's min-content (the hidden branch-title's full nowrap width),
+     so the track never actually collapsed. minmax(0, ...) lets it shrink
+     past that down to 0. */
+  grid-template-columns: minmax(0, 0fr) auto minmax(0, 0fr);
+  column-gap: 0;
   min-height: 52px;
   padding: 8px 14px 8px 8px;
   /* Pull flush against the rail by eating the page's own left gutter —
