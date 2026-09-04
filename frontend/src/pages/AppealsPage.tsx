@@ -475,6 +475,7 @@ export function AppealsPage() {
             creating={creating}
             onCancelCreate={() => setCreating(false)}
             onSubmitCreate={handleSubmitCreate}
+            enhanced={isNewUi}
           />
         </div>
       )}

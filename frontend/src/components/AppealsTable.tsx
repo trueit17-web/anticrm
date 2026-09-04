@@ -33,19 +33,25 @@ const COLUMNS: { label: string; className?: string }[] = [
   { label: "" },
 ];
 const DEFAULT_WIDTHS = [36, 110, 112, 90, 178, 90, 90, 60, 110, 130, 180, 110, 110, 110, 64];
+// The new interface's density/layout pass gives the two free-text columns
+// (Данные клиента, Описание) more breathing room, funded by trimming the
+// narrow single-word tag columns — same column count and order as classic.
+const DEFAULT_WIDTHS_NEW = [36, 108, 110, 80, 205, 88, 86, 58, 100, 128, 210, 100, 100, 100, 64];
 const MIN_COL_WIDTH = 40;
 // Bumped if COLUMNS ever changes shape, so an old saved layout with the wrong
 // number of columns is discarded rather than misapplied.
-const COL_WIDTHS_KEY = (userId: number) => `crm_appeal_col_widths_v1_${userId}`;
+const COL_WIDTHS_KEY = (userId: number, enhanced: boolean) =>
+  `crm_appeal_col_widths_v1_${userId}${enhanced ? "_new" : ""}`;
 
-function loadColWidths(userId: number): number[] {
+function loadColWidths(userId: number, enhanced: boolean): number[] {
+  const defaults = enhanced ? DEFAULT_WIDTHS_NEW : DEFAULT_WIDTHS;
   try {
-    const raw = localStorage.getItem(COL_WIDTHS_KEY(userId));
+    const raw = localStorage.getItem(COL_WIDTHS_KEY(userId, enhanced));
     if (raw) {
       const parsed = JSON.parse(raw);
       if (
         Array.isArray(parsed) &&
-        parsed.length === DEFAULT_WIDTHS.length &&
+        parsed.length === defaults.length &&
         parsed.every((n) => typeof n === "number" && n > 0)
       ) {
         return parsed;
@@ -54,7 +60,7 @@ function loadColWidths(userId: number): number[] {
   } catch {
     // ignore malformed/blocked storage — fall back to defaults
   }
-  return [...DEFAULT_WIDTHS];
+  return [...defaults];
 }
 
 type TagField = "gov" | "cb" | "fsb" | "closer" | "tf";
@@ -290,6 +296,7 @@ export function AppealsTable({
   creating,
   onCancelCreate,
   onSubmitCreate,
+  enhanced,
 }: {
   appeals: Appeal[];
   currentUser: AuthUser;
@@ -317,14 +324,19 @@ export function AppealsTable({
   creating: boolean;
   onCancelCreate: () => void;
   onSubmitCreate: (values: NewAppealValues) => Promise<void>;
+  // The new interface's redesigned density/colors/column layout — see
+  // styles.css's ".app-shell .table-with-fab" block and DEFAULT_WIDTHS_NEW
+  // above. Classic interface omits this and looks exactly as before.
+  enhanced?: boolean;
 }) {
   const canAssign = canEditAssignments(currentUser);
   const scrollRef = useRef<HTMLDivElement>(null);
   useEdgeAutoScroll(scrollRef);
 
   // Per-user resizable column widths, remembered across logins (localStorage,
-  // keyed by user id so shared browsers don't cross over).
-  const [colWidths, setColWidths] = useState<number[]>(() => loadColWidths(currentUser.id));
+  // keyed by user id — and separately by interface, since the new layout's
+  // defaults differ — so shared browsers don't cross over either way).
+  const [colWidths, setColWidths] = useState<number[]>(() => loadColWidths(currentUser.id, !!enhanced));
   const tableWidth = colWidths.reduce((a, b) => a + b, 0);
 
   function startResize(index: number, e: ReactPointerEvent) {
@@ -346,7 +358,7 @@ export function AppealsTable({
       document.body.classList.remove("col-resizing");
       setColWidths((prev) => {
         try {
-          localStorage.setItem(COL_WIDTHS_KEY(currentUser.id), JSON.stringify(prev));
+          localStorage.setItem(COL_WIDTHS_KEY(currentUser.id, !!enhanced), JSON.stringify(prev));
         } catch {
           // ignore storage failures (private mode / quota)
         }
@@ -376,8 +388,8 @@ export function AppealsTable({
   }
 
   return (
-    <div className="table-scroll" ref={scrollRef}>
-      <table className="appeals-table" style={{ width: tableWidth }}>
+    <div className={`table-scroll${enhanced ? " table-scroll-new" : ""}`} ref={scrollRef}>
+      <table className={`appeals-table${enhanced ? " appeals-table-new" : ""}`} style={{ width: tableWidth }}>
         <colgroup>
           {colWidths.map((w, i) => (
             <col key={i} style={{ width: w }} />

@@ -3405,3 +3405,92 @@ textarea:hover {
     animation-iteration-count: 1 !important;
   }
 }
+
+/* ============================================================
+   Трубки table — full visual rebuild for the new interface.
+   Same markup/interactions (resize, sticky actions, inline edit,
+   status coloring) as the classic table; only look and feel change.
+   Scoped to .appeals-table-new (set only when AppealsTable gets
+   enhanced={isNewUi}) so the classic interface's table is completely
+   untouched.
+   ============================================================ */
+
+.table-scroll-new {
+  border-radius: 16px;
+  box-shadow: var(--shadow-card);
+  border-color: rgba(216, 213, 201, 0.9);
+}
+
+.appeals-table-new {
+  font-size: 14px;
+}
+
+.appeals-table-new th,
+.appeals-table-new td {
+  padding: 9px 10px;
+  line-height: 1.35;
+}
+
+.appeals-table-new th {
+  background: var(--surface-soft);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  border-bottom: 2px solid rgba(207, 154, 68, 0.4);
+}
+
+.appeals-table-new th:last-child {
+  background: var(--surface-soft);
+}
+
+/* A faint warm tint on alternating rows — the classic table intentionally
+   flattens this (see the plain #fafaf8 rule above), but at this row height
+   a subtle zebra meaningfully helps scanning a 14-column table. */
+.appeals-table-new tbody tr td {
+  background-color: var(--card);
+}
+
+.appeals-table-new tbody tr:nth-child(even) td {
+  background-color: rgba(207, 154, 68, 0.05);
+}
+
+.appeals-table-new tbody tr:hover td {
+  background-color: rgba(207, 154, 68, 0.16);
+}
+
+.appeals-table-new tbody tr td:last-child {
+  background: var(--card);
+}
+
+.appeals-table-new tbody tr:nth-child(even) td:last-child {
+  background: #fbf6ea;
+}
+
+.appeals-table-new tbody tr:hover td:last-child {
+  background: #f3e6c8;
+}
+
+.appeals-table-new tbody tr.new-appeal-row td {
+  background-color: var(--surface-soft);
+}
+
+.appeals-table-new tbody tr.status-colored-row td {
+  background-color: var(--status-row-color);
+}
+
+.appeals-table-new tbody tr.status-colored-row:hover td {
+  background-color: color-mix(in srgb, var(--status-row-color) 82%, #b88a3b 18%);
+}
+
+.appeals-table-new .status-pill {
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-weight: 600;
+  border: 1px solid rgba(71, 79, 67, 0.12);
+}
+
+.appeals-table-new .col-resizer:hover,
+body.col-resizing .appeals-table-new .col-resizer {
+  background: var(--primary);
+}
