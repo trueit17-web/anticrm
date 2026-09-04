@@ -180,6 +180,18 @@ export function IconSheets(props: IconProps) {
   );
 }
 
+// An open book — the ИНН journal/stats view, distinct from the notepad+pencil
+// used for the quick-entry drawer button right above it on the rail.
+export function IconBook(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M12 6.5c-1.8-1.3-4.2-2-6.5-2-1 0-1.5.3-1.5 1v11.5c0 .6.5 1 1.5 1 2.3 0 4.7.7 6.5 2" />
+      <path d="M12 6.5c1.8-1.3 4.2-2 6.5-2 1 0 1.5.3 1.5 1v11.5c0 .6-.5 1-1.5 1-2.3 0-4.7.7-6.5 2" />
+      <path d="M12 6.5v13.5" />
+    </svg>
+  );
+}
+
 // Spiral notepad + pencil, full color (not currentColor-driven like the
 // other icons here) — the "ИНН" module dock icon.
 export function IconNotepadPencil(props: SVGProps<SVGSVGElement>) {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { api, ApiError } from "../api/client";
 import {
   Appeal,
@@ -759,7 +759,15 @@ export function StatsPage() {
   const { user } = useAuth();
   const isAdmin = user?.role === "ADMIN" || user?.role === "SUPERADMIN";
 
-  const [activeTab, setActiveTab] = useState<"appeals" | "inn">("appeals");
+  const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState<"appeals" | "inn">(
+    searchParams.get("tab") === "inn" ? "inn" : "appeals"
+  );
+  // The rail's "Журнал ИНН" link only changes the query string while already
+  // on this page — react to that instead of relying on a remount.
+  useEffect(() => {
+    if (searchParams.get("tab") === "inn") setActiveTab("inn");
+  }, [searchParams]);
   const [innPeriod, setInnPeriod] = useState<"date" | "week" | "month">("date");
   const [innStatsDate, setInnStatsDate] = useState(todayInputValue());
   const [innBulkEdit, setInnBulkEdit] = useState(false);

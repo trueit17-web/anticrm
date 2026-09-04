@@ -1,10 +1,11 @@
 import { ReactNode } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { useBranchSwitcher } from "../../hooks/useBranchSwitcher";
 import {
   IconAdmin,
   IconBack,
+  IconBook,
   IconDatabase,
   IconHeadset,
   IconLogout,
@@ -44,6 +45,8 @@ export function AppShell({
   trashActive?: boolean;
 }) {
   const { user, logout } = useAuth();
+  const location = useLocation();
+  const onInnTab = active === "stats" && new URLSearchParams(location.search).get("tab") === "inn";
   const { current: currentBranch, loaded } = useBranchSwitcher();
   const contactsModuleEnabled = !loaded || currentBranch === null || currentBranch.contactsEnabled;
   const innModuleEnabled = !loaded || currentBranch === null || currentBranch.innEnabled;
@@ -75,7 +78,7 @@ export function AppShell({
         )}
         <Link
           to="/stats"
-          className={`app-rail-item${active === "stats" ? " app-rail-item-active" : ""}`}
+          className={`app-rail-item${active === "stats" && !onInnTab ? " app-rail-item-active" : ""}`}
           title="Статистика"
           aria-label="Статистика"
         >
@@ -107,6 +110,21 @@ export function AppShell({
           >
             <IconNotepadPencil width={26} height={26} />
           </button>
+        )}
+        {/* A second spacer before the journal link (instead of butting it
+            right up against the ИНН button) lands it roughly halfway down
+            the remaining space to the bottom cluster, not stacked on top of
+            ИНН. */}
+        {innModuleEnabled && <div className="app-rail-spacer" />}
+        {innModuleEnabled && (
+          <Link
+            to="/stats?tab=inn"
+            className={`app-rail-item${onInnTab ? " app-rail-item-active" : ""}`}
+            title="Журнал ИНН"
+            aria-label="Журнал ИНН"
+          >
+            <IconBook width={22} height={22} />
+          </Link>
         )}
         <div className="app-rail-spacer" />
 
