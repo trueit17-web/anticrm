@@ -372,86 +372,107 @@ export function AppealsPage() {
     }
   }
 
+  const branchTitleBlock = (
+    <h1 className="branch-title">
+      {needsSwitcher && (
+        <button
+          type="button"
+          className="branch-switcher-btn"
+          onClick={() => step(-1)}
+          disabled={!canStep}
+          aria-label={canStep && target(-1) ? `Перейти к ${target(-1)!.name}` : "Предыдущий филиал"}
+          title={canStep && target(-1) ? `Перейти к ${target(-1)!.name}` : undefined}
+        >
+          ‹
+        </button>
+      )}
+      <span>{branchName}</span>
+      {needsSwitcher && (
+        <button
+          type="button"
+          className="branch-switcher-btn"
+          onClick={() => step(1)}
+          disabled={!canStep}
+          aria-label={canStep && target(1) ? `Перейти к ${target(1)!.name}` : "Следующий филиал"}
+          title={canStep && target(1) ? `Перейти к ${target(1)!.name}` : undefined}
+        >
+          ›
+        </button>
+      )}
+    </h1>
+  );
+
+  const headerActionsBlock = (
+    <div className="header-actions-col">
+      <div className="header-actions">
+        {!isNewUi && (
+          <>
+            <Link to="/stats" className="icon-link" title="Статистика" aria-label="Статистика">
+              <IconStats />
+            </Link>
+            {contactsModuleEnabled && user.role === "MANAGER" && (
+              <Link to="/contacts" className="icon-link" title="Прозвон" aria-label="Прозвон">
+                <IconPhone />
+              </Link>
+            )}
+            {contactsModuleEnabled && (user.role === "ADMIN" || user.role === "SUPERADMIN") && (
+              <Link to="/contacts" className="icon-link" title="Базы" aria-label="Базы">
+                <IconDatabase />
+              </Link>
+            )}
+            {(user.role === "ADMIN" || user.role === "SUPERADMIN") && (
+              <Link to="/admin" className="icon-link" title="Админка" aria-label="Админка">
+                <IconAdmin />
+              </Link>
+            )}
+          </>
+        )}
+        {!isNewUi && canDeleteAppeal(user) && (
+          <button
+            className="icon-link"
+            title={showTrash ? "К трубкам" : "Корзина"}
+            aria-label={showTrash ? "К трубкам" : "Корзина"}
+            onClick={() => setShowTrash((v) => !v)}
+          >
+            {showTrash ? <IconBack /> : <IconTrash />}
+          </button>
+        )}
+        {!isNewUi && (
+          <button className="icon-link" title="Выйти" aria-label="Выйти" onClick={logout}>
+            <IconLogout />
+          </button>
+        )}
+      </div>
+      {contactsModuleEnabled && (user.role === "MANAGER" || user.role === "ADMIN" || user.role === "SUPERADMIN") && (
+        <button className="btn-call" onClick={() => setShowCallCard(true)}>
+          Звонить!
+        </button>
+      )}
+    </div>
+  );
+
   const pageBody = (
     <div className="page">
-      <header className={`page-header page-header-center${headerCompact ? " page-header-compact" : ""}`}>
-        <div>
-          <h1 className="branch-title">
-            {needsSwitcher && (
-              <button
-                type="button"
-                className="branch-switcher-btn"
-                onClick={() => step(-1)}
-                disabled={!canStep}
-                aria-label={canStep && target(-1) ? `Перейти к ${target(-1)!.name}` : "Предыдущий филиал"}
-                title={canStep && target(-1) ? `Перейти к ${target(-1)!.name}` : undefined}
-              >
-                ‹
-              </button>
-            )}
-            <span>{branchName}</span>
-            {needsSwitcher && (
-              <button
-                type="button"
-                className="branch-switcher-btn"
-                onClick={() => step(1)}
-                disabled={!canStep}
-                aria-label={canStep && target(1) ? `Перейти к ${target(1)!.name}` : "Следующий филиал"}
-                title={canStep && target(1) ? `Перейти к ${target(1)!.name}` : undefined}
-              >
-                ›
-              </button>
-            )}
-          </h1>
-        </div>
-        <WeekLeaders />
-        <div className="header-actions-col">
-          <div className="header-actions">
-            {!isNewUi && (
-              <>
-                <Link to="/stats" className="icon-link" title="Статистика" aria-label="Статистика">
-                  <IconStats />
-                </Link>
-                {contactsModuleEnabled && user.role === "MANAGER" && (
-                  <Link to="/contacts" className="icon-link" title="Прозвон" aria-label="Прозвон">
-                    <IconPhone />
-                  </Link>
-                )}
-                {contactsModuleEnabled && (user.role === "ADMIN" || user.role === "SUPERADMIN") && (
-                  <Link to="/contacts" className="icon-link" title="Базы" aria-label="Базы">
-                    <IconDatabase />
-                  </Link>
-                )}
-                {(user.role === "ADMIN" || user.role === "SUPERADMIN") && (
-                  <Link to="/admin" className="icon-link" title="Админка" aria-label="Админка">
-                    <IconAdmin />
-                  </Link>
-                )}
-              </>
-            )}
-            {!isNewUi && canDeleteAppeal(user) && (
-              <button
-                className="icon-link"
-                title={showTrash ? "К трубкам" : "Корзина"}
-                aria-label={showTrash ? "К трубкам" : "Корзина"}
-                onClick={() => setShowTrash((v) => !v)}
-              >
-                {showTrash ? <IconBack /> : <IconTrash />}
-              </button>
-            )}
-            {!isNewUi && (
-              <button className="icon-link" title="Выйти" aria-label="Выйти" onClick={logout}>
-                <IconLogout />
-              </button>
-            )}
+      {isNewUi ? (
+        // The new interface's header is split: an unstyled sticky shell
+        // (this <header>) holding a self-contained glass "bar" (title +
+        // week-leaders) plus header-actions-col as a separate flex sibling
+        // — so Звонить! stays put and clickable while only the bar shrinks
+        // on scroll (see .page-header-bar / headerCompact).
+        <header className="page-header page-header-shell">
+          <div className={`page-header-bar${headerCompact ? " page-header-compact" : ""}`}>
+            <div>{branchTitleBlock}</div>
+            <WeekLeaders />
           </div>
-          {contactsModuleEnabled && (user.role === "MANAGER" || user.role === "ADMIN" || user.role === "SUPERADMIN") && (
-            <button className="btn-call" onClick={() => setShowCallCard(true)}>
-              Звонить!
-            </button>
-          )}
-        </div>
-      </header>
+          {headerActionsBlock}
+        </header>
+      ) : (
+        <header className="page-header page-header-center">
+          <div>{branchTitleBlock}</div>
+          <WeekLeaders />
+          {headerActionsBlock}
+        </header>
+      )}
 
       {showCallCard && <CallCardModal onClose={() => setShowCallCard(false)} />}
 
