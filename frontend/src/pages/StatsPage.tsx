@@ -763,10 +763,12 @@ export function StatsPage() {
   const [activeTab, setActiveTab] = useState<"appeals" | "inn">(
     searchParams.get("tab") === "inn" ? "inn" : "appeals"
   );
-  // The rail's "Журнал ИНН" link only changes the query string while already
-  // on this page — react to that instead of relying on a remount.
+  // The rail's Статистика/Журнал ИНН links only change the query string
+  // while already on this page (no remount) — react to that explicitly in
+  // both directions, so Статистика reliably lands back on the dashboard
+  // even when leaving the ИНН tab.
   useEffect(() => {
-    if (searchParams.get("tab") === "inn") setActiveTab("inn");
+    setActiveTab(searchParams.get("tab") === "inn" ? "inn" : "appeals");
   }, [searchParams]);
   const [innPeriod, setInnPeriod] = useState<"date" | "week" | "month">("date");
   const [innStatsDate, setInnStatsDate] = useState(todayInputValue());
@@ -1082,7 +1084,7 @@ export function StatsPage() {
         </div>
       )}
 
-      {isNewUi && (
+      {isNewUi && activeTab === "appeals" && (
         <QuickStatsTiles
           summary={summary}
           innModuleEnabled={innModuleEnabled}
