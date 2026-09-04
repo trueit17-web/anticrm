@@ -295,20 +295,20 @@ function SortableBreakdown({
         <div className="breakdown-bars">
           {sorted.map((r, i) => (
             <div className="gov-row" key={r.label}>
-              <div className="gov-label">
-                {r.operatorId !== undefined ? (
-                  <EmployeeNameButton id={r.operatorId} fullName={r.label} />
-                ) : (
-                  r.label
-                )}
+              <div
+                className="gov-row-fill"
+                style={{ width: `${(r.count / max) * 100}%`, background: ROW_BAR_COLORS[i % ROW_BAR_COLORS.length] }}
+              />
+              <div className="gov-row-content">
+                <div className="gov-label">
+                  {r.operatorId !== undefined ? (
+                    <EmployeeNameButton id={r.operatorId} fullName={r.label} />
+                  ) : (
+                    r.label
+                  )}
+                </div>
+                <div className="gov-count">{r.count}</div>
               </div>
-              <div className="gov-bar-track">
-                <div
-                  className="gov-bar-fill"
-                  style={{ width: `${(r.count / max) * 100}%`, background: ROW_BAR_COLORS[i % ROW_BAR_COLORS.length] }}
-                />
-              </div>
-              <div className="gov-count">{r.count}</div>
             </div>
           ))}
         </div>
@@ -362,19 +362,19 @@ function OperatorBreakdown({ rows, enhanced }: { rows: OperatorStat[]; enhanced?
         <div className="breakdown-bars">
           {groups.map((g) => (
             <div className="leader-row" key={g.count}>
-              <div className="leader-av">{g.operators[0].fullName.charAt(0).toUpperCase()}</div>
-              <div className="leader-name">
-                {g.operators.map((o, i) => (
-                  <span key={o.operatorId}>
-                    {i > 0 && ", "}
-                    <EmployeeNameButton id={o.operatorId} fullName={o.fullName} />
-                  </span>
-                ))}
+              <div className="leader-row-fill" style={{ width: `${(g.count / max) * 100}%` }} />
+              <div className="leader-row-content">
+                <div className="leader-av">{g.operators[0].fullName.charAt(0).toUpperCase()}</div>
+                <div className="leader-name">
+                  {g.operators.map((o, i) => (
+                    <span key={o.operatorId}>
+                      {i > 0 && ", "}
+                      <EmployeeNameButton id={o.operatorId} fullName={o.fullName} />
+                    </span>
+                  ))}
+                </div>
+                <div className="leader-count">{g.count}</div>
               </div>
-              <div className="leader-bar-track">
-                <div className="leader-bar-fill" style={{ width: `${(g.count / max) * 100}%` }} />
-              </div>
-              <div className="leader-count">{g.count}</div>
             </div>
           ))}
         </div>
