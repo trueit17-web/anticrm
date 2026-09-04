@@ -3444,15 +3444,11 @@ textarea:hover {
   background: var(--surface-soft);
 }
 
-/* A faint warm tint on alternating rows — the classic table intentionally
-   flattens this (see the plain #fafaf8 rule above), but at this row height
-   a subtle zebra meaningfully helps scanning a 14-column table. */
+/* No zebra — row color is the status color when the row has one (see
+   .status-colored-row below); everything else stays a plain card surface,
+   so a colored status is the only thing that tints a row. */
 .appeals-table-new tbody tr td {
   background-color: var(--card);
-}
-
-.appeals-table-new tbody tr:nth-child(even) td {
-  background-color: rgba(207, 154, 68, 0.05);
 }
 
 .appeals-table-new tbody tr:hover td {
@@ -3463,23 +3459,21 @@ textarea:hover {
   background: var(--card);
 }
 
-.appeals-table-new tbody tr:nth-child(even) td:last-child {
-  background: #fbf6ea;
-}
-
-.appeals-table-new tbody tr:hover td:last-child {
-  background: #f3e6c8;
-}
-
 .appeals-table-new tbody tr.new-appeal-row td {
   background-color: var(--surface-soft);
 }
 
-.appeals-table-new tbody tr.status-colored-row td {
+/* The sticky actions column has its own background rules above (it has to,
+   to stay opaque while the row scrolls under it) — a status-colored row
+   needs those repeated here so the last cell doesn't show a plain-card
+   patch at the end of an otherwise-tinted row. */
+.appeals-table-new tbody tr.status-colored-row td,
+.appeals-table-new tbody tr.status-colored-row td:last-child {
   background-color: var(--status-row-color);
 }
 
-.appeals-table-new tbody tr.status-colored-row:hover td {
+.appeals-table-new tbody tr.status-colored-row:hover td,
+.appeals-table-new tbody tr.status-colored-row:hover td:last-child {
   background-color: color-mix(in srgb, var(--status-row-color) 82%, #b88a3b 18%);
 }
 
@@ -3493,4 +3487,81 @@ textarea:hover {
 .appeals-table-new .col-resizer:hover,
 body.col-resizing .appeals-table-new .col-resizer {
   background: var(--primary);
+}
+
+/* "Прием" is a narrow column — at the new interface's 11px header size the
+   label wraps to two lines; shrinking just this header's text keeps it on
+   one line without having to widen the column. */
+.appeals-table-new th.col-tight-label {
+  font-size: 9px;
+  white-space: nowrap;
+}
+
+/* "код:" inline line under the operator name (see ReportedTimeLine in
+   AppealsTable.tsx) — small, double-click-to-edit, with a pencil hint when
+   empty so there's something to click on. */
+.reported-time-line {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+}
+
+.reported-time-line.editable-cell {
+  cursor: text;
+  border-radius: 4px;
+  padding: 1px 3px;
+  margin: -1px -3px;
+}
+
+.reported-time-line.editable-cell:hover {
+  background: rgba(207, 154, 68, 0.14);
+  color: var(--primary-dark);
+}
+
+.reported-time-input {
+  width: 64px;
+  font-size: 11px;
+  padding: 1px 4px;
+}
+
+/* Sticky header's "compact on scroll" transition — title fades, the
+   week-leaders podium slides into the freed space via the grid column it
+   already sits in collapsing to 0fr (no JS-measured offset needed, the
+   grid does the "sliding" by itself), and the bar itself shrinks a touch
+   so it isn't holding onto empty height once nothing there is scrolling. */
+.page-header-center {
+  transition: grid-template-columns 0.32s ease;
+}
+
+.page-header-center.page-header-compact {
+  grid-template-columns: 0fr auto 1fr;
+}
+
+.page-header-center .branch-title {
+  transition: opacity 0.2s ease;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.page-header-compact .branch-title {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.page-header {
+  transition: min-height 0.25s ease, padding 0.25s ease;
+}
+
+.page-header.page-header-compact {
+  min-height: 52px;
+  padding: 8px 16px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-header-center,
+  .page-header-center .branch-title,
+  .page-header {
+    transition: none;
+  }
 }

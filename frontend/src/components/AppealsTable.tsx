@@ -20,10 +20,10 @@ const COLUMNS: { label: string; className?: string }[] = [
   { label: "Дата", className: "col-center" },
   { label: "Телефон" },
   { label: "ТФ", className: "col-center" },
-  { label: "Данные клиента" },
+  { label: "ФИО + ДР" },
   { label: "Деп." },
   { label: "СМС", className: "col-center" },
-  { label: "Прием", className: "col-center" },
+  { label: "Прием", className: "col-center col-tight-label" },
   { label: "Госы", className: "col-center" },
   { label: "Статус", className: "col-center" },
   { label: "Описание" },
@@ -140,7 +140,7 @@ function NewAppealRow({
         <td className="muted col-center">—</td>
         <td>
           <input
-            placeholder="Данные клиента"
+            placeholder="ФИО + ДР"
             value={values.clientData}
             onChange={(e) => setValues((v) => ({ ...v, clientData: e.target.value }))}
             onKeyDown={handleKeyDown}
@@ -204,6 +204,71 @@ function NewAppealRow({
         </tr>
       )}
     </>
+  );
+}
+
+// The "код" line under the operator name — double-click to edit inline,
+// same save/cancel keys as DescriptionCell. The input only ever holds the
+// raw value (e.g. "14:35"); the "код:" label is added at display time, so
+// nobody has to type the word itself when recording one. When empty and
+// editable, a small pencil hints that double-clicking adds one — otherwise
+// there would be nothing here to click on.
+function ReportedTimeLine({
+  appeal,
+  editable,
+  onChange,
+}: {
+  appeal: Appeal;
+  editable: boolean;
+  onChange: (appeal: Appeal, value: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState("");
+
+  function startEdit() {
+    if (!editable) return;
+    setValue(appeal.reportedTime ?? "");
+    setEditing(true);
+  }
+
+  function save() {
+    setEditing(false);
+    if (value !== (appeal.reportedTime ?? "")) onChange(appeal, value);
+  }
+
+  function handleKeyDown(e: KeyboardEvent) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      save();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      setEditing(false);
+    }
+  }
+
+  if (editing) {
+    return (
+      <input
+        autoFocus
+        className="reported-time-input"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={handleKeyDown}
+        onBlur={save}
+      />
+    );
+  }
+
+  if (!editable && !appeal.reportedTime) return null;
+
+  return (
+    <span
+      className={`muted reported-time-line${editable ? " editable-cell" : ""}`}
+      onDoubleClick={startEdit}
+      title={editable ? "Двойной клик — изменить код" : undefined}
+    >
+      {appeal.reportedTime ? `код: ${appeal.reportedTime}` : <IconEdit width={11} height={11} />}
+    </span>
   );
 }
 
@@ -283,6 +348,7 @@ export function AppealsTable({
   onInlineTagChange,
   onInlineStatusChange,
   onInlineDescriptionChange,
+  onInlineReportedTimeChange,
   onDelete,
   govOptions,
   cbOptions,
@@ -306,6 +372,7 @@ export function AppealsTable({
   onInlineTagChange: (appeal: Appeal, field: TagField, value: string | null) => void;
   onInlineStatusChange: (appeal: Appeal, value: string) => void;
   onInlineDescriptionChange: (appeal: Appeal, value: string) => void;
+  onInlineReportedTimeChange: (appeal: Appeal, value: string) => void;
   // Only passed for roles allowed to delete straight from this table
   // (currently SUPERADMIN, so they can clean up any date's trubki).
   onDelete?: (appeal: Appeal) => void;
@@ -432,10 +499,10 @@ export function AppealsTable({
                 <td className="muted col-num">{index + 1}</td>
                 <td className="col-center date-cell">
                   <EmployeeNameButton id={appeal.operator.id} fullName={appeal.operator.fullName} />
-                  {appeal.reportedTime && (
+                  {(editable || appeal.reportedTime) && (
                     <>
                       <br />
-                      <span className="muted">код: {appeal.reportedTime}</span>
+                      <ReportedTimeLine appeal={appeal} editable={editable} onChange={onInlineReportedTimeChange} />
                     </>
                   )}
                 </td>
@@ -497,7 +564,7 @@ export function AppealsTable({
                 <td className="col-center row-actions">
                   {editable && (
                     <button className="icon-btn" title="Изменить" aria-label="Изменить" onClick={() => onEdit(appeal)}>
-                      <IconEdit width={14} height={14} />
+                      <IconEdit width={enhanced ? 16 : 14} height={enhanced ? 16 : 14} />
                     </button>
                   )}
                   {onDelete && (

@@ -181,7 +181,7 @@ export function AppealFormModal({
             </label>
 
             <label className="span-2">
-              Данные клиента
+              ФИО + ДР
               <textarea
                 value={values.clientData}
                 onChange={(e) => setValues((v) => ({ ...v, clientData: e.target.value }))}

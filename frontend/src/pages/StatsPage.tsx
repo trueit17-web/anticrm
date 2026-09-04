@@ -221,7 +221,7 @@ function DayAppealsTable({ appeals }: { appeals: Appeal[] }) {
             <th>📞 Телефон</th>
             <th className="col-center">📠 ТФ</th>
             <th className="col-center">📱 Опер. (моб.)</th>
-            <th>🧾 Данные клиента</th>
+            <th>ФИО + ДР</th>
             <th>💰 Деп.</th>
             <th className="col-center">💬 СМС</th>
             <th className="col-center">Прием</th>

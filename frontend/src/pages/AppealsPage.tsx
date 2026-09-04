@@ -149,7 +149,7 @@ function DeletedAppealsPanel({ date }: { date: string }) {
               <tr>
                 <th>Дата</th>
                 <th>Телефон</th>
-                <th>Данные клиента</th>
+                <th>ФИО + ДР</th>
                 <th>Статус</th>
                 <th>Удалено</th>
                 <th></th>
@@ -218,6 +218,19 @@ export function AppealsPage() {
   const [petConfig, setPetConfig] = useState<PetConfig | null>(null);
   const tableAreaRef = useRef<HTMLDivElement>(null);
   const isNewUi = user?.uiVersion === "new";
+
+  // Once the page has scrolled a bit, the sticky header compacts itself:
+  // the branch title fades out and the week's top-5 slide into the space
+  // it freed up, so the pinned bar stays useful without wasting height on
+  // a title you can already see isn't going anywhere.
+  const [headerCompact, setHeaderCompact] = useState(false);
+  useEffect(() => {
+    function onScroll() {
+      setHeaderCompact(window.scrollY > 24);
+    }
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   // `silent` is used for the background poll below: it refreshes the data
   // without flashing the loading state or an error banner over the table
@@ -332,6 +345,15 @@ export function AppealsPage() {
     }
   }
 
+  async function handleInlineReportedTimeChange(appeal: Appeal, reportedTime: string) {
+    setAppeals((prev) => prev.map((a) => (a.id === appeal.id ? { ...a, reportedTime } : a)));
+    try {
+      await api.patch(`/appeals/${appeal.id}`, { reportedTime });
+    } finally {
+      await loadAppeals();
+    }
+  }
+
   async function handleInlineStatusChange(appeal: Appeal, status: string) {
     setAppeals((prev) => prev.map((a) => (a.id === appeal.id ? { ...a, status } : a)));
     try {
@@ -352,7 +374,7 @@ export function AppealsPage() {
 
   const pageBody = (
     <div className="page">
-      <header className="page-header page-header-center">
+      <header className={`page-header page-header-center${headerCompact ? " page-header-compact" : ""}`}>
         <div>
           <h1 className="branch-title">
             {needsSwitcher && (
@@ -462,6 +484,7 @@ export function AppealsPage() {
             onInlineTagChange={handleInlineTagChange}
             onInlineStatusChange={handleInlineStatusChange}
             onInlineDescriptionChange={handleInlineDescriptionChange}
+            onInlineReportedTimeChange={handleInlineReportedTimeChange}
             onDelete={user.role === "SUPERADMIN" ? handleDeleteAppeal : undefined}
             govOptions={optionValues(options, "GOV")}
             cbOptions={optionValues(options, "CB")}
