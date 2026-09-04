@@ -43,8 +43,12 @@ function laurelBranch(radius: number, startDeg: number, endDeg: number, count: n
 }
 
 // Two gaps left open — top (crown) and bottom (stars) — like a classic
-// medal wreath, rather than a fully closed ring.
-const WREATH_LEAVES = laurelBranch(15, -70, 68, 8);
+// medal wreath, rather than a fully closed ring. A denser, slightly wider
+// FRONT layer plus a muted, larger-radius BACK layer behind it is what
+// turns a single thin row of leaves into a full, bushy branch with real
+// depth — the same trick as layering foliage in illustration.
+const WREATH_LEAVES = laurelBranch(15, -76, 74, 11);
+const WREATH_LEAVES_BACK = laurelBranch(17.3, -72, 70, 7);
 
 function WreathLeaf({
   x,
@@ -53,6 +57,7 @@ function WreathLeaf({
   scale,
   fill,
   rim,
+  muted,
 }: {
   x: number;
   y: number;
@@ -60,25 +65,61 @@ function WreathLeaf({
   scale: number;
   fill: string;
   rim: string;
+  // Back-layer leaves skip the bright rim highlight and sit at reduced
+  // opacity, reading as "in shadow" behind the front branch.
+  muted?: boolean;
 }) {
   return (
-    <g transform={`translate(${x} ${y}) rotate(${rotate})`}>
-      {/* Leaf body carries the metal gradient; a thin rim-light stroke along
-          one edge plus a small highlight ellipse is what reads as "glossy
-          metal" rather than a flat painted shape. */}
-      <ellipse cx={0} cy={0} rx={2.5 * scale} ry={1.05 * scale} fill={fill} stroke={rim} strokeWidth={0.18} strokeOpacity={0.55} />
-      <ellipse cx={0.6 * scale} cy={-0.2 * scale} rx={1.1 * scale} ry={0.35 * scale} fill={rim} fillOpacity={0.85} />
+    <g transform={`translate(${x} ${y}) rotate(${rotate})`} opacity={muted ? 0.62 : 1}>
+      {/* A pointed (lanceolate) leaf with a center vein reads as real laurel
+          foliage far better than a plain ellipse; the rim-light sliver is
+          what sells "polished metal" rather than a flat cutout. */}
+      <path
+        d={`M0,${-3.2 * scale} Q${1.4 * scale},${-1.5 * scale} ${1.2 * scale},0 Q${1.4 * scale},${1.5 * scale} 0,${3.2 * scale} Q${-1.4 * scale},${1.5 * scale} ${-1.2 * scale},0 Q${-1.4 * scale},${-1.5 * scale} 0,${-3.2 * scale} Z`}
+        fill={fill}
+        stroke={rim}
+        strokeWidth={0.16}
+        strokeOpacity={muted ? 0.25 : 0.5}
+      />
+      {!muted && (
+        <>
+          <line x1={0} y1={-2.7 * scale} x2={0} y2={2.7 * scale} stroke={rim} strokeWidth={0.15} strokeOpacity={0.35} />
+          <ellipse cx={0.6 * scale} cy={-0.9 * scale} rx={0.55 * scale} ry={1.15 * scale} fill={rim} fillOpacity={0.55} />
+        </>
+      )}
+    </g>
+  );
+}
+
+// A pair of small berries tucked at the base of each branch, next to the
+// ribbon-free stars gap — the detail real laurel-medal art almost always
+// includes and the one thing most reads as "hand-finished" rather than
+// procedural.
+function WreathBerries({ side, fill, rim }: { side: 1 | -1; fill: string; rim: string }) {
+  const x = 14.2 * side;
+  return (
+    <g>
+      <circle cx={x} cy={9.4} r={1.05} fill={fill} stroke={rim} strokeWidth={0.2} strokeOpacity={0.5} />
+      <circle cx={x + 1.3 * side} cy={11.4} r={0.85} fill={fill} stroke={rim} strokeWidth={0.18} strokeOpacity={0.5} />
     </g>
   );
 }
 
 // A small three-point crown sitting in the gap at the top of the wreath —
-// built from a zigzag polygon plus a band, not a traced illustration.
+// built from a zigzag polygon plus a band, not a traced illustration. The
+// thin outline pass underneath is what gives it a cast/engraved edge
+// instead of a flat sticker look.
 function Crown({ fill, highlight }: { fill: string; highlight: string }) {
   return (
     <g transform="translate(0 -18.5)">
-      <polygon points="-6,3.4 -6,-1.6 -3,1.2 0,-3.6 3,1.2 6,-1.6 6,3.4" fill={fill} />
-      <rect x={-6.3} y={3} width={12.6} height={2.2} rx={0.6} fill={fill} />
+      <polygon
+        points="-6,3.4 -6,-1.6 -3,1.2 0,-3.6 3,1.2 6,-1.6 6,3.4"
+        fill={fill}
+        stroke={highlight}
+        strokeWidth={0.22}
+        strokeOpacity={0.4}
+      />
+      <rect x={-6.3} y={3} width={12.6} height={2.2} rx={0.6} fill={fill} stroke={highlight} strokeWidth={0.2} strokeOpacity={0.4} />
       <circle cx={-3} cy={-0.9} r={0.85} fill={highlight} />
       <circle cx={0} cy={-2.9} r={0.95} fill={highlight} />
       <circle cx={3} cy={-0.9} r={0.85} fill={highlight} />
@@ -134,14 +175,22 @@ function Wreath({ rank, base, highlight, shadow }: { rank: 1 | 2 | 3; base: stri
         </linearGradient>
       </defs>
       <g>
+        {WREATH_LEAVES_BACK.map((l, i) => (
+          <WreathLeaf key={i} x={l.x} y={l.y} rotate={l.rotate} scale={l.scale} fill={base} rim={highlight} muted />
+        ))}
         {WREATH_LEAVES.map((l, i) => (
           <WreathLeaf key={i} x={l.x} y={l.y} rotate={l.rotate} scale={l.scale} fill={leafFill} rim={highlight} />
         ))}
+        <WreathBerries side={1} fill={leafFill} rim={highlight} />
       </g>
       <g transform="scale(-1,1)">
+        {WREATH_LEAVES_BACK.map((l, i) => (
+          <WreathLeaf key={i} x={l.x} y={l.y} rotate={l.rotate} scale={l.scale} fill={base} rim={highlight} muted />
+        ))}
         {WREATH_LEAVES.map((l, i) => (
           <WreathLeaf key={i} x={l.x} y={l.y} rotate={l.rotate} scale={l.scale} fill={leafFill} rim={highlight} />
         ))}
+        <WreathBerries side={1} fill={leafFill} rim={highlight} />
       </g>
       <Crown fill={crownFill} highlight={highlight} />
       <Stars color={base} />
