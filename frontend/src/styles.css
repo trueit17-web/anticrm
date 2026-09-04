@@ -3575,6 +3575,10 @@ body.col-resizing .appeals-table-new .col-resizer {
   grid-template-columns: 0fr auto 0fr;
   min-height: 52px;
   padding: 8px 14px 8px 8px;
+  /* Pull flush against the rail by eating the page's own left gutter —
+     .page's left padding is what otherwise leaves a strip of empty space
+     between the rail and the shrunk bar. */
+  margin-left: calc(-1 * clamp(16px, 2.5vw, 40px));
 }
 
 .page-header-bar .branch-title {
