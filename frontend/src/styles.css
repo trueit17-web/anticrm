@@ -2799,16 +2799,19 @@ body.col-resizing .col-resizer {
 .week-leader.rank-1 .week-leader-ring {
   width: 52px;
   height: 52px;
+  box-shadow: 0 0 0 2px rgba(226, 173, 62, 0.9), 0 2px 10px rgba(226, 173, 62, 0.5);
 }
 
 .week-leader.rank-2 .week-leader-ring {
   width: 44px;
   height: 44px;
+  box-shadow: 0 0 0 2px rgba(192, 199, 207, 0.85), 0 2px 8px rgba(180, 188, 196, 0.4);
 }
 
 .week-leader.rank-3 .week-leader-ring {
   width: 42px;
   height: 42px;
+  box-shadow: 0 0 0 2px rgba(197, 145, 127, 0.85), 0 2px 8px rgba(197, 145, 127, 0.4);
 }
 
 .week-leader.rank-4 .week-leader-ring,
@@ -2838,7 +2841,27 @@ body.col-resizing .col-resizer {
   top: -21px;
   bottom: -17px;
   pointer-events: none;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35));
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35)) drop-shadow(0 0 5px var(--wreath-glow, transparent));
+}
+
+/* A slow, subtle breathing glow — just for 1st place, so the podium's top
+   spot draws the eye without the whole header feeling busy. Respects
+   reduced-motion by simply not animating (the static glow from the filter
+   above still applies). */
+@media (prefers-reduced-motion: no-preference) {
+  .week-leader-wreath-gold {
+    animation: wreath-glow-pulse 2.6s ease-in-out infinite;
+  }
+}
+
+@keyframes wreath-glow-pulse {
+  0%,
+  100% {
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35)) drop-shadow(0 0 4px var(--wreath-glow, transparent));
+  }
+  50% {
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35)) drop-shadow(0 0 9px var(--wreath-glow, transparent));
+  }
 }
 
 .week-leader-rank {
@@ -2879,6 +2902,23 @@ body.col-resizing .col-resizer {
 
 @media (max-width: 900px) {
   .week-leaders {
+    display: none;
+  }
+}
+
+/* The new interface freed up header width by moving Статистика/Прозвон/
+   Админка/Выйти/Корзина into the rail, so the podium can afford to stay
+   visible down to a narrower window there than the classic header allows.
+   Specificity (not source order) is what makes this win over the rule
+   above. */
+@media (max-width: 900px) {
+  .app-shell .week-leaders {
+    display: flex;
+  }
+}
+
+@media (max-width: 620px) {
+  .app-shell .week-leaders {
     display: none;
   }
 }

@@ -2,7 +2,18 @@ import { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { useBranchSwitcher } from "../../hooks/useBranchSwitcher";
-import { IconAdmin, IconDatabase, IconHeadset, IconLogout, IconNotepadPencil, IconPhone, IconPlus, IconStats } from "../icons";
+import {
+  IconAdmin,
+  IconBack,
+  IconDatabase,
+  IconHeadset,
+  IconLogout,
+  IconNotepadPencil,
+  IconPhone,
+  IconPlus,
+  IconStats,
+  IconTrash,
+} from "../icons";
 import { InnModule } from "../inn/InnModule";
 
 export type AppShellSection = "appeals" | "stats" | "contacts" | "admin";
@@ -17,6 +28,8 @@ export function AppShell({
   active,
   children,
   onCreateAppeal,
+  onToggleTrash,
+  trashActive,
 }: {
   active: AppShellSection;
   children: ReactNode;
@@ -24,6 +37,11 @@ export function AppShell({
   // double as a "new trubka" action while already on that page, instead of
   // linking to the page you're already looking at.
   onCreateAppeal?: () => void;
+  // Only meaningful when active === "appeals" — undefined hides the rail
+  // item entirely for accounts without delete rights (mirrors the classic
+  // header's canDeleteAppeal(user) gate).
+  onToggleTrash?: () => void;
+  trashActive?: boolean;
 }) {
   const { user, logout } = useAuth();
   const { current: currentBranch, loaded } = useBranchSwitcher();
@@ -92,6 +110,17 @@ export function AppShell({
         )}
         <div className="app-rail-spacer" />
 
+        {active === "appeals" && onToggleTrash && (
+          <button
+            type="button"
+            className={`app-rail-item${trashActive ? " app-rail-item-active" : ""}`}
+            title={trashActive ? "К трубкам" : "Корзина"}
+            aria-label={trashActive ? "К трубкам" : "Корзина"}
+            onClick={onToggleTrash}
+          >
+            {trashActive ? <IconBack width={20} height={20} /> : <IconTrash width={20} height={20} />}
+          </button>
+        )}
         {(user.role === "ADMIN" || user.role === "SUPERADMIN") && (
           <Link
             to="/admin"

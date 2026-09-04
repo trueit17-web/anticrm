@@ -407,7 +407,7 @@ export function AppealsPage() {
                 )}
               </>
             )}
-            {canDeleteAppeal(user) && (
+            {!isNewUi && canDeleteAppeal(user) && (
               <button
                 className="icon-link"
                 title={showTrash ? "К трубкам" : "Корзина"}
@@ -490,7 +490,12 @@ export function AppealsPage() {
   );
 
   return isNewUi ? (
-    <AppShell active="appeals" onCreateAppeal={() => setCreating(true)}>
+    <AppShell
+      active="appeals"
+      onCreateAppeal={() => setCreating(true)}
+      onToggleTrash={canDeleteAppeal(user) ? () => setShowTrash((v) => !v) : undefined}
+      trashActive={showTrash}
+    >
       {pageBody}
     </AppShell>
   ) : (

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { api, ApiError, fileUrl } from "../api/client";
 import { UserCard } from "../types";
@@ -51,31 +51,34 @@ function WreathLeaf({
   y,
   rotate,
   scale,
-  base,
-  highlight,
+  fill,
+  rim,
 }: {
   x: number;
   y: number;
   rotate: number;
   scale: number;
-  base: string;
-  highlight: string;
+  fill: string;
+  rim: string;
 }) {
   return (
     <g transform={`translate(${x} ${y}) rotate(${rotate})`}>
-      <ellipse cx={0} cy={0} rx={2.5 * scale} ry={1.05 * scale} fill={base} />
-      <ellipse cx={0.5 * scale} cy={-0.15 * scale} rx={1.3 * scale} ry={0.45 * scale} fill={highlight} />
+      {/* Leaf body carries the metal gradient; a thin rim-light stroke along
+          one edge plus a small highlight ellipse is what reads as "glossy
+          metal" rather than a flat painted shape. */}
+      <ellipse cx={0} cy={0} rx={2.5 * scale} ry={1.05 * scale} fill={fill} stroke={rim} strokeWidth={0.18} strokeOpacity={0.55} />
+      <ellipse cx={0.6 * scale} cy={-0.2 * scale} rx={1.1 * scale} ry={0.35 * scale} fill={rim} fillOpacity={0.85} />
     </g>
   );
 }
 
 // A small three-point crown sitting in the gap at the top of the wreath —
 // built from a zigzag polygon plus a band, not a traced illustration.
-function Crown({ base, highlight }: { base: string; highlight: string }) {
+function Crown({ fill, highlight }: { fill: string; highlight: string }) {
   return (
     <g transform="translate(0 -18.5)">
-      <polygon points="-6,3.4 -6,-1.6 -3,1.2 0,-3.6 3,1.2 6,-1.6 6,3.4" fill={base} />
-      <rect x={-6.3} y={3} width={12.6} height={2.2} rx={0.6} fill={base} />
+      <polygon points="-6,3.4 -6,-1.6 -3,1.2 0,-3.6 3,1.2 6,-1.6 6,3.4" fill={fill} />
+      <rect x={-6.3} y={3} width={12.6} height={2.2} rx={0.6} fill={fill} />
       <circle cx={-3} cy={-0.9} r={0.85} fill={highlight} />
       <circle cx={0} cy={-2.9} r={0.95} fill={highlight} />
       <circle cx={3} cy={-0.9} r={0.85} fill={highlight} />
@@ -104,20 +107,43 @@ function Stars({ color }: { color: string }) {
   );
 }
 
-function Wreath({ base, highlight }: { base: string; highlight: string }) {
+function Wreath({ rank, base, highlight, shadow }: { rank: 1 | 2 | 3; base: string; highlight: string; shadow: string }) {
+  const gradId = useId();
+  const leafFill = `url(#${gradId}-leaf)`;
+  const crownFill = `url(#${gradId}-crown)`;
+
   return (
-    <svg className="week-leader-wreath" viewBox="-20 -22 40 42" aria-hidden="true">
+    <svg
+      className={`week-leader-wreath${rank === 1 ? " week-leader-wreath-gold" : ""}`}
+      viewBox="-20 -22 40 42"
+      aria-hidden="true"
+      style={{ ["--wreath-glow" as string]: shadow }}
+    >
+      <defs>
+        {/* Top-left highlight fading to the base tone — the same trick real
+            medal metal photography relies on for a convincingly "cast" look,
+            rather than a single flat fill. */}
+        <linearGradient id={`${gradId}-leaf`} x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor={highlight} />
+          <stop offset="55%" stopColor={base} />
+          <stop offset="100%" stopColor={base} />
+        </linearGradient>
+        <linearGradient id={`${gradId}-crown`} x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor={highlight} />
+          <stop offset="100%" stopColor={base} />
+        </linearGradient>
+      </defs>
       <g>
         {WREATH_LEAVES.map((l, i) => (
-          <WreathLeaf key={i} x={l.x} y={l.y} rotate={l.rotate} scale={l.scale} base={base} highlight={highlight} />
+          <WreathLeaf key={i} x={l.x} y={l.y} rotate={l.rotate} scale={l.scale} fill={leafFill} rim={highlight} />
         ))}
       </g>
       <g transform="scale(-1,1)">
         {WREATH_LEAVES.map((l, i) => (
-          <WreathLeaf key={i} x={l.x} y={l.y} rotate={l.rotate} scale={l.scale} base={base} highlight={highlight} />
+          <WreathLeaf key={i} x={l.x} y={l.y} rotate={l.rotate} scale={l.scale} fill={leafFill} rim={highlight} />
         ))}
       </g>
-      <Crown base={base} highlight={highlight} />
+      <Crown fill={crownFill} highlight={highlight} />
       <Stars color={base} />
     </svg>
   );
@@ -286,10 +312,10 @@ export function EmployeeNameButton({ id, fullName }: { id: number; fullName: str
 // used by the "top of the week" header widget. 4th/5th get a plain smaller
 // ring with no laurel wreath (that's reserved for the podium). Clicking it
 // opens the same employee card as the name links everywhere else.
-const WREATH_COLORS: Record<1 | 2 | 3, { base: string; highlight: string }> = {
-  1: { base: "#c8952f", highlight: "#f3d691" },
-  2: { base: "#9aa1a8", highlight: "#eef1f4" },
-  3: { base: "#b5776a", highlight: "#eecabb" },
+const WREATH_COLORS: Record<1 | 2 | 3, { base: string; highlight: string; shadow: string }> = {
+  1: { base: "#c8952f", highlight: "#f3d691", shadow: "rgba(226, 173, 62, 0.65)" },
+  2: { base: "#9aa1a8", highlight: "#eef1f4", shadow: "rgba(180, 188, 196, 0.55)" },
+  3: { base: "#b5776a", highlight: "#eecabb", shadow: "rgba(197, 145, 127, 0.55)" },
 };
 
 function isPodiumRank(rank: 1 | 2 | 3 | 4 | 5): rank is 1 | 2 | 3 {
@@ -323,7 +349,12 @@ export function EmployeeAvatarButton({
         <span className="week-leader-ring">
           <EmployeeAvatar className="week-leader-avatar" fullName={fullName} avatarUrl={avatarUrl} />
           {isPodiumRank(rank) && (
-            <Wreath base={WREATH_COLORS[rank].base} highlight={WREATH_COLORS[rank].highlight} />
+            <Wreath
+              rank={rank}
+              base={WREATH_COLORS[rank].base}
+              highlight={WREATH_COLORS[rank].highlight}
+              shadow={WREATH_COLORS[rank].shadow}
+            />
           )}
           <span className="week-leader-rank">{rank}</span>
         </span>
