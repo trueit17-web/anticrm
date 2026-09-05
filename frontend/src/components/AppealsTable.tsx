@@ -36,7 +36,10 @@ const DEFAULT_WIDTHS = [36, 110, 112, 90, 178, 90, 90, 60, 110, 130, 180, 110, 1
 // The new interface's density/layout pass gives the two free-text columns
 // (Данные клиента, Описание) more breathing room, funded by trimming the
 // narrow single-word tag columns — same column count and order as classic.
-const DEFAULT_WIDTHS_NEW = [36, 108, 110, 80, 205, 88, 86, 58, 100, 128, 210, 100, 100, 100, 64];
+// Телефон/Деп. are widened past that pass's originals (110/88 → 146/112) —
+// at this layout's 14px font a formatted phone number ("+7 (999) 123-45-67")
+// or a 7-figure deposit ("12 500 000 ₽") wrapped to a second line otherwise.
+const DEFAULT_WIDTHS_NEW = [36, 108, 146, 80, 205, 112, 86, 58, 100, 128, 210, 100, 100, 100, 64];
 const MIN_COL_WIDTH = 40;
 // Bumped if COLUMNS ever changes shape, so an old saved layout with the wrong
 // number of columns is discarded rather than misapplied.
