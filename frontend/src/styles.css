@@ -150,6 +150,30 @@ a {
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 24px;
+}
+
+.auth-card-wrap {
+  position: relative;
+}
+
+/* The headset badge straddles the card's top edge — a small brand mark
+   instead of a bare form floating on the money-rain background. */
+.auth-badge {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(160deg, var(--primary), var(--primary-dark));
+  color: #201705;
+  box-shadow: 0 10px 26px rgba(207, 154, 68, 0.55), 0 0 0 5px rgba(18, 20, 27, 0.55);
+  z-index: 1;
 }
 
 .auth-card {
@@ -163,11 +187,52 @@ a {
   width: 320px;
 }
 
-.auth-card label {
+.auth-sub {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--muted);
+}
+
+.auth-field {
+  position: relative;
   display: flex;
-  flex-direction: column;
-  gap: 6px;
+  align-items: center;
   font-size: 14px;
+}
+
+.auth-field-icon {
+  position: absolute;
+  left: 13px;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.auth-field input {
+  width: 100%;
+  padding: 11px 14px 11px 40px;
+}
+
+.auth-field:focus-within .auth-field-icon {
+  color: var(--primary-dark);
+}
+
+.auth-field-toggle {
+  position: absolute;
+  right: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  background: transparent;
+  color: var(--muted);
+  border-radius: 8px;
+}
+
+.auth-field-toggle:hover {
+  background: var(--surface-soft);
+  color: var(--primary-dark);
 }
 
 .page {
@@ -3274,30 +3339,56 @@ textarea:hover {
   }
 }
 
+.auth-card {
+  padding-top: 46px;
+}
+
 .auth-card h1 {
   position: relative;
-  margin: 0 0 20px;
-  padding-bottom: 16px;
-  font-size: 30px;
+  margin: 0;
+  padding-bottom: 14px;
+  font-size: 28px;
   line-height: 1.25;
   letter-spacing: -0.01em;
   color: var(--primary-dark);
+  text-align: center;
 }
 
 .auth-card h1::after {
   content: "";
   position: absolute;
-  left: 0;
+  left: 50%;
   bottom: 0;
+  transform: translateX(-50%);
   width: 46px;
   height: 3px;
   border-radius: 3px;
-  background: linear-gradient(90deg, var(--primary), transparent);
+  background: linear-gradient(90deg, transparent, var(--primary), transparent);
 }
 
-.auth-card button[type="submit"] {
+.auth-sub {
+  margin-top: -8px;
+  text-align: center;
+}
+
+.auth-submit {
   margin-top: 6px;
-  min-height: 44px;
+  min-height: 46px;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  background: linear-gradient(160deg, var(--primary), var(--primary-dark));
+  box-shadow: 0 10px 24px rgba(207, 154, 68, 0.35);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.auth-submit:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 30px rgba(207, 154, 68, 0.45);
+}
+
+.auth-submit:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 .empty-state {

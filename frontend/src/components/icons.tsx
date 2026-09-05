@@ -180,6 +180,48 @@ export function IconSheets(props: IconProps) {
   );
 }
 
+// A single person — the login form's username field.
+export function IconUser(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <circle cx="12" cy="8" r="3.4" />
+      <path d="M5 20c0-3.6 3.1-6.4 7-6.4s7 2.8 7 6.4" />
+    </svg>
+  );
+}
+
+// A padlock — the login form's password field.
+export function IconLock(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <rect x="5" y="11" width="14" height="9.5" rx="2.2" />
+      <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+      <circle cx="12" cy="15.4" r="1.5" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+// Open eye — "show password". Paired with IconEyeOff for the toggled state.
+export function IconEye(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" />
+      <circle cx="12" cy="12" r="2.8" />
+    </svg>
+  );
+}
+
+// Eye with a strike-through — "hide password".
+export function IconEyeOff(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M3.5 3.5l17 17" />
+      <path d="M10.6 5.7A11 11 0 0 1 12 5.5c6 0 9.5 6.5 9.5 6.5a15 15 0 0 1-3.2 3.9M7.4 7.3C4.8 8.9 2.5 12 2.5 12s3.5 6.5 9.5 6.5a9.8 9.8 0 0 0 3.1-.5" />
+      <path d="M9.9 10a2.8 2.8 0 0 0 3.9 3.9" />
+    </svg>
+  );
+}
+
 // An open book — the ИНН journal/stats view, distinct from the notepad+pencil
 // used for the quick-entry drawer button right above it on the rail.
 export function IconBook(props: IconProps) {
