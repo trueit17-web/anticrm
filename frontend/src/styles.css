@@ -3585,6 +3585,29 @@ body.col-resizing .appeals-table-new .col-resizer {
   background: var(--primary);
 }
 
+/* A always-visible hairline at each resizer's position — otherwise the
+   draggable boundary between header cells is invisible until hovered, and
+   nothing hints that the columns can be resized at all. */
+.appeals-table-new .col-resizer::after {
+  content: "";
+  position: absolute;
+  top: 22%;
+  bottom: 22%;
+  left: 50%;
+  width: 1px;
+  background: rgba(148, 129, 87, 0.4);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.appeals-table-new .col-resizer:hover::after,
+body.col-resizing .appeals-table-new .col-resizer::after {
+  top: 15%;
+  bottom: 15%;
+  width: 2px;
+  background: var(--primary-dark);
+}
+
 /* "Прием" is a narrow column — at the new interface's 11px header size the
    label wraps to two lines; shrinking just this header's text keeps it on
    one line without having to widen the column. */
