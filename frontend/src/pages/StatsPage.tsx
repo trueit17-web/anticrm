@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, WheelEvent as ReactWheelEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { api, ApiError } from "../api/client";
 import {
@@ -193,11 +193,24 @@ function DailyChart({
 }
 
 function DayAppealsTable({ appeals }: { appeals: Appeal[] }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // The table is wider than the page on most monitors — let the mouse wheel
+  // pan it sideways (instead of only a horizontal scrollbar drag) while it
+  // actually has overflow to scroll; otherwise leave the wheel event alone
+  // so the page still scrolls vertically as normal.
+  function handleWheel(e: ReactWheelEvent<HTMLDivElement>) {
+    const el = scrollRef.current;
+    if (!el || el.scrollWidth <= el.clientWidth) return;
+    e.preventDefault();
+    el.scrollLeft += e.deltaY;
+  }
+
   if (appeals.length === 0) {
     return <p className="empty-state">За этот день трубок нет.</p>;
   }
   return (
-    <div className="table-scroll">
+    <div className="table-scroll" ref={scrollRef} onWheel={handleWheel}>
       <table className="appeals-table">
         <colgroup>
           <col style={{ width: 110 }} />
