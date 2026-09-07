@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, WheelEvent as ReactWheelEvent } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { api, ApiError } from "../api/client";
 import {
@@ -25,6 +25,7 @@ import { PetStatsAssistant } from "../components/pet/PetStatsAssistant";
 import { InnStatsSection } from "../components/inn/InnStatsSection";
 import { AppShell } from "../components/shell/AppShell";
 import { QuickStatsTiles } from "../components/shell/QuickStatsPanel";
+import { useEdgeAutoScroll } from "../hooks/useEdgeAutoScroll";
 import { APP_BUILD, APP_VERSION } from "../data/changelog";
 import { getActiveBranchId } from "../api/client";
 
@@ -193,24 +194,17 @@ function DailyChart({
 }
 
 function DayAppealsTable({ appeals }: { appeals: Appeal[] }) {
+  // The table is wider than the page on most monitors — same edge-hover pan
+  // as the main Трубки table (AppealsTable.tsx) instead of only a horizontal
+  // scrollbar drag: move the mouse toward the left/right edge of the screen.
   const scrollRef = useRef<HTMLDivElement>(null);
-
-  // The table is wider than the page on most monitors — let the mouse wheel
-  // pan it sideways (instead of only a horizontal scrollbar drag) while it
-  // actually has overflow to scroll; otherwise leave the wheel event alone
-  // so the page still scrolls vertically as normal.
-  function handleWheel(e: ReactWheelEvent<HTMLDivElement>) {
-    const el = scrollRef.current;
-    if (!el || el.scrollWidth <= el.clientWidth) return;
-    e.preventDefault();
-    el.scrollLeft += e.deltaY;
-  }
+  useEdgeAutoScroll(scrollRef);
 
   if (appeals.length === 0) {
     return <p className="empty-state">За этот день трубок нет.</p>;
   }
   return (
-    <div className="table-scroll" ref={scrollRef} onWheel={handleWheel}>
+    <div className="table-scroll" ref={scrollRef}>
       <table className="appeals-table">
         <colgroup>
           <col style={{ width: 110 }} />
