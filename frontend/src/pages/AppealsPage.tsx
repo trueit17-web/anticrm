@@ -225,8 +225,14 @@ export function AppealsPage() {
   // a title you can already see isn't going anywhere.
   const [headerCompact, setHeaderCompact] = useState(false);
   useEffect(() => {
+    // Two different thresholds (not one) for entering vs. leaving compact —
+    // a single cutoff flickers rapidly once scrollY hovers near it, because
+    // toggling compact itself changes the bar's height/padding, which nudges
+    // layout enough to cross back over that same line on the very next
+    // scroll event. Leaving a gap between the two thresholds means a small
+    // jitter can no longer cross both, so the state stops bouncing.
     function onScroll() {
-      setHeaderCompact(window.scrollY > 24);
+      setHeaderCompact((prev) => (prev ? window.scrollY > 12 : window.scrollY > 48));
     }
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
