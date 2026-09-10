@@ -903,6 +903,14 @@ body.col-resizing .col-resizer {
   line-height: 1.15;
 }
 
+/* The global `button { min-height: 38px }` rule leaves a big empty gap below
+   the operator name's text before the "код" line beneath it — this button
+   is a plain inline text link, not a real form control, so it doesn't need
+   that much tap-target height. */
+.appeals-table .date-cell .employee-name-link {
+  min-height: 22px;
+}
+
 .appeals-table td input,
 .appeals-table td select {
   width: 100%;

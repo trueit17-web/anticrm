@@ -17,7 +17,7 @@ function formatTime(iso: string): string {
 // stay in sync. The trailing empty column is the row-actions column.
 const COLUMNS: { label: string; className?: string }[] = [
   { label: "№", className: "col-num" },
-  { label: "Дата", className: "col-center" },
+  { label: "Завел", className: "col-center" },
   { label: "Телефон" },
   { label: "ТФ", className: "col-center" },
   { label: "ФИО + ДР" },
@@ -210,12 +210,18 @@ function NewAppealRow({
   );
 }
 
+// True once the value contains a letter (Cyrillic or Latin) — at that point
+// the operator has written a real note (e.g. a name or "перезвон"), not just
+// a time/code, so it's shown verbatim. Digits/special characters only (e.g.
+// "14:35") still get the "код:" label prefixed at display time.
+const HAS_LETTER = /[a-zA-Zа-яёА-ЯЁ]/;
+
 // The "код" line under the operator name — double-click to edit inline,
 // same save/cancel keys as DescriptionCell. The input only ever holds the
-// raw value (e.g. "14:35"); the "код:" label is added at display time, so
-// nobody has to type the word itself when recording one. When empty and
-// editable, a small pencil hints that double-clicking adds one — otherwise
-// there would be nothing here to click on.
+// raw value nobody has to type the word "код" themselves when recording a
+// time/code — see HAS_LETTER above for when the label is added vs. omitted.
+// When empty and editable, a small pencil hints that double-clicking adds
+// one — otherwise there would be nothing here to click on.
 function ReportedTimeLine({
   appeal,
   editable,
@@ -270,7 +276,11 @@ function ReportedTimeLine({
       onDoubleClick={startEdit}
       title={editable ? "Двойной клик — изменить код" : undefined}
     >
-      {appeal.reportedTime ? `код: ${appeal.reportedTime}` : <IconEdit width={11} height={11} />}
+      {appeal.reportedTime
+        ? HAS_LETTER.test(appeal.reportedTime)
+          ? appeal.reportedTime
+          : `код: ${appeal.reportedTime}`
+        : <IconEdit width={11} height={11} />}
     </span>
   );
 }
