@@ -1,6 +1,6 @@
 export type Role = "USER" | "MANAGER" | "ADMIN" | "SUPERADMIN";
 
-export type OptionField = "GOV" | "CB" | "FSB" | "CLOSER" | "STATUS" | "TF" | "INN_CATEGORY";
+export type OptionField = "GOV" | "CB" | "FSB" | "CLOSER" | "STATUS" | "TF" | "INN_CATEGORY" | "SOURCE";
 
 export const ROLE_LABELS: Record<Role, string> = {
   USER: "Пользователь",
@@ -17,6 +17,7 @@ export const OPTION_FIELD_LABELS: Record<OptionField, string> = {
   STATUS: "Статус",
   TF: "ТФ",
   INN_CATEGORY: "Категория ИНН",
+  SOURCE: "Чья база",
 };
 
 export interface AuthUser {
@@ -200,6 +201,9 @@ export interface Appeal {
   fsb: string | null;
   closer: string | null;
   tf: string | null;
+  // "Чья база" — required at creation (see NewAppealRow), admin-curated via
+  // OptionField.SOURCE.
+  source: string | null;
   status: string;
   description: string | null;
   smsSentBy: { id: number; fullName: string } | null;
@@ -254,6 +258,7 @@ export interface RangeStats {
   byStatus: StatBucket[];
   byDate: DailyStat[];
   byTf: TfTimeBucket[];
+  bySource: StatBucket[];
 }
 
 export interface SelectOption {

@@ -518,6 +518,7 @@ export function AppealsPage() {
             fsbOptions={optionValues(options, "FSB")}
             closerOptions={optionValues(options, "CLOSER")}
             tfOptions={optionValues(options, "TF")}
+            sourceOptions={optionValues(options, "SOURCE")}
             statusOptions={optionValues(options, "STATUS")}
             statusColors={statusColorMap(options)}
             defaultStatus={defaultStatusValue(options)}

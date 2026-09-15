@@ -532,6 +532,20 @@ a {
   font-size: 13px;
 }
 
+/* Required-field feedback on the create row's "Чья база" dropdown — only
+   shown after a submit attempt with it still empty, not from first render. */
+.field-invalid {
+  border-color: var(--danger) !important;
+  box-shadow: 0 0 0 1px var(--danger);
+}
+
+.field-hint {
+  color: var(--danger);
+  font-size: 11px;
+  margin-top: 2px;
+  white-space: nowrap;
+}
+
 .empty-state {
   color: var(--muted);
   padding: 40px;

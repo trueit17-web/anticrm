@@ -54,6 +54,9 @@ const createSchema = z.object({
   reportedTime: z.string().optional(),
   description: z.string().optional(),
   status: z.string().min(1).optional(),
+  // "Чья база" — required for every new trubka (see the create row's
+  // dropdown in AppealsTable.tsx). Enforced here too, not just client-side.
+  source: z.string().min(1, "Укажите источник (чья база)"),
 });
 
 export async function createAppealHandler(req: Request, res: Response) {
@@ -106,6 +109,7 @@ const updateSchema = z.object({
   fsb: tagField,
   closer: tagField,
   tf: tagField,
+  source: tagField,
   // Sent by the multi-field edit form (loaded together with the rest of
   // the appeal); omitted by the table's quick single-field inline edits,
   // which stay unconditional. See updateAppealWithHistory.
@@ -115,7 +119,7 @@ const updateSchema = z.object({
 // Госы/ЦБ/ФСБ/Закрыв/ТФ/Статус are classification fields — only manager/admin
 // may set them, regardless of who owns the appeal. Прием (intake) and phone/
 // description/etc. stay open to any authenticated employee, same as СМС.
-const RESTRICTED_FIELDS = ["gov", "cb", "fsb", "closer", "tf", "status"] as const;
+const RESTRICTED_FIELDS = ["gov", "cb", "fsb", "closer", "tf", "status", "source"] as const;
 
 export async function updateAppealHandler(req: Request, res: Response) {
   const branchId = await resolveBranchId(req);
@@ -245,7 +249,7 @@ function parseRangeParams(req: Request): { from: Date; to: Date } {
 export async function getStatsHandler(req: Request, res: Response) {
   const branchId = await resolveBranchId(req);
   if (branchId === null) {
-    return res.json({ total: 0, byOperator: [], byGov: [], byStatus: [], byDate: [], byTf: [] });
+    return res.json({ total: 0, byOperator: [], byGov: [], byStatus: [], byDate: [], byTf: [], bySource: [] });
   }
   const { from, to } = parseRangeParams(req);
   const stats = await getStatsForRange(branchId, from, to);

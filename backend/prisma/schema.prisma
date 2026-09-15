@@ -28,6 +28,9 @@ enum OptionField {
   // /admin page's ИНН tab, same reused SelectOption CRUD as every other
   // field here.
   INN_CATEGORY
+  // "Чья база" — source of the appeal's data, picked when logging a new
+  // trubka (required, see Appeal.source below).
+  SOURCE
 }
 
 // Workflow state of one Contact through the cold-call queue.
@@ -346,6 +349,11 @@ model Appeal {
   intake     Boolean @default(false)
   clientData String?
   dep        String?
+  // "Чья база" — required at creation, picked from the admin-curated
+  // OptionField.SOURCE list. Nullable in the schema only because appeals
+  // logged before this field existed have none; the create endpoint always
+  // requires it for new rows.
+  source     String?
   // Free-text time the client reports something happened (e.g. "около
   // 14:35") — distinct from createdAt, which is when this record itself
   // was saved. Edited manually in the edit drawer, never auto-filled.

@@ -74,18 +74,22 @@ export interface NewAppealValues {
   clientData: string;
   dep: string;
   description: string;
+  // "Чья база" — required, see NewAppealRow's dropdown below.
+  source: string;
 }
 
 function NewAppealRow({
   rowNumber,
   initialDate,
   defaultStatus,
+  sourceOptions,
   onCancel,
   onSubmit,
 }: {
   rowNumber: number;
   initialDate: string;
   defaultStatus: string;
+  sourceOptions: string[];
   onCancel: () => void;
   onSubmit: (values: NewAppealValues) => Promise<void>;
 }) {
@@ -95,12 +99,20 @@ function NewAppealRow({
     clientData: "",
     dep: "",
     description: "",
+    source: "",
   });
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // Only shown once the operator has tried to submit — flagging the empty
+  // required field from the very first render (before they've touched
+  // anything) would just read as the page being broken.
+  const [showSourceHint, setShowSourceHint] = useState(false);
 
   async function handleSubmit() {
-    if (!values.phone.trim() || submitting) return;
+    if (!values.phone.trim() || !values.source || submitting) {
+      if (!values.source) setShowSourceHint(true);
+      return;
+    }
     setError(null);
     setSubmitting(true);
     try {
@@ -124,12 +136,23 @@ function NewAppealRow({
       <tr className="new-appeal-row">
         <td className="muted col-num">{rowNumber}</td>
         <td>
-          <input
-            type="date"
-            value={values.date}
-            onChange={(e) => setValues((v) => ({ ...v, date: e.target.value }))}
-            onKeyDown={handleKeyDown}
-          />
+          <select
+            className={showSourceHint && !values.source ? "field-invalid" : undefined}
+            value={values.source}
+            onChange={(e) => {
+              setValues((v) => ({ ...v, source: e.target.value }));
+              setShowSourceHint(false);
+            }}
+            title={showSourceHint && !values.source ? "Укажите, чья база — поле обязательное" : "Чья база"}
+          >
+            <option value="">Чья база...</option>
+            {sourceOptions.map((o) => (
+              <option key={o} value={o}>
+                {o}
+              </option>
+            ))}
+          </select>
+          {showSourceHint && !values.source && <div className="field-hint">Укажите чья база</div>}
         </td>
         <td>
           <input
@@ -368,6 +391,7 @@ export function AppealsTable({
   fsbOptions,
   closerOptions,
   tfOptions,
+  sourceOptions,
   statusOptions,
   statusColors,
   defaultStatus,
@@ -394,6 +418,9 @@ export function AppealsTable({
   fsbOptions: string[];
   closerOptions: string[];
   tfOptions: string[];
+  // "Чья база" options for the create row's required dropdown (see
+  // NewAppealRow) — admin-curated, same OptionField mechanism as the rest.
+  sourceOptions: string[];
   statusOptions: string[];
   statusColors: Record<string, string>;
   defaultStatus: string;
@@ -599,6 +626,7 @@ export function AppealsTable({
               rowNumber={appeals.length + 1}
               initialDate={listDate}
               defaultStatus={defaultStatus}
+              sourceOptions={sourceOptions}
               onCancel={onCancelCreate}
               onSubmit={onSubmitCreate}
             />

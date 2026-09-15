@@ -796,6 +796,7 @@ export function StatsPage() {
   const [byStatus, setByStatus] = useState<StatBucket[]>([]);
   const [byDate, setByDate] = useState<DailyStat[]>([]);
   const [byTf, setByTf] = useState<TfTimeBucket[]>([]);
+  const [bySource, setBySource] = useState<StatBucket[]>([]);
   // Прозвон stats live behind the per-branch module toggle: a 403 (module off)
   // or any other failure just hides the block rather than erroring the page.
   const [callStats, setCallStats] = useState<ContactRangeStats | null>(null);
@@ -842,6 +843,7 @@ export function StatsPage() {
         setByStatus(res.byStatus);
         setByDate(res.byDate);
         setByTf(res.byTf);
+        setBySource(res.bySource);
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : "Не удалось загрузить статистику"))
       .finally(() => setLoading(false));
@@ -1177,6 +1179,13 @@ export function StatsPage() {
                 </div>
                 <div className="stats-panel">
                   <TfTimeBreakdown rows={byTf} />
+                </div>
+                <div className="stats-panel">
+                  <SortableBreakdown
+                    title="По источнику"
+                    rows={bySource.map((s) => ({ label: s.value, count: s.count }))}
+                    enhanced={isNewUi}
+                  />
                 </div>
               </div>
               <div className="stats-panel">

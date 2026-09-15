@@ -51,6 +51,7 @@ export interface CreateAppealInput {
   reportedTime?: string;
   description?: string;
   status?: string;
+  source?: string;
 }
 
 // Accepts an optional transaction client so callers that need the create to
@@ -80,6 +81,7 @@ export interface UpdateAppealInput {
   fsb?: string | null;
   closer?: string | null;
   tf?: string | null;
+  source?: string | null;
 }
 
 const FIELD_LABELS: Record<keyof UpdateAppealInput, string> = {
@@ -96,6 +98,7 @@ const FIELD_LABELS: Record<keyof UpdateAppealInput, string> = {
   fsb: "ФСБ",
   closer: "Закрыв",
   tf: "ТФ",
+  source: "Чья база",
 };
 
 function resolveDisplayValue(field: keyof UpdateAppealInput, value: unknown): string | null {
@@ -263,6 +266,7 @@ export interface RangeStats {
   byStatus: StatBucket[];
   byDate: DailyStat[];
   byTf: TfTimeBucket[];
+  bySource: StatBucket[];
 }
 
 // Shift window boundaries (Moscow local time, minutes since midnight) used to
@@ -292,10 +296,11 @@ export async function getStatsForRange(branchId: number, from: Date, to: Date): 
   // parameters through an implicit timestamptz cast that gets shifted by the
   // server process's local timezone — silently matching/labelling the wrong
   // calendar day. Prisma's typed query path doesn't have that problem.
-  const [operatorGroups, govGroups, statusGroups, dateRows, total] = await Promise.all([
+  const [operatorGroups, govGroups, statusGroups, sourceGroups, dateRows, total] = await Promise.all([
     prisma.appeal.groupBy({ by: ["operatorId"], where, _count: { _all: true } }),
     prisma.appeal.groupBy({ by: ["gov"], where, _count: { _all: true } }),
     prisma.appeal.groupBy({ by: ["status"], where, _count: { _all: true } }),
+    prisma.appeal.groupBy({ by: ["source"], where, _count: { _all: true } }),
     prisma.appeal.findMany({ where, select: { date: true, tf: true, createdAt: true } }),
     prisma.appeal.count({ where }),
   ]);
@@ -339,6 +344,10 @@ export async function getStatsForRange(branchId: number, from: Date, to: Date): 
     .map((g) => ({ value: g.status, count: g._count._all }))
     .sort((a, b) => b.count - a.count);
 
+  const bySource = sourceGroups
+    .map((g) => ({ value: g.source ?? "—", count: g._count._all }))
+    .sort((a, b) => b.count - a.count);
+
   const dayCounts = new Map<string, number>();
   for (const row of dateRows) {
     const day = row.date.toISOString().slice(0, 10);
@@ -361,7 +370,7 @@ export async function getStatsForRange(branchId: number, from: Date, to: Date): 
     .map(([value, counts]) => ({ value, ...counts }))
     .sort((a, b) => b.I + b.II + b.III + b.IV - (a.I + a.II + a.III + a.IV));
 
-  return { total, byOperator, byGov, byStatus, byDate, byTf };
+  return { total, byOperator, byGov, byStatus, byDate, byTf, bySource };
 }
 
 export interface SummaryStats {
