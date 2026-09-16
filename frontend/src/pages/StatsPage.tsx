@@ -17,6 +17,7 @@ import {
 } from "../types";
 import { useAuth } from "../auth/AuthContext";
 import { detectMobileOperator } from "../lib/mobileOperator";
+import { extractAge, ruYears } from "../lib/age";
 import { formatMoney } from "../lib/money";
 import { BranchSwitcher } from "../components/BranchSwitcher";
 import { IconBack, IconX } from "../components/icons";
@@ -320,6 +321,19 @@ function DayAppealsTable({ appeals }: { appeals: Appeal[] }) {
               <td className="col-center">{detectMobileOperator(a.phone)}</td>
               <td className="wrap-cell" title={a.clientData ?? undefined}>
                 {a.clientData || "—"}
+                {(() => {
+                  const age = extractAge(a.clientData);
+                  return (
+                    age !== null && (
+                      <>
+                        <br />
+                        <span className="muted">
+                          ({age} {ruYears(age)})
+                        </span>
+                      </>
+                    )
+                  );
+                })()}
               </td>
               <td className="wrap-cell" title={a.dep ?? undefined}>
                 {formatMoney(a.dep)}

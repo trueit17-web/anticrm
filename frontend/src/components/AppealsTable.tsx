@@ -3,6 +3,7 @@ import { Appeal } from "../types";
 import { AuthUser } from "../types";
 import { canEditAppeal, canEditAssignments } from "../lib/permissions";
 import { detectMobileOperator } from "../lib/mobileOperator";
+import { extractAge, ruYears } from "../lib/age";
 import { formatMoney } from "../lib/money";
 import { useEdgeAutoScroll } from "../hooks/useEdgeAutoScroll";
 import { IconCheck, IconEdit, IconTrash, IconX } from "./icons";
@@ -568,6 +569,19 @@ export function AppealsTable({
                 <td className="col-center">{renderTagSelect(appeal, "tf", tfOptions)}</td>
                 <td className="wrap-cell" title={appeal.clientData ?? undefined}>
                   {appeal.clientData || "—"}
+                  {(() => {
+                    const age = extractAge(appeal.clientData);
+                    return (
+                      age !== null && (
+                        <>
+                          <br />
+                          <span className="muted">
+                            ({age} {ruYears(age)})
+                          </span>
+                        </>
+                      )
+                    );
+                  })()}
                 </td>
                 <td className="wrap-cell" title={appeal.dep ?? undefined}>
                   {formatMoney(appeal.dep)}
