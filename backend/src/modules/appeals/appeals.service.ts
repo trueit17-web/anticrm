@@ -377,6 +377,15 @@ export interface SummaryStats {
   today: number;
   week: number;
   total: number;
+  todayBySource: StatBucket[];
+  weekBySource: StatBucket[];
+  totalBySource: StatBucket[];
+}
+
+function bucketsFromGroups(groups: { source: string | null; _count: { _all: number } }[]): StatBucket[] {
+  return groups
+    .map((g) => ({ value: g.source ?? "—", count: g._count._all }))
+    .sort((a, b) => b.count - a.count);
 }
 
 // Monday of the week containing date — weeks here always run Пн–Сб.
@@ -400,11 +409,29 @@ export async function getSummaryStats(branchId: number): Promise<SummaryStats> {
   const weekEnd = new Date(weekStart);
   weekEnd.setUTCDate(weekEnd.getUTCDate() + 6);
 
-  const [today, week, total] = await Promise.all([
+  const [today, week, total, todaySourceGroups, weekSourceGroups, totalSourceGroups] = await Promise.all([
     prisma.appeal.count({ where: { branchId, deletedAt: null, date: { gte: todayStart, lt: tomorrow } } }),
     prisma.appeal.count({ where: { branchId, deletedAt: null, date: { gte: weekStart, lt: weekEnd } } }),
     prisma.appeal.count({ where: { branchId, deletedAt: null } }),
+    prisma.appeal.groupBy({
+      by: ["source"],
+      where: { branchId, deletedAt: null, date: { gte: todayStart, lt: tomorrow } },
+      _count: { _all: true },
+    }),
+    prisma.appeal.groupBy({
+      by: ["source"],
+      where: { branchId, deletedAt: null, date: { gte: weekStart, lt: weekEnd } },
+      _count: { _all: true },
+    }),
+    prisma.appeal.groupBy({ by: ["source"], where: { branchId, deletedAt: null }, _count: { _all: true } }),
   ]);
 
-  return { today, week, total };
+  return {
+    today,
+    week,
+    total,
+    todayBySource: bucketsFromGroups(todaySourceGroups),
+    weekBySource: bucketsFromGroups(weekSourceGroups),
+    totalBySource: bucketsFromGroups(totalSourceGroups),
+  };
 }

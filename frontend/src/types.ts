@@ -249,6 +249,9 @@ export interface SummaryStats {
   today: number;
   week: number;
   total: number;
+  todayBySource: StatBucket[];
+  weekBySource: StatBucket[];
+  totalBySource: StatBucket[];
 }
 
 export interface RangeStats {
@@ -286,7 +289,14 @@ export interface UserCard {
   avatarUrl: string | null;
   telegram: string | null;
   bio: string | null;
-  stats: { today: number; week: number; total: number };
+  stats: {
+    today: number;
+    week: number;
+    total: number;
+    todayBySource: StatBucket[];
+    weekBySource: StatBucket[];
+    totalBySource: StatBucket[];
+  };
 }
 
 export interface HistoryEntry {

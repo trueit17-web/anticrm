@@ -137,7 +137,12 @@ function NewAppealRow({
         <td className="muted col-num">{rowNumber}</td>
         <td>
           <select
-            className={showSourceHint && !values.source ? "field-invalid" : undefined}
+            className={[
+              !values.source && "select-placeholder",
+              showSourceHint && !values.source && "field-invalid",
+            ]
+              .filter(Boolean)
+              .join(" ") || undefined}
             value={values.source}
             onChange={(e) => {
               setValues((v) => ({ ...v, source: e.target.value }));
@@ -145,7 +150,11 @@ function NewAppealRow({
             }}
             title={showSourceHint && !values.source ? "Укажите, чья база — поле обязательное" : "Чья база"}
           >
-            <option value="">Чья база...</option>
+            {/* disabled+hidden: shows as greyed placeholder text on the closed
+                control, but isn't a choosable row when the list opens. */}
+            <option value="" disabled hidden>
+              Чья база
+            </option>
             {sourceOptions.map((o) => (
               <option key={o} value={o}>
                 {o}
@@ -538,6 +547,11 @@ export function AppealsTable({
               >
                 <td className="muted col-num">{index + 1}</td>
                 <td className="col-center date-cell">
+                  {appeal.source && (
+                    <span className="source-watermark" title={`Чья база: ${appeal.source}`}>
+                      {appeal.source.charAt(0).toUpperCase()}
+                    </span>
+                  )}
                   <EmployeeNameButton id={appeal.operator.id} fullName={appeal.operator.fullName} />
                   {(editable || appeal.reportedTime) && (
                     <>

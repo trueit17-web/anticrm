@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { api, ApiError, fileUrl } from "../api/client";
 import { UserCard } from "../types";
+import { formatSourceBreakdown } from "../lib/statBreakdown";
 
 function initials(fullName: string): string {
   const parts = fullName.trim().split(/\s+/).filter(Boolean);
@@ -316,14 +317,29 @@ function EmployeeCardPopover({
             <div>
               <span className="employee-card-stat-value">{card.stats.today}</span>
               <span className="muted">Сегодня</span>
+              {formatSourceBreakdown(card.stats.todayBySource) && (
+                <div className="employee-card-stat-breakdown">
+                  {formatSourceBreakdown(card.stats.todayBySource)}
+                </div>
+              )}
             </div>
             <div>
               <span className="employee-card-stat-value">{card.stats.week}</span>
               <span className="muted">За неделю</span>
+              {formatSourceBreakdown(card.stats.weekBySource) && (
+                <div className="employee-card-stat-breakdown">
+                  {formatSourceBreakdown(card.stats.weekBySource)}
+                </div>
+              )}
             </div>
             <div>
               <span className="employee-card-stat-value">{card.stats.total}</span>
               <span className="muted">Всего</span>
+              {formatSourceBreakdown(card.stats.totalBySource) && (
+                <div className="employee-card-stat-breakdown">
+                  {formatSourceBreakdown(card.stats.totalBySource)}
+                </div>
+              )}
             </div>
           </div>
 

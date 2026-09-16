@@ -534,6 +534,7 @@ export function AppealsPage() {
       {editing && (
         <AppealFormModal
           appeal={editing}
+          sourceOptions={optionValues(options, "SOURCE")}
           onClose={() => setEditing(null)}
           onSubmit={(values) => handleUpdate(editing.id, editing.version, values)}
         />

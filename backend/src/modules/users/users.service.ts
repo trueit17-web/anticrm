@@ -365,11 +365,28 @@ export async function getUserCard(id: number, branchId: number | null) {
 
   const appealWhere = { operatorId: id, branchId: branchId ?? user.branchId ?? undefined, deletedAt: null };
 
-  const [todayCount, weekCount, totalCount] = await Promise.all([
-    prisma.appeal.count({ where: { ...appealWhere, date: { gte: today, lt: tomorrow } } }),
-    prisma.appeal.count({ where: { ...appealWhere, date: { gte: weekStart, lt: weekEnd } } }),
-    prisma.appeal.count({ where: appealWhere }),
-  ]);
+  const [todayCount, weekCount, totalCount, todaySourceGroups, weekSourceGroups, totalSourceGroups] =
+    await Promise.all([
+      prisma.appeal.count({ where: { ...appealWhere, date: { gte: today, lt: tomorrow } } }),
+      prisma.appeal.count({ where: { ...appealWhere, date: { gte: weekStart, lt: weekEnd } } }),
+      prisma.appeal.count({ where: appealWhere }),
+      prisma.appeal.groupBy({
+        by: ["source"],
+        where: { ...appealWhere, date: { gte: today, lt: tomorrow } },
+        _count: { _all: true },
+      }),
+      prisma.appeal.groupBy({
+        by: ["source"],
+        where: { ...appealWhere, date: { gte: weekStart, lt: weekEnd } },
+        _count: { _all: true },
+      }),
+      prisma.appeal.groupBy({ by: ["source"], where: appealWhere, _count: { _all: true } }),
+    ]);
+
+  const bucketsFromGroups = (groups: { source: string | null; _count: { _all: number } }[]) =>
+    groups
+      .map((g) => ({ value: g.source ?? "—", count: g._count._all }))
+      .sort((a, b) => b.count - a.count);
 
   return {
     id: user.id,
@@ -377,7 +394,14 @@ export async function getUserCard(id: number, branchId: number | null) {
     avatarUrl: user.avatarUrl,
     telegram: user.telegram,
     bio: user.bio,
-    stats: { today: todayCount, week: weekCount, total: totalCount },
+    stats: {
+      today: todayCount,
+      week: weekCount,
+      total: totalCount,
+      todayBySource: bucketsFromGroups(todaySourceGroups),
+      weekBySource: bucketsFromGroups(weekSourceGroups),
+      totalBySource: bucketsFromGroups(totalSourceGroups),
+    },
   };
 }
 

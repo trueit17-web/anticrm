@@ -857,7 +857,14 @@ export function StatsPage() {
   const [customFrom, setCustomFrom] = useState(todayInputValue());
   const [customTo, setCustomTo] = useState(todayInputValue());
 
-  const [summary, setSummary] = useState<SummaryStats>({ today: 0, week: 0, total: 0 });
+  const [summary, setSummary] = useState<SummaryStats>({
+    today: 0,
+    week: 0,
+    total: 0,
+    todayBySource: [],
+    weekBySource: [],
+    totalBySource: [],
+  });
   const [byOperator, setByOperator] = useState<OperatorStat[]>([]);
   const [byGov, setByGov] = useState<StatBucket[]>([]);
   const [byStatus, setByStatus] = useState<StatBucket[]>([]);

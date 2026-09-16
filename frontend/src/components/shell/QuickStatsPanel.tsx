@@ -4,6 +4,7 @@ import { api } from "../../api/client";
 import { todayInputValue } from "../../lib/dateUtils";
 import { OperatorStat, SummaryStats } from "../../types";
 import { useAuth } from "../../auth/AuthContext";
+import { formatSourceBreakdown } from "../../lib/statBreakdown";
 
 // Monday of the week containing isoDate — weeks here always run Пн–Сб
 // (mirrors AppealsPage.tsx's WeekLeaders). Deliberately independent of
@@ -49,7 +50,12 @@ export function QuickStatsTiles({
     <div className="kpi-grid" style={{ marginBottom: 16 }}>
       <div className="kpi kpi--gold">
         <div className="kpi-label">Трубки сегодня</div>
-        <div className="kpi-value">{summary.today}</div>
+        <div className="kpi-value-row">
+          <div className="kpi-value">{summary.today}</div>
+          {formatSourceBreakdown(summary.todayBySource) && (
+            <div className="kpi-value-breakdown">{formatSourceBreakdown(summary.todayBySource)}</div>
+          )}
+        </div>
         <Link className="kpi-link-btn" to="/">
           Открыть таблицу →
         </Link>
@@ -61,12 +67,22 @@ export function QuickStatsTiles({
       </div>
       <div className="kpi kpi--success">
         <div className="kpi-label">Статистика недели</div>
-        <div className="kpi-value">{summary.week}</div>
+        <div className="kpi-value-row">
+          <div className="kpi-value">{summary.week}</div>
+          {formatSourceBreakdown(summary.weekBySource) && (
+            <div className="kpi-value-breakdown">{formatSourceBreakdown(summary.weekBySource)}</div>
+          )}
+        </div>
         <div className="kpi-sub">трубок на этой неделе</div>
       </div>
       <div className="kpi kpi--muted">
         <div className="kpi-label">Трубок за всё время</div>
-        <div className="kpi-value">{summary.total}</div>
+        <div className="kpi-value-row">
+          <div className="kpi-value">{summary.total}</div>
+          {formatSourceBreakdown(summary.totalBySource) && (
+            <div className="kpi-value-breakdown">{formatSourceBreakdown(summary.totalBySource)}</div>
+          )}
+        </div>
       </div>
       {innModuleEnabled && (
         <div className="kpi kpi--danger">

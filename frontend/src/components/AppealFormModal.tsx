@@ -11,6 +11,7 @@ export interface AppealFormValues {
   dep: string;
   reportedTime: string;
   description: string;
+  source: string;
 }
 
 function toDateInputValue(iso?: string): string {
@@ -113,10 +114,12 @@ function ContactExtraInfo({ extraInfo }: { extraInfo: string }) {
 
 export function AppealFormModal({
   appeal,
+  sourceOptions,
   onClose,
   onSubmit,
 }: {
   appeal: Appeal | null;
+  sourceOptions: string[];
   onClose: () => void;
   onSubmit: (values: AppealFormValues) => Promise<void>;
 }) {
@@ -127,6 +130,7 @@ export function AppealFormModal({
     dep: appeal?.dep ?? "",
     reportedTime: appeal?.reportedTime ?? "",
     description: appeal?.description ?? "",
+    source: appeal?.source ?? "",
   });
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -169,6 +173,25 @@ export function AppealFormModal({
                 onChange={(e) => setValues((v) => ({ ...v, phone: e.target.value }))}
                 required
               />
+            </label>
+
+            <label>
+              Чья база
+              <select
+                className={!values.source ? "select-placeholder" : undefined}
+                value={values.source}
+                onChange={(e) => setValues((v) => ({ ...v, source: e.target.value }))}
+                required
+              >
+                <option value="" disabled hidden>
+                  Чья база
+                </option>
+                {sourceOptions.map((o) => (
+                  <option key={o} value={o}>
+                    {o}
+                  </option>
+                ))}
+              </select>
             </label>
 
             <label>

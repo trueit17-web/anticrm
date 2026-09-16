@@ -117,9 +117,12 @@ const updateSchema = z.object({
 });
 
 // Госы/ЦБ/ФСБ/Закрыв/ТФ/Статус are classification fields — only manager/admin
-// may set them, regardless of who owns the appeal. Прием (intake) and phone/
-// description/etc. stay open to any authenticated employee, same as СМС.
-const RESTRICTED_FIELDS = ["gov", "cb", "fsb", "closer", "tf", "status", "source"] as const;
+// may set them, regardless of who owns the appeal. Прием (intake), phone,
+// description/etc. — and "Чья база" — stay open to any authenticated
+// employee with edit rights on the appeal, same as СМС; it's corrected via
+// the edit form, not restricted to managers, since it's set by whoever logs
+// the trubka in the first place.
+const RESTRICTED_FIELDS = ["gov", "cb", "fsb", "closer", "tf", "status"] as const;
 
 export async function updateAppealHandler(req: Request, res: Response) {
   const branchId = await resolveBranchId(req);
@@ -259,7 +262,7 @@ export async function getStatsHandler(req: Request, res: Response) {
 export async function getSummaryHandler(req: Request, res: Response) {
   const branchId = await resolveBranchId(req);
   if (branchId === null) {
-    return res.json({ today: 0, week: 0, total: 0 });
+    return res.json({ today: 0, week: 0, total: 0, todayBySource: [], weekBySource: [], totalBySource: [] });
   }
   const summary = await getSummaryStats(branchId);
   res.json(summary);
