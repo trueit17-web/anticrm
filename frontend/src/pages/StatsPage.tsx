@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { PointerEvent as ReactPointerEvent, useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { api, ApiError } from "../api/client";
 import {
@@ -193,6 +193,32 @@ function DailyChart({
   );
 }
 
+// Same defaults as the classic (non-enhanced) Трубки table's column widths —
+// this history table mirrors that column set (no row-actions column, so one
+// fewer entry than AppealsTable.tsx's DEFAULT_WIDTHS).
+const DAY_TABLE_DEFAULT_WIDTHS = [110, 112, 90, 90, 178, 90, 90, 60, 110, 130, 180, 110, 110, 110];
+const DAY_TABLE_MIN_COL_WIDTH = 40;
+const DAY_TABLE_COL_WIDTHS_KEY = "crm_stats_day_col_widths_v1";
+
+function loadDayTableColWidths(): number[] {
+  try {
+    const raw = localStorage.getItem(DAY_TABLE_COL_WIDTHS_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (
+        Array.isArray(parsed) &&
+        parsed.length === DAY_TABLE_DEFAULT_WIDTHS.length &&
+        parsed.every((n) => typeof n === "number" && n > 0)
+      ) {
+        return parsed;
+      }
+    }
+  } catch {
+    // ignore malformed/blocked storage — fall back to defaults
+  }
+  return [...DAY_TABLE_DEFAULT_WIDTHS];
+}
+
 function DayAppealsTable({ appeals }: { appeals: Appeal[] }) {
   // The table is wider than the page on most monitors — same edge-hover pan
   // as the main Трубки table (AppealsTable.tsx) instead of only a horizontal
@@ -200,44 +226,85 @@ function DayAppealsTable({ appeals }: { appeals: Appeal[] }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   useEdgeAutoScroll(scrollRef);
 
+  // Resizable columns, same drag-the-header-border mechanism as the main
+  // Трубки table — persisted separately (own localStorage key) since this
+  // table's column set/defaults differ slightly (no row-actions column).
+  const [colWidths, setColWidths] = useState<number[]>(loadDayTableColWidths);
+
+  function startResize(index: number, e: ReactPointerEvent) {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startW = colWidths[index];
+    const onMove = (ev: PointerEvent) => {
+      const next = Math.max(DAY_TABLE_MIN_COL_WIDTH, Math.round(startW + (ev.clientX - startX)));
+      setColWidths((prev) => {
+        if (prev[index] === next) return prev;
+        const copy = [...prev];
+        copy[index] = next;
+        return copy;
+      });
+    };
+    const onUp = () => {
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onUp);
+      document.body.classList.remove("col-resizing");
+      setColWidths((prev) => {
+        try {
+          localStorage.setItem(DAY_TABLE_COL_WIDTHS_KEY, JSON.stringify(prev));
+        } catch {
+          // ignore storage failures (private mode / quota)
+        }
+        return prev;
+      });
+    };
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerup", onUp);
+    document.body.classList.add("col-resizing");
+  }
+
   if (appeals.length === 0) {
     return <p className="empty-state">За этот день трубок нет.</p>;
   }
+
+  const headers = [
+    { label: "📅 Дата", className: "col-center" },
+    { label: "📞 Телефон" },
+    { label: "📠 ТФ", className: "col-center" },
+    { label: "📱 Опер. (моб.)", className: "col-center" },
+    { label: "ФИО + ДР" },
+    { label: "💰 Деп." },
+    { label: "💬 СМС", className: "col-center" },
+    { label: "Прием", className: "col-center" },
+    { label: "🏛️ Госы", className: "col-center" },
+    { label: "🚦 Статус", className: "col-center" },
+    { label: "📝 Описание" },
+    { label: "🏦 ЦБ", className: "col-center" },
+    { label: "🛡️ ФСБ", className: "col-center" },
+    { label: "🔒 Закрыв", className: "col-center" },
+  ];
+
   return (
     <div className="table-scroll" ref={scrollRef}>
-      <table className="appeals-table">
+      <table className="appeals-table" style={{ width: colWidths.reduce((a, b) => a + b, 0) }}>
         <colgroup>
-          <col style={{ width: 110 }} />
-          <col style={{ width: 112 }} />
-          <col style={{ width: 90 }} />
-          <col style={{ width: 90 }} />
-          <col style={{ width: 178 }} />
-          <col style={{ width: 90 }} />
-          <col style={{ width: 90 }} />
-          <col style={{ width: 60 }} />
-          <col style={{ width: 110 }} />
-          <col style={{ width: 130 }} />
-          <col style={{ width: 180 }} />
-          <col style={{ width: 110 }} />
-          <col style={{ width: 110 }} />
-          <col style={{ width: 110 }} />
+          {colWidths.map((w, i) => (
+            <col key={i} style={{ width: w }} />
+          ))}
         </colgroup>
         <thead>
           <tr>
-            <th className="col-center">📅 Дата</th>
-            <th>📞 Телефон</th>
-            <th className="col-center">📠 ТФ</th>
-            <th className="col-center">📱 Опер. (моб.)</th>
-            <th>ФИО + ДР</th>
-            <th>💰 Деп.</th>
-            <th className="col-center">💬 СМС</th>
-            <th className="col-center">Прием</th>
-            <th className="col-center">🏛️ Госы</th>
-            <th className="col-center">🚦 Статус</th>
-            <th>📝 Описание</th>
-            <th className="col-center">🏦 ЦБ</th>
-            <th className="col-center">🛡️ ФСБ</th>
-            <th className="col-center">🔒 Закрыв</th>
+            {headers.map((h, i) => (
+              <th key={i} className={h.className}>
+                {h.label}
+                {i < headers.length - 1 && (
+                  <span
+                    className="col-resizer"
+                    onPointerDown={(e) => startResize(i, e)}
+                    title="Потяните, чтобы изменить ширину колонки"
+                  />
+                )}
+              </th>
+            ))}
           </tr>
         </thead>
         <tbody>

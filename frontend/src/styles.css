@@ -3609,8 +3609,10 @@ body.col-resizing .appeals-table-new .col-resizer {
 
 /* A always-visible hairline at each resizer's position — otherwise the
    draggable boundary between header cells is invisible until hovered, and
-   nothing hints that the columns can be resized at all. */
-.appeals-table-new .col-resizer::after {
+   nothing hints that the columns can be resized at all. Unscoped (not just
+   .appeals-table-new) so any table reusing .col-resizer gets it too — e.g.
+   the Статистика page's "Трубки за <дату>" history table. */
+.col-resizer::after {
   content: "";
   position: absolute;
   top: 22%;
@@ -3622,8 +3624,8 @@ body.col-resizing .appeals-table-new .col-resizer {
   pointer-events: none;
 }
 
-.appeals-table-new .col-resizer:hover::after,
-body.col-resizing .appeals-table-new .col-resizer::after {
+.col-resizer:hover::after,
+body.col-resizing .col-resizer::after {
   top: 15%;
   bottom: 15%;
   width: 2px;
