@@ -1,7 +1,6 @@
 import { ClipboardEvent, KeyboardEvent, useState } from "react";
 import { InnCheckResult, InnEntry } from "../../types";
-import { IconCheck, IconExternalLink, IconTrash } from "../icons";
-import { rusprofileSearchUrl } from "../../lib/rusprofile";
+import { IconCheck, IconTrash } from "../icons";
 
 type UpdateData = {
   inn?: string;
@@ -146,23 +145,11 @@ function EntryRow({
       <td className="inn-col-inn">
         <input
           value={inn}
-          maxLength={10}
+          maxLength={12}
           onChange={(e) => setInn(e.target.value)}
           onKeyDown={handleKeyDown}
           onBlur={apply}
         />
-        {/^\d{10}$|^\d{12}$/.test(inn) && (
-          <a
-            className="inn-rusprofile-link"
-            href={rusprofileSearchUrl(inn)}
-            target="_blank"
-            rel="noreferrer"
-            title="Открыть на rusprofile.ru"
-            aria-label="Открыть на rusprofile.ru"
-          >
-            <IconExternalLink width={13} height={13} />
-          </a>
-        )}
       </td>
       <td className="inn-col-center">
         <input
@@ -291,7 +278,7 @@ function NewEntryRow({
       <td className="inn-col-inn">
         <input
           value={inn}
-          maxLength={10}
+          maxLength={12}
           onChange={(e) => setInn(e.target.value)}
           onKeyDown={handleKeyDown}
           onPaste={handlePaste}
