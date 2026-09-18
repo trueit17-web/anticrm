@@ -2481,6 +2481,19 @@ body.col-resizing .col-resizer {
   white-space: nowrap;
 }
 
+/* ИНН as a plain clickable value (not a separate icon) — reads as normal
+   text at rest, gold on hover, so the digits themselves stay the primary
+   thing shown instead of competing with an icon for a narrow column. */
+.inn-value-link {
+  color: inherit;
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+}
+
+.inn-value-link:hover {
+  color: var(--primary-dark);
+}
+
 .inn-stats-table input,
 .inn-stats-table select {
   text-overflow: ellipsis;

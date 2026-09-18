@@ -9,7 +9,7 @@ import {
   SelectOption,
   UserSummary,
 } from "../../types";
-import { IconCheck, IconExternalLink, IconRestore, IconTrash } from "../icons";
+import { IconCheck, IconRestore, IconTrash } from "../icons";
 import { rusprofileSearchUrl } from "../../lib/rusprofile";
 
 function formatChangedAt(iso: string): string {
@@ -364,21 +364,21 @@ function StatsEntryRow({
           </span>
         )}
       </td>
-      <td className="inn-col-inn">
-        <span className="inn-col-truncate" title={entry.inn}>
-          {entry.inn}
-        </span>
-        {/^\d{10}$|^\d{12}$/.test(entry.inn) && (
+      <td>
+        {/^\d{10}$|^\d{12}$/.test(entry.inn) ? (
           <a
-            className="inn-rusprofile-link"
+            className="inn-col-truncate inn-value-link"
             href={rusprofileSearchUrl(entry.inn)}
             target="_blank"
             rel="noreferrer"
-            title="Открыть на rusprofile.ru"
-            aria-label="Открыть на rusprofile.ru"
+            title={`${entry.inn} — открыть на rusprofile.ru`}
           >
-            <IconExternalLink width={13} height={13} />
+            {entry.inn}
           </a>
+        ) : (
+          <span className="inn-col-truncate" title={entry.inn}>
+            {entry.inn}
+          </span>
         )}
       </td>
       <td className="col-num">
