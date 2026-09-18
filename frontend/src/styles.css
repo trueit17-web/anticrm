@@ -1347,12 +1347,6 @@ body.col-resizing .col-resizer {
   color: var(--muted);
   padding: 2px;
   border-radius: 4px;
-  /* Overrides the global button rule (background/min-height/etc.) — this is
-     a plain icon-only affordance next to an input, not a full-size button. */
-  background: transparent;
-  border: none;
-  min-height: 0;
-  cursor: pointer;
 }
 
 .inn-rusprofile-link:hover {

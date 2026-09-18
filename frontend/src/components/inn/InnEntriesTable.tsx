@@ -1,23 +1,7 @@
 import { ClipboardEvent, KeyboardEvent, useState } from "react";
 import { InnCheckResult, InnEntry } from "../../types";
 import { IconCheck, IconExternalLink, IconTrash } from "../icons";
-
-// Rusprofile has no public "/inn/<ИНН>" URL — real company pages live at an
-// internal numeric id (/id/<id>) only their own search knows. Their
-// /search?query= route is a dead 404 (confirmed live — it does not read the
-// query param at all, despite looking like it should), so there's no way to
-// land on the result in one step from a plain link. Best available: copy the
-// ИНН to the clipboard and open the homepage, so pasting into their search
-// box is the only manual step left.
-async function openRusprofileSearch(inn: string) {
-  try {
-    await navigator.clipboard.writeText(inn);
-  } catch {
-    // clipboard access can be blocked (permissions/non-secure context) —
-    // the tab still opens, the ИНН just won't be pre-copied.
-  }
-  window.open("https://www.rusprofile.ru/", "_blank", "noopener,noreferrer");
-}
+import { rusprofileSearchUrl } from "../../lib/rusprofile";
 
 type UpdateData = {
   inn?: string;
@@ -168,15 +152,16 @@ function EntryRow({
           onBlur={apply}
         />
         {/^\d{10}$|^\d{12}$/.test(inn) && (
-          <button
-            type="button"
+          <a
             className="inn-rusprofile-link"
-            onClick={() => openRusprofileSearch(inn)}
-            title="Скопировать ИНН и открыть rusprofile.ru"
-            aria-label="Скопировать ИНН и открыть rusprofile.ru"
+            href={rusprofileSearchUrl(inn)}
+            target="_blank"
+            rel="noreferrer"
+            title="Открыть на rusprofile.ru"
+            aria-label="Открыть на rusprofile.ru"
           >
             <IconExternalLink width={13} height={13} />
-          </button>
+          </a>
         )}
       </td>
       <td className="inn-col-center">

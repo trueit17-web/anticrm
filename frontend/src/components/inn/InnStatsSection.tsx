@@ -9,7 +9,8 @@ import {
   SelectOption,
   UserSummary,
 } from "../../types";
-import { IconCheck, IconRestore, IconTrash } from "../icons";
+import { IconCheck, IconExternalLink, IconRestore, IconTrash } from "../icons";
+import { rusprofileSearchUrl } from "../../lib/rusprofile";
 
 function formatChangedAt(iso: string): string {
   return new Date(iso).toLocaleString("ru-RU", {
@@ -363,10 +364,22 @@ function StatsEntryRow({
           </span>
         )}
       </td>
-      <td>
+      <td className="inn-col-inn">
         <span className="inn-col-truncate" title={entry.inn}>
           {entry.inn}
         </span>
+        {/^\d{10}$|^\d{12}$/.test(entry.inn) && (
+          <a
+            className="inn-rusprofile-link"
+            href={rusprofileSearchUrl(entry.inn)}
+            target="_blank"
+            rel="noreferrer"
+            title="Открыть на rusprofile.ru"
+            aria-label="Открыть на rusprofile.ru"
+          >
+            <IconExternalLink width={13} height={13} />
+          </a>
+        )}
       </td>
       <td className="col-num">
         {editable ? (
