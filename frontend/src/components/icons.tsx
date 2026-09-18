@@ -222,6 +222,17 @@ export function IconEyeOff(props: IconProps) {
   );
 }
 
+// An arrow breaking out of a box — "open in a new tab" (external link).
+export function IconExternalLink(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M9 6H6.5A1.5 1.5 0 0 0 5 7.5v10A1.5 1.5 0 0 0 6.5 19h10a1.5 1.5 0 0 0 1.5-1.5V15" />
+      <path d="M13 5h6v6" />
+      <path d="M20 4 11 13" />
+    </svg>
+  );
+}
+
 // An open book — the ИНН journal/stats view, distinct from the notepad+pencil
 // used for the quick-entry drawer button right above it on the rail.
 export function IconBook(props: IconProps) {

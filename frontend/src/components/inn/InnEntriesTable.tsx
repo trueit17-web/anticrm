@@ -1,6 +1,14 @@
 import { ClipboardEvent, KeyboardEvent, useState } from "react";
 import { InnCheckResult, InnEntry } from "../../types";
-import { IconCheck, IconTrash } from "../icons";
+import { IconCheck, IconExternalLink, IconTrash } from "../icons";
+
+// Rusprofile has no public "/inn/<ИНН>" URL — its actual company pages live
+// at an internal numeric id (/id/<id>) we don't have. Its own search page,
+// though, redirects straight to that company's card when the query is an
+// exact, unique ИНН match — so this is the closest thing to a direct link.
+function rusprofileSearchUrl(inn: string): string {
+  return `https://www.rusprofile.ru/search?query=${encodeURIComponent(inn)}`;
+}
 
 type UpdateData = {
   inn?: string;
@@ -150,6 +158,18 @@ function EntryRow({
           onKeyDown={handleKeyDown}
           onBlur={apply}
         />
+        {/^\d{10}$|^\d{12}$/.test(inn) && (
+          <a
+            className="inn-rusprofile-link"
+            href={rusprofileSearchUrl(inn)}
+            target="_blank"
+            rel="noreferrer"
+            title="Открыть на rusprofile.ru"
+            aria-label="Открыть на rusprofile.ru"
+          >
+            <IconExternalLink width={13} height={13} />
+          </a>
+        )}
       </td>
       <td className="inn-col-center">
         <input
