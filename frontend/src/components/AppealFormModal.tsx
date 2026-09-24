@@ -9,6 +9,7 @@ export interface AppealFormValues {
   phone: string;
   clientData: string;
   dep: string;
+  wait: string;
   reportedTime: string;
   description: string;
   source: string;
@@ -128,6 +129,7 @@ export function AppealFormModal({
     phone: appeal?.phone ?? "",
     clientData: appeal?.clientData ?? "",
     dep: appeal?.dep ?? "",
+    wait: appeal?.wait ?? "",
     reportedTime: appeal?.reportedTime ?? "",
     description: appeal?.description ?? "",
     source: appeal?.source ?? "",
@@ -218,6 +220,17 @@ export function AppealFormModal({
                 <input
                   value={values.dep}
                   onChange={(e) => setValues((v) => ({ ...v, dep: e.target.value }))}
+                />
+                <span className="money-suffix">₽</span>
+              </span>
+            </label>
+
+            <label className="span-2">
+              Ожид
+              <span className="money-field">
+                <input
+                  value={values.wait}
+                  onChange={(e) => setValues((v) => ({ ...v, wait: e.target.value }))}
                 />
                 <span className="money-suffix">₽</span>
               </span>

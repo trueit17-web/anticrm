@@ -349,6 +349,7 @@ model Appeal {
   intake     Boolean @default(false)
   clientData String?
   dep        String?
+  wait       String?
   // "Чья база" — required at creation, picked from the admin-curated
   // OptionField.SOURCE list. Nullable in the schema only because appeals
   // logged before this field existed have none; the create endpoint always

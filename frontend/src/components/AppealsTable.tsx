@@ -23,6 +23,7 @@ const COLUMNS: { label: string; className?: string }[] = [
   { label: "ТФ", className: "col-center" },
   { label: "ФИО + ДР" },
   { label: "Деп." },
+  { label: "Ожид" },
   { label: "СМС", className: "col-center" },
   { label: "Прием", className: "col-center col-tight-label" },
   { label: "Госы", className: "col-center" },
@@ -33,14 +34,14 @@ const COLUMNS: { label: string; className?: string }[] = [
   { label: "Закрыв", className: "col-center" },
   { label: "" },
 ];
-const DEFAULT_WIDTHS = [36, 110, 112, 90, 178, 90, 90, 60, 110, 130, 180, 110, 110, 110, 64];
+const DEFAULT_WIDTHS = [36, 110, 112, 90, 178, 90, 90, 90, 60, 110, 130, 180, 110, 110, 110, 64];
 // The new interface's density/layout pass gives the two free-text columns
 // (Данные клиента, Описание) more breathing room, funded by trimming the
 // narrow single-word tag columns — same column count and order as classic.
 // Телефон/Деп. are widened past that pass's originals (110/88 → 146/112) —
 // at this layout's 14px font a formatted phone number ("+7 (999) 123-45-67")
 // or a 7-figure deposit ("12 500 000 ₽") wrapped to a second line otherwise.
-const DEFAULT_WIDTHS_NEW = [36, 108, 146, 80, 205, 112, 86, 58, 100, 128, 210, 100, 100, 100, 64];
+const DEFAULT_WIDTHS_NEW = [36, 108, 146, 80, 205, 112, 112, 86, 58, 100, 128, 210, 100, 100, 100, 64];
 const MIN_COL_WIDTH = 40;
 // Bumped if COLUMNS ever changes shape, so an old saved layout with the wrong
 // number of columns is discarded rather than misapplied.
@@ -74,6 +75,7 @@ export interface NewAppealValues {
   phone: string;
   clientData: string;
   dep: string;
+  wait: string;
   description: string;
   // "Чья база" — required, see NewAppealRow's dropdown below.
   source: string;
@@ -99,6 +101,7 @@ function NewAppealRow({
     phone: "",
     clientData: "",
     dep: "",
+    wait: "",
     description: "",
     source: "",
   });
@@ -193,6 +196,17 @@ function NewAppealRow({
             <span className="money-suffix">₽</span>
           </span>
         </td>
+        <td>
+          <span className="money-field">
+            <input
+              placeholder="Ожид"
+              value={values.wait}
+              onChange={(e) => setValues((v) => ({ ...v, wait: e.target.value }))}
+              onKeyDown={handleKeyDown}
+            />
+            <span className="money-suffix">₽</span>
+          </span>
+        </td>
         <td colSpan={2} className="muted col-center">
           зададутся после создания
         </td>
@@ -234,7 +248,7 @@ function NewAppealRow({
       </tr>
       {error && (
         <tr>
-          <td colSpan={15} className="error-text">
+          <td colSpan={16} className="error-text">
             {error}
           </td>
         </tr>
@@ -531,7 +545,7 @@ export function AppealsTable({
         <tbody>
           {appeals.length === 0 && !creating && (
             <tr>
-              <td colSpan={15} className="empty-state">
+              <td colSpan={16} className="empty-state">
                 Трубок пока нет.
               </td>
             </tr>
@@ -585,6 +599,9 @@ export function AppealsTable({
                 </td>
                 <td className="wrap-cell" title={appeal.dep ?? undefined}>
                   {formatMoney(appeal.dep)}
+                </td>
+                <td className="wrap-cell" title={appeal.wait ?? undefined}>
+                  {formatMoney(appeal.wait)}
                 </td>
                 <td className={`col-center${smsSent ? " cell-sms-sent" : ""}`}>
                   {smsSent ? (
