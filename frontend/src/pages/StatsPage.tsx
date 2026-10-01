@@ -197,7 +197,7 @@ function DailyChart({
 // Same defaults as the classic (non-enhanced) Трубки table's column widths —
 // this history table mirrors that column set (no row-actions column, so one
 // fewer entry than AppealsTable.tsx's DEFAULT_WIDTHS).
-const DAY_TABLE_DEFAULT_WIDTHS = [110, 112, 90, 90, 178, 90, 90, 60, 110, 130, 180, 110, 110, 110];
+const DAY_TABLE_DEFAULT_WIDTHS = [110, 112, 90, 90, 178, 90, 90, 90, 60, 110, 130, 180, 110, 110, 110];
 const DAY_TABLE_MIN_COL_WIDTH = 40;
 const DAY_TABLE_COL_WIDTHS_KEY = "crm_stats_day_col_widths_v1";
 
@@ -274,6 +274,7 @@ function DayAppealsTable({ appeals }: { appeals: Appeal[] }) {
     { label: "📱 Опер. (моб.)", className: "col-center" },
     { label: "ФИО + ДР" },
     { label: "💰 Деп." },
+    { label: "⏳ Ожид" },
     { label: "💬 СМС", className: "col-center" },
     { label: "Прием", className: "col-center" },
     { label: "🏛️ Госы", className: "col-center" },
@@ -337,6 +338,9 @@ function DayAppealsTable({ appeals }: { appeals: Appeal[] }) {
               </td>
               <td className="wrap-cell" title={a.dep ?? undefined}>
                 {formatMoney(a.dep)}
+              </td>
+              <td className="wrap-cell" title={a.wait ?? undefined}>
+                {formatMoney(a.wait)}
               </td>
               <td className="col-center">{a.smsSentBy ? `${a.smsSentBy.fullName}` : "—"}</td>
               <td className="col-center">{a.intake ? "Да" : "—"}</td>
