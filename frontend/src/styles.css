@@ -1351,6 +1351,11 @@ body.col-resizing .col-resizer {
   text-align: center;
 }
 
+.inn-called-all {
+  display: block;
+  margin: 3px 0 0 auto;
+}
+
 .inn-row-actions {
   display: flex;
   gap: 4px;

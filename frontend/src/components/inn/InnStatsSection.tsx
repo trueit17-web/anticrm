@@ -502,6 +502,7 @@ function StatsEntriesTable({
   onRefresh,
   onDistribute,
   onDelete,
+  onSetAllCalled,
 }: {
   entries: (InnEntryWithOperator | InnEntry)[];
   editable: boolean;
@@ -514,9 +515,14 @@ function StatsEntriesTable({
   onRefresh: (id: number) => void;
   onDistribute: (fromId: number, field: "contactsCount" | "transferredCount", values: number[]) => void;
   onDelete: (id: number) => void;
+  // When given, the "Прозвонена" header gets a master checkbox that sets
+  // every row in this table (all one operator's entries) at once.
+  onSetAllCalled?: (called: boolean) => void;
 }) {
   if (entries.length === 0) return <p className="empty-state">За период записей нет.</p>;
   const columnCount = showOperator ? 11 : 10;
+  const calledCount = entries.filter((e) => e.called).length;
+  const allCalled = calledCount === entries.length;
   return (
     <div className="table-scroll">
       <table className="appeals-table stats-manager-table inn-stats-table">
@@ -542,7 +548,22 @@ function StatsEntriesTable({
             <th>ИНН</th>
             <th className="col-num">Чел.</th>
             <th className="col-num">Передано</th>
-            <th className="col-num">Прозвонена</th>
+            <th className="col-num">
+              Прозвонена
+              {onSetAllCalled && (
+                <input
+                  type="checkbox"
+                  className="inn-called-all"
+                  checked={allCalled}
+                  ref={(el) => {
+                    if (el) el.indeterminate = calledCount > 0 && !allCalled;
+                  }}
+                  onChange={(e) => onSetAllCalled(e.target.checked)}
+                  title={allCalled ? "Снять отметку «прозвонена» со всех" : "Отметить все как прозвоненные"}
+                  aria-label="Отметить все как прозвоненные"
+                />
+              )}
+            </th>
             <th>Кат.</th>
             <th>Примеч.</th>
             <th></th>
@@ -570,6 +591,35 @@ function StatsEntriesTable({
       </table>
     </div>
   );
+}
+
+// Sets "Прозвонена" on every given entry that doesn't already match, in small
+// parallel batches (each entry is its own PATCH so the per-entry change
+// history keeps working). Confirms first — it's a bulk write.
+async function setCalledForAll(
+  entries: InnEntry[],
+  called: boolean,
+  endpoint: (id: number) => string,
+  apply: (entry: InnEntry) => void
+) {
+  const targets = entries.filter((e) => e.called !== called);
+  if (targets.length === 0) return;
+  const question = called
+    ? `Отметить все записи как прозвоненные (${targets.length})?`
+    : `Снять отметку «прозвонена» со всех записей (${targets.length})?`;
+  if (!window.confirm(question)) return;
+  for (let i = 0; i < targets.length; i += 10) {
+    await Promise.all(
+      targets
+        .slice(i, i + 10)
+        .map((t) =>
+          api
+            .patch<{ entry: InnEntry }>(endpoint(t.id), { called })
+            .then((res) => apply(res.entry))
+            .catch(() => {})
+        )
+    );
+  }
 }
 
 // Every entry in the branch for the period, flat (not grouped by operator)
@@ -730,6 +780,15 @@ function MyEntriesList({
       .catch(() => {});
   }
 
+  function handleSetAllCalled(called: boolean) {
+    return setCalledForAll(
+      entries,
+      called,
+      (id) => `/inn/${id}`,
+      (entry) => setEntries((prev) => prev.map((e) => (e.id === entry.id ? entry : e)))
+    );
+  }
+
   if (loading) return <p className="muted">Загрузка...</p>;
   return (
     <StatsEntriesTable
@@ -743,6 +802,7 @@ function MyEntriesList({
       onRefresh={handleRefresh}
       onDistribute={handleDistribute}
       onDelete={handleDelete}
+      onSetAllCalled={handleSetAllCalled}
     />
   );
 }
@@ -752,11 +812,13 @@ function OperatorEntriesList({
   from,
   to,
   categories,
+  onChanged,
 }: {
   operatorId: number;
   from: string;
   to: string;
   categories: string[];
+  onChanged: () => void;
 }) {
   const [entries, setEntries] = useState<InnEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -777,6 +839,16 @@ function OperatorEntriesList({
       .catch(() => {});
   }
 
+  async function handleSetAllCalled(called: boolean) {
+    await setCalledForAll(
+      entries,
+      called,
+      (id) => `/inn/admin/${id}`,
+      (entry) => setEntries((prev) => prev.map((e) => (e.id === entry.id ? { ...e, ...entry } : e)))
+    );
+    onChanged();
+  }
+
   if (loading) return <p className="muted">Загрузка...</p>;
   return (
     <StatsEntriesTable
@@ -790,6 +862,7 @@ function OperatorEntriesList({
       onRefresh={handleRefresh}
       onDistribute={() => {}}
       onDelete={() => {}}
+      onSetAllCalled={handleSetAllCalled}
     />
   );
 }
@@ -797,12 +870,16 @@ function OperatorEntriesList({
 function AdminSummary({ from, to, categories }: { from: string; to: string; categories: string[] }) {
   const [summary, setSummary] = useState<InnStatsSummary | null>(null);
   const [expanded, setExpanded] = useState<number | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     api
       .get<InnStatsSummary>(`/inn/stats/summary?from=${from}&to=${to}`)
       .then(setSummary)
       .catch(() => setSummary(null));
+  }, [from, to, reloadKey]);
+
+  useEffect(() => {
     setExpanded(null);
   }, [from, to]);
 
@@ -846,7 +923,13 @@ function AdminSummary({ from, to, categories }: { from: string; to: string; cate
                   {expanded === row.operatorId && (
                     <tr>
                       <td colSpan={6}>
-                        <OperatorEntriesList operatorId={row.operatorId} from={from} to={to} categories={categories} />
+                        <OperatorEntriesList
+                          operatorId={row.operatorId}
+                          from={from}
+                          to={to}
+                          categories={categories}
+                          onChanged={() => setReloadKey((k) => k + 1)}
+                        />
                       </td>
                     </tr>
                   )}
