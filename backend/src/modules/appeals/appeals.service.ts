@@ -272,11 +272,19 @@ export interface RangeStats {
   bySource: StatBucket[];
 }
 
-// Shift window boundaries (Moscow local time, minutes since midnight) used to
-// bucket ТФ by time of creation. createdAt is stored as a bare UTC clock
-// value (see the date-bucketing note below) — Moscow has no DST, so a fixed
-// +180min offset recovers the wall-clock time operators actually see.
-const MOSCOW_OFFSET_MINUTES = 180;
+// Shift window boundaries (operators' local wall-clock time, minutes since
+// midnight) used to bucket ТФ by time of creation. createdAt is a UTC instant,
+// so it is converted through the operators' real time zone — Europe/Kyiv
+// switches between UTC+2 and UTC+3 twice a year, which a fixed offset can't
+// follow (it silently shifted every shift window by an hour after the clocks
+// changed).
+const OPERATORS_TIME_ZONE = "Europe/Kyiv";
+const operatorsClock = new Intl.DateTimeFormat("en-GB", {
+  timeZone: OPERATORS_TIME_ZONE,
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
 const TF_TIME_WINDOWS: { key: "I" | "II" | "III" | "IV"; start: number; end: number }[] = [
   { key: "I", start: 8 * 60, end: 10 * 60 + 14 },
   { key: "II", start: 10 * 60 + 15, end: 12 * 60 + 59 },
@@ -285,7 +293,10 @@ const TF_TIME_WINDOWS: { key: "I" | "II" | "III" | "IV"; start: number; end: num
 ];
 
 function tfTimeWindow(createdAt: Date): "I" | "II" | "III" | "IV" | null {
-  const minutes = (createdAt.getUTCHours() * 60 + createdAt.getUTCMinutes() + MOSCOW_OFFSET_MINUTES) % (24 * 60);
+  const parts = operatorsClock.formatToParts(createdAt);
+  const hour = Number(parts.find((p) => p.type === "hour")?.value);
+  const minute = Number(parts.find((p) => p.type === "minute")?.value);
+  const minutes = hour * 60 + minute;
   return TF_TIME_WINDOWS.find((w) => minutes >= w.start && minutes <= w.end)?.key ?? null;
 }
 
